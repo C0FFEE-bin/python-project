@@ -13,7 +13,10 @@ Get to the `webapp` directory: `cd webapp` and run `python3 manage.py runserver`
 
 ### How to switch to a virtual environment in a terminal
 
-Run `.venv\Scripts\Activate`. Then you will see (.venv) on the left from a CLI prompt
+On Windows: Run `.venv\Scripts\Activate`. Then you will see (.venv) on the left from a CLI prompt.
+
+On macOS: Run `source .venv/bin/activate`. Then you will see (.venv) on the left from a CLI prompt.
+If you have a Python extension installed on your Visual Studio Code, it can try to run `source .venv/bin/activate` command on its own right after terminal opening.
 
 ### How to install all dependencies in an env
 
