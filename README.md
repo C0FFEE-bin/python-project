@@ -1,3 +1,4 @@
+
 # Django blueprint app
 PyCharm will prepare the virtual environment for project automatically. For non-PyCharm users (for example VSCode) look an instructions below how to do this manually
 
@@ -26,3 +27,5 @@ If you have a Python extension installed on your Visual Studio Code, it can try 
 Quit the server with CTRL-C in command line
 
 ## Happy coding!
+=======
+
