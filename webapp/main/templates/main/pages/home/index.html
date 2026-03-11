@@ -1,8 +1,11 @@
-{% extends 'main/layout/clean_layout.html' %}
+{% extends 'main/layouts/base_public.html' %}
 {% load static %}
 
 {% block title %}Rent Nerd{% endblock %}
 {% block body_class %}landing-body{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'main/css/pages/home.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="landing-shell">
@@ -279,5 +282,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'main/js/home.js' %}"></script>
+<script src="{% static 'main/js/pages/home.js' %}"></script>
 {% endblock %}

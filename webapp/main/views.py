@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 
 # Create your views here.
 def index(request):
-    return render(request, 'main/index.html')
+    return render(request, 'main/pages/home/index.html')
 
 @login_required
 def cars(request):
@@ -46,10 +46,10 @@ def cars(request):
         ]
     }
 
-    return render(request, 'main/cars.html', values)
+    return render(request, 'main/pages/cars/index.html', values)
 
 def about(request):
-    return render(request, 'main/about.html')
+    return render(request, 'main/pages/about/index.html')
 
 # Using the Django authentication system (Django Documentation)
 # https://docs.djangoproject.com/en/5.1/topics/auth/default/
@@ -72,7 +72,7 @@ def login_user(request):
     if request.GET.get('next'):
         request.session['next'] = request.GET['next']
 
-    return render(request, 'main/users/login.html')
+    return render(request, 'main/auth/login.html')
 
 def register(request):
     if request.user.is_authenticated:
@@ -83,7 +83,7 @@ def register(request):
         login(request, user)
         return redirect('home')
     
-    return render(request, 'main/users/register.html')
+    return render(request, 'main/auth/register.html')
 
 def logout_user(request):
     logout(request)
