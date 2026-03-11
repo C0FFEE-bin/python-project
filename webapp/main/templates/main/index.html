@@ -1,18 +1,283 @@
-{% extends 'main/layout/layout.html' %}
+{% extends 'main/layout/clean_layout.html' %}
+{% load static %}
 
-{% block title%}Homepage{% endblock %}
+{% block title %}Rent Nerd{% endblock %}
+{% block body_class %}landing-body{% endblock %}
 
-{% block content%}
-    <h1>Homepage</h1>
-    <div class="container">
-        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque finibus non dolor non sollicitudin. Vivamus augue lectus, congue vitae placerat eu, eleifend quis sapien. Ut ut neque iaculis, egestas orci non, mattis ligula. Donec sed gravida elit. In blandit sapien ac tortor accumsan, at volutpat lacus bibendum. Nulla facilisi. Praesent interdum eros rutrum elementum feugiat. Nunc vitae arcu sit amet felis placerat aliquet. Pellentesque venenatis libero in eleifend ultrices. Etiam consectetur tempus turpis, ut elementum dolor. Nulla ut ornare tortor. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Pellentesque ultrices viverra sollicitudin. Nulla magna nisl, interdum in commodo ac, consectetur eu elit.</p>
-        <p>Aliquam erat volutpat. Vivamus ornare volutpat enim, non efficitur lectus condimentum ut. Fusce nec nunc molestie, malesuada lacus vitae, tristique nibh. Etiam aliquet porta felis. Morbi pharetra rhoncus mauris eget egestas. Phasellus ut augue eu dui interdum porttitor et ut turpis. Vivamus nunc libero, porttitor eu ante ac, tincidunt condimentum dui. Pellentesque vel nisl a risus luctus vulputate a id libero. Nulla venenatis nunc et fermentum malesuada. Proin in leo auctor, vestibulum quam eget, maximus dui. Fusce sagittis condimentum turpis quis volutpat. Etiam a nisi vitae ante elementum porta. Vestibulum congue luctus nunc, vel sagittis risus. In hac habitasse platea dictumst. Pellentesque iaculis sapien nisl, sollicitudin iaculis neque varius venenatis.</p>
-        <p>Suspendisse ut nisi posuere, lacinia ipsum a, pharetra tortor. Vestibulum dapibus facilisis eros, vitae elementum nulla mattis et. Duis sollicitudin ultricies felis, a finibus lacus lacinia ac. Maecenas suscipit justo justo, id lobortis mauris tempor ac. Fusce sodales feugiat elementum. Praesent vehicula eros pellentesque nisl iaculis, sed malesuada sapien pretium. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.</p>
-        <p>Morbi dapibus, dui et euismod congue, lacus nunc consectetur eros, ut tincidunt arcu dui vitae urna. Curabitur eu tortor eget risus blandit ullamcorper. Etiam enim arcu, rhoncus a lorem sed, venenatis malesuada nibh. Maecenas et turpis nulla. Curabitur posuere laoreet posuere. Fusce rhoncus lectus quis ullamcorper interdum. Aenean finibus pretium massa vitae dictum.</p>
-        <p>Etiam vel massa orci. Integer id convallis turpis, vel feugiat quam. Ut pretium semper mauris, vitae eleifend mi pharetra vitae. Aliquam erat volutpat. Sed condimentum libero dolor, vitae semper quam dignissim sed. Nunc efficitur erat a urna interdum, ac tristique mauris dignissim. Maecenas vehicula semper enim, eu placerat ipsum posuere at. Sed eget dui in ante egestas varius at ut ligula. Fusce aliquam tortor feugiat, molestie velit id, sollicitudin urna.</p>
-    </div>
+{% block content %}
+<div class="landing-shell">
+    <div class="landing-backdrop landing-backdrop--top" aria-hidden="true"></div>
+    <div class="landing-backdrop landing-backdrop--bottom" aria-hidden="true"></div>
 
-    <button class="btn btn-warning">Go to about us page</button>
+    <header class="landing-header" data-header>
+        <a class="brand" href="{% url 'home' %}" aria-label="Rent Nerd home">
+            <span class="brand__stack">RENT<br>NERD</span>
+            <span class="brand__mark">A</span>
+        </a>
 
-    {% include 'main/test.html' %}
+        <button class="landing-header__toggle" type="button" data-nav-toggle aria-expanded="false" aria-label="Otworz menu">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+
+        <div class="landing-header__panel" data-nav-panel>
+            <nav class="top-nav" aria-label="Glowna nawigacja">
+                <a class="top-nav__link is-active" href="#home" data-section-link>Home</a>
+                <a class="top-nav__link" href="#portal" data-section-link>Portal</a>
+                <a class="top-nav__link" href="#wyszukiwarka" data-section-link>Wyszukiwarka</a>
+                <a class="top-nav__link" href="#kontakt" data-section-link>Kontakt</a>
+            </nav>
+
+            <div class="quick-actions">
+                <button class="quick-actions__button" type="button" aria-label="Powiadomienia">
+                    <i class="fa-regular fa-bell"></i>
+                </button>
+
+                {% if request.user.is_authenticated %}
+                <form class="quick-actions__form" method="post" action="{% url 'logout_user' %}">
+                    {% csrf_token %}
+                    <button class="quick-actions__button" type="submit" aria-label="Wyloguj">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    </button>
+                </form>
+                {% else %}
+                <a class="quick-actions__button" href="{% url 'login_user' %}" aria-label="Zaloguj">
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <main class="landing-main">
+        <section class="hero landing-section" id="home">
+            <div class="hero__content" data-reveal>
+                <p class="eyebrow">Platforma do nauki 1:1</p>
+                <h1 class="hero__title">Potrzebujesz pomocy w nauce?</h1>
+                <p class="hero__text">
+                    U nas znajdziesz najlepszych korepetytorow, gotowych pomoc Ci w kazdym momencie.
+                    Szybko wybierzesz przedmiot, poziom oraz dogodny termin spotkania.
+                </p>
+
+                <div class="hero__actions">
+                    <a class="button button--primary" href="#wyszukiwarka">Wybierz swojego korepetytora</a>
+                    <a class="button button--muted" href="{% url 'about' %}">O nas</a>
+                </div>
+
+                <div class="hero__metrics">
+                    <article class="metric-card">
+                        <strong>120+</strong>
+                        <span>aktywnych tutorow</span>
+                    </article>
+                    <article class="metric-card">
+                        <strong>24h</strong>
+                        <span>na pierwsze dopasowanie</span>
+                    </article>
+                    <article class="metric-card">
+                        <strong>online</strong>
+                        <span>spotkania i kontakt</span>
+                    </article>
+                </div>
+            </div>
+
+            <div class="hero__visual" data-reveal>
+                <div class="hero__halo hero__halo--one"></div>
+                <div class="hero__halo hero__halo--two"></div>
+                <div class="hero__badge">Nowe profile co tydzien</div>
+
+                <svg class="hero-illustration" viewBox="0 0 760 620" aria-hidden="true">
+                    <ellipse class="hero-illustration__shadow" cx="420" cy="500" rx="250" ry="88"></ellipse>
+                    <circle class="hero-illustration__planet" cx="220" cy="130" r="44"></circle>
+                    <ellipse class="hero-illustration__orbit" cx="220" cy="130" rx="76" ry="18" transform="rotate(-22 220 130)"></ellipse>
+
+                    <g class="hero-illustration__sparkles">
+                        <circle cx="120" cy="180" r="4"></circle>
+                        <circle cx="545" cy="110" r="5"></circle>
+                        <circle cx="620" cy="180" r="3"></circle>
+                        <path d="M156 90l8 16 16 8-16 8-8 16-8-16-16-8 16-8z"></path>
+                        <path d="M648 128l5 10 10 5-10 5-5 10-5-10-10-5 10-5z"></path>
+                    </g>
+
+                    <g class="hero-illustration__sheet" transform="translate(180 220) rotate(-6)">
+                        <rect x="0" y="0" width="220" height="305" rx="26"></rect>
+                        <text x="36" y="54">ROCKETS</text>
+                        <line x1="32" y1="78" x2="188" y2="78"></line>
+                        <line x1="32" y1="106" x2="188" y2="106"></line>
+                        <line x1="32" y1="134" x2="188" y2="134"></line>
+                        <line x1="32" y1="162" x2="188" y2="162"></line>
+                        <line x1="32" y1="190" x2="188" y2="190"></line>
+                        <line x1="32" y1="218" x2="188" y2="218"></line>
+                        <line x1="32" y1="246" x2="188" y2="246"></line>
+                        <line x1="32" y1="274" x2="160" y2="274"></line>
+                        <g transform="translate(40 110)">
+                            <path d="M32 0c23 16 28 62 0 150C4 62 9 16 32 0Z"></path>
+                            <path d="M32 148c-8 8-14 22-12 35 9-5 18-11 24-18 7 9 15 15 24 18 2-13-4-27-12-35Z"></path>
+                        </g>
+                    </g>
+
+                    <g class="hero-illustration__rocket hero-illustration__rocket--main" transform="translate(382 182)">
+                        <path d="M66 0c42 28 54 104 0 242C12 104 24 28 66 0Z"></path>
+                        <rect x="18" y="86" width="96" height="22" rx="11"></rect>
+                        <ellipse cx="66" cy="56" rx="24" ry="18"></ellipse>
+                        <path d="M13 120c-22 18-38 52-35 91 25-10 43-24 55-42Z"></path>
+                        <path d="M119 120c22 18 38 52 35 91-25-10-43-24-55-42Z"></path>
+                        <path d="M66 242c-16 15-26 41-22 64 14-7 26-19 34-34 8 15 20 27 34 34 4-23-6-49-22-64Z"></path>
+                    </g>
+
+                    <g class="hero-illustration__rocket hero-illustration__rocket--side" transform="translate(520 210) scale(0.72)">
+                        <path d="M66 0c42 28 54 104 0 242C12 104 24 28 66 0Z"></path>
+                        <rect x="18" y="86" width="96" height="22" rx="11"></rect>
+                        <ellipse cx="66" cy="56" rx="24" ry="18"></ellipse>
+                        <path d="M13 120c-22 18-38 52-35 91 25-10 43-24 55-42Z"></path>
+                        <path d="M119 120c22 18 38 52 35 91-25-10-43-24-55-42Z"></path>
+                        <path d="M66 242c-16 15-26 41-22 64 14-7 26-19 34-34 8 15 20 27 34 34 4-23-6-49-22-64Z"></path>
+                    </g>
+
+                    <g class="hero-illustration__person" transform="translate(560 236)">
+                        <circle cx="64" cy="54" r="34"></circle>
+                        <path d="M28 46c8-29 58-35 74 2-8-6-15-9-27-9-19 0-28 12-47 7Z"></path>
+                        <rect x="42" y="84" width="54" height="88" rx="20"></rect>
+                        <path d="M54 126c24-10 34-8 54 4 7 48 10 74 14 112H88c-6-39-10-67-18-93-6 31-10 62-14 93H22c6-40 16-90 32-116Z"></path>
+                        <rect x="22" y="122" width="46" height="56" rx="8" transform="rotate(-8 22 122)"></rect>
+                        <rect x="26" y="126" width="38" height="48" rx="6"></rect>
+                        <line x1="34" y1="142" x2="56" y2="138"></line>
+                        <line x1="34" y1="152" x2="56" y2="148"></line>
+                        <path d="M52 242 40 342"></path>
+                        <path d="M96 242 108 342"></path>
+                        <path d="M28 344c20 4 36 2 50-6"></path>
+                        <path d="M90 338c18 8 34 11 46 4"></path>
+                    </g>
+
+                    <g class="hero-illustration__question" transform="translate(640 112)">
+                        <circle cx="32" cy="32" r="32"></circle>
+                        <text x="32" y="44">?</text>
+                    </g>
+                </svg>
+            </div>
+        </section>
+
+        <section class="section-panel section-panel--portal landing-section" id="portal" data-reveal>
+            <div class="section-panel__intro">
+                <p class="eyebrow">Portal</p>
+                <h2>Wszystko w jednym miejscu</h2>
+                <p>
+                    Uczen dostaje szybkie dopasowanie korepetytora, a tutor gotowy panel do zarzadzania profilem,
+                    godzinami i zakresem materialu. Uklad sekcji nawiazuje do makiety, ale pozostaje lekki i responsywny.
+                </p>
+            </div>
+
+            <div class="portal-grid">
+                <article class="portal-card">
+                    <span class="portal-card__icon"><i class="fa-solid fa-user-graduate"></i></span>
+                    <h3>Portal ucznia</h3>
+                    <p>Jedno miejsce na przeglad tutorow, zapisane preferencje i szybki start zajec.</p>
+                </article>
+                <article class="portal-card">
+                    <span class="portal-card__icon"><i class="fa-solid fa-calendar-check"></i></span>
+                    <h3>Plan spotkan</h3>
+                    <p>Umawianie godzin, status dostepnosci i przejrzysta organizacja calego tygodnia.</p>
+                </article>
+                <article class="portal-card">
+                    <span class="portal-card__icon"><i class="fa-solid fa-comments"></i></span>
+                    <h3>Kontakt 1:1</h3>
+                    <p>Krotka sciezka od pierwszej wiadomosci do regularnych konsultacji online lub stacjonarnie.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="search-section landing-section" id="wyszukiwarka">
+            <div class="search-section__content" data-reveal>
+                <p class="eyebrow">Wyszukiwarka</p>
+                <h2>Znajdz korepetytora pod swoj cel</h2>
+                <p>
+                    Wybierz obszar, ktory Cie interesuje. Skrypt pod spodem aktualizuje opis, zeby ta sekcja
+                    miala realna interakcje, a nie byla tylko statycznym mockiem.
+                </p>
+
+                <div class="subject-picker">
+                    <button class="subject-chip is-active" type="button" data-subject="Matematyka" data-subject-copy="Przygotowanie do matury, regularne konsultacje i praca krok po kroku.">Matematyka</button>
+                    <button class="subject-chip" type="button" data-subject="Fizyka" data-subject-copy="Zadania obliczeniowe, zrozumienie teorii i wsparcie pod egzaminy.">Fizyka</button>
+                    <button class="subject-chip" type="button" data-subject="Jezyk angielski" data-subject-copy="Konwersacje, gramatyka i przygotowanie do certyfikatow.">Jezyk angielski</button>
+                    <button class="subject-chip" type="button" data-subject="Programowanie" data-subject-copy="Podstawy, projekty praktyczne i konsultacje dla studentow.">Programowanie</button>
+                </div>
+            </div>
+
+            <aside class="search-preview" data-reveal>
+                <div class="search-preview__glass">
+                    <div class="search-preview__bar">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <span>Szukaj po przedmiocie, poziomie i formie zajec</span>
+                    </div>
+                    <div class="search-preview__result">
+                        <p>Wybrany obszar</p>
+                        <strong data-subject-output>Matematyka</strong>
+                        <span data-subject-copy-output>Przygotowanie do matury, regularne konsultacje i praca krok po kroku.</span>
+                    </div>
+                    <div class="search-preview__tags">
+                        <span>online</span>
+                        <span>liceum</span>
+                        <span>matura</span>
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        <section class="mentor-section landing-section" id="kontakt">
+            <div class="mentor-section__visual" data-reveal>
+                <svg class="mentor-illustration" viewBox="0 0 700 500" aria-hidden="true">
+                    <ellipse class="mentor-illustration__shadow" cx="330" cy="410" rx="250" ry="70"></ellipse>
+                    <g class="mentor-illustration__board" transform="translate(150 120)">
+                        <rect x="0" y="0" width="250" height="170" rx="20"></rect>
+                        <line x1="30" y1="128" x2="218" y2="128"></line>
+                        <line x1="30" y1="96" x2="218" y2="96"></line>
+                        <line x1="30" y1="64" x2="218" y2="64"></line>
+                        <circle cx="70" cy="52" r="18"></circle>
+                        <path d="M50 128V78"></path>
+                        <path d="M90 128V90"></path>
+                        <path d="M130 128V44"></path>
+                        <path d="M170 128V68"></path>
+                    </g>
+                    <g class="mentor-illustration__teacher" transform="translate(54 276)">
+                        <circle cx="52" cy="42" r="28"></circle>
+                        <path d="M30 66c14-20 46-20 60 0v72H16Z"></path>
+                        <path d="M62 76 154 36"></path>
+                        <path d="M24 136 18 224"></path>
+                        <path d="M82 136 88 224"></path>
+                    </g>
+                    <g class="mentor-illustration__student" transform="translate(430 290)">
+                        <circle cx="44" cy="36" r="24"></circle>
+                        <path d="M20 58c12-16 40-16 52 0v66H8Z"></path>
+                        <path d="M18 124 8 214"></path>
+                        <path d="M64 124 74 214"></path>
+                    </g>
+                </svg>
+            </div>
+
+            <div class="mentor-section__content" data-reveal>
+                <p class="eyebrow">Dla tutorow</p>
+                <h2>A moze chcesz pomoc innym?</h2>
+                <p>
+                    Zarejestruj sie u nas, utworz wlasny profil, dopasuj swoje godziny i buduj baze uczniow.
+                    Ten blok domyka landing page i daje Ci miejsce na pozniejsze podpiecie prawdziwego formularza.
+                </p>
+
+                <div class="mentor-section__actions">
+                    <a class="button button--primary" href="{% url 'register_user' %}">Zostan korepetytorem</a>
+                    <a class="button button--ghost" href="#home">Wroc na gore</a>
+                </div>
+
+                <div class="contact-card">
+                    <span class="contact-card__icon"><i class="fa-regular fa-envelope"></i></span>
+                    <div>
+                        <strong>Szybki kontakt</strong>
+                        <p>Napisz do nas i ustal, jak ma wygladac profil, oferta oraz obsluga zgloszen.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'main/js/home.js' %}"></script>
 {% endblock %}
