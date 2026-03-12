@@ -48,6 +48,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [ # now default, used for verification/modification processing data from requests
     'django.middleware.security.SecurityMiddleware',
+    'main.middleware.DatabaseErrorPageMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

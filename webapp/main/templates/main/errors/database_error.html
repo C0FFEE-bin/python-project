@@ -1,0 +1,29 @@
+{% extends 'main/layouts/base_public.html' %}
+{% load static %}
+
+{% block title %}Blad bazy danych{% endblock %}
+{% block body_class %}db-error-body{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'main/css/pages/database_error.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="db-error-shell">
+    <main class="db-error-panel">
+        <img class="db-error-panel__image" src="{% static 'main/img/error.png' %}" alt="Blad bazy danych">
+
+        <div class="db-error-panel__copy">
+            <p class="db-error-panel__eyebrow">Chwilowy problem</p>
+            <h1 class="db-error-panel__title">Blad bazy danych</h1>
+            <p class="db-error-panel__text">
+                Nie udalo sie pobrac danych dla tej strony. Sprobuj ponownie za chwile albo wroc na strone glowna.
+            </p>
+
+            <div class="db-error-panel__actions">
+                <a class="db-error-button db-error-button--primary" href="{% url 'home' %}">Wroc na glowna</a>
+                <a class="db-error-button db-error-button--ghost" href=".">Sprobuj ponownie</a>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

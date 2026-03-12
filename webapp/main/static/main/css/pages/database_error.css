@@ -1,0 +1,118 @@
+body.db-error-body {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top right, rgba(218, 178, 231, 0.5), transparent 28%),
+        linear-gradient(180deg, #faf7fb 0%, #f4eef8 100%);
+    color: #534f57;
+    font-family: "Aptos", "Segoe UI", sans-serif;
+}
+
+.db-error-shell {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+}
+
+.db-error-panel {
+    width: min(100%, 1180px);
+    display: grid;
+    gap: 26px;
+    justify-items: center;
+}
+
+.db-error-panel__image {
+    display: block;
+    width: min(100%, 860px);
+    height: auto;
+    border-radius: 24px;
+    box-shadow: 0 24px 54px rgba(125, 96, 139, 0.18);
+}
+
+.db-error-panel__copy {
+    max-width: 700px;
+    text-align: center;
+}
+
+.db-error-panel__eyebrow {
+    margin: 0 0 10px;
+    color: #b061c7;
+    font-size: 0.92rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.db-error-panel__title {
+    margin: 0;
+    color: #34353a;
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 800;
+    line-height: 1.05;
+}
+
+.db-error-panel__text {
+    margin: 14px 0 0;
+    color: #726d76;
+    font-size: clamp(1rem, 1.5vw, 1.16rem);
+    line-height: 1.55;
+}
+
+.db-error-panel__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 24px;
+}
+
+.db-error-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 56px;
+    padding: 0 28px;
+    border-radius: 999px;
+    border: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.db-error-button:hover {
+    transform: translateY(-2px);
+}
+
+.db-error-button--primary {
+    background: linear-gradient(135deg, #c56fd8 0%, #ac5fc8 100%);
+    color: #ffffff;
+    box-shadow: 0 16px 28px rgba(181, 102, 207, 0.28);
+}
+
+.db-error-button--ghost {
+    border: 2px solid #bd6fd4;
+    background: rgba(255, 255, 255, 0.68);
+    color: #b15fc8;
+    box-shadow: 0 12px 24px rgba(173, 121, 193, 0.12);
+}
+
+@media (max-width: 640px) {
+    .db-error-shell {
+        padding: 18px 12px 28px;
+    }
+
+    .db-error-panel {
+        gap: 20px;
+    }
+
+    .db-error-panel__image {
+        border-radius: 18px;
+    }
+
+    .db-error-button {
+        width: 100%;
+    }
+}

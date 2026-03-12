@@ -1,6 +1,11 @@
+from django.db import OperationalError
 from django.contrib.auth.models import User
+from django.http import HttpResponse
+from django.test import RequestFactory
 from django.test import TestCase
 from django.urls import reverse
+
+from main.middleware import DatabaseErrorPageMiddleware
 
 
 class MainViewsTests(TestCase):
@@ -57,3 +62,21 @@ class MainViewsTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse('home'))
         self.assertTrue(User.objects.filter(username='newuser').exists())
+
+    def test_database_error_middleware_returns_custom_error_page(self):
+        def raising_view(_request):
+            raise OperationalError('database unavailable')
+
+        middleware = DatabaseErrorPageMiddleware(raising_view)
+        response = middleware(RequestFactory().get('/'))
+
+        self.assertEqual(response.status_code, 500)
+        self.assertIn(b'Blad bazy danych', response.content)
+        self.assertIn(b'error.png', response.content)
+
+    def test_database_error_middleware_passes_regular_response(self):
+        middleware = DatabaseErrorPageMiddleware(lambda _request: HttpResponse('ok'))
+        response = middleware(RequestFactory().get('/'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'ok')
