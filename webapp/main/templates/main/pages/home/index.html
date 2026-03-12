@@ -14,8 +14,7 @@
 
     <header class="landing-header" data-header>
         <a class="brand" href="{% url 'home' %}" aria-label="Rent Nerd home">
-            <span class="brand__stack">RENT<br>NERD</span>
-            <span class="brand__mark">A</span>
+            <img class="brand__logo" src="{% static 'main/img/rent_nerd_logo.svg' %}" alt="Rent Nerd A">
         </a>
 
         <button class="landing-header__toggle" type="button" data-nav-toggle aria-expanded="false" aria-label="Otworz menu">
@@ -83,78 +82,9 @@
             </div>
 
             <div class="hero__visual" data-reveal>
-                <div class="hero__halo hero__halo--one"></div>
-                <div class="hero__halo hero__halo--two"></div>
-                <div class="hero__badge">Nowe profile co tydzien</div>
-
-                <svg class="hero-illustration" viewBox="0 0 760 620" aria-hidden="true">
-                    <ellipse class="hero-illustration__shadow" cx="420" cy="500" rx="250" ry="88"></ellipse>
-                    <circle class="hero-illustration__planet" cx="220" cy="130" r="44"></circle>
-                    <ellipse class="hero-illustration__orbit" cx="220" cy="130" rx="76" ry="18" transform="rotate(-22 220 130)"></ellipse>
-
-                    <g class="hero-illustration__sparkles">
-                        <circle cx="120" cy="180" r="4"></circle>
-                        <circle cx="545" cy="110" r="5"></circle>
-                        <circle cx="620" cy="180" r="3"></circle>
-                        <path d="M156 90l8 16 16 8-16 8-8 16-8-16-16-8 16-8z"></path>
-                        <path d="M648 128l5 10 10 5-10 5-5 10-5-10-10-5 10-5z"></path>
-                    </g>
-
-                    <g class="hero-illustration__sheet" transform="translate(180 220) rotate(-6)">
-                        <rect x="0" y="0" width="220" height="305" rx="26"></rect>
-                        <text x="36" y="54">ROCKETS</text>
-                        <line x1="32" y1="78" x2="188" y2="78"></line>
-                        <line x1="32" y1="106" x2="188" y2="106"></line>
-                        <line x1="32" y1="134" x2="188" y2="134"></line>
-                        <line x1="32" y1="162" x2="188" y2="162"></line>
-                        <line x1="32" y1="190" x2="188" y2="190"></line>
-                        <line x1="32" y1="218" x2="188" y2="218"></line>
-                        <line x1="32" y1="246" x2="188" y2="246"></line>
-                        <line x1="32" y1="274" x2="160" y2="274"></line>
-                        <g transform="translate(40 110)">
-                            <path d="M32 0c23 16 28 62 0 150C4 62 9 16 32 0Z"></path>
-                            <path d="M32 148c-8 8-14 22-12 35 9-5 18-11 24-18 7 9 15 15 24 18 2-13-4-27-12-35Z"></path>
-                        </g>
-                    </g>
-
-                    <g class="hero-illustration__rocket hero-illustration__rocket--main" transform="translate(382 182)">
-                        <path d="M66 0c42 28 54 104 0 242C12 104 24 28 66 0Z"></path>
-                        <rect x="18" y="86" width="96" height="22" rx="11"></rect>
-                        <ellipse cx="66" cy="56" rx="24" ry="18"></ellipse>
-                        <path d="M13 120c-22 18-38 52-35 91 25-10 43-24 55-42Z"></path>
-                        <path d="M119 120c22 18 38 52 35 91-25-10-43-24-55-42Z"></path>
-                        <path d="M66 242c-16 15-26 41-22 64 14-7 26-19 34-34 8 15 20 27 34 34 4-23-6-49-22-64Z"></path>
-                    </g>
-
-                    <g class="hero-illustration__rocket hero-illustration__rocket--side" transform="translate(520 210) scale(0.72)">
-                        <path d="M66 0c42 28 54 104 0 242C12 104 24 28 66 0Z"></path>
-                        <rect x="18" y="86" width="96" height="22" rx="11"></rect>
-                        <ellipse cx="66" cy="56" rx="24" ry="18"></ellipse>
-                        <path d="M13 120c-22 18-38 52-35 91 25-10 43-24 55-42Z"></path>
-                        <path d="M119 120c22 18 38 52 35 91-25-10-43-24-55-42Z"></path>
-                        <path d="M66 242c-16 15-26 41-22 64 14-7 26-19 34-34 8 15 20 27 34 34 4-23-6-49-22-64Z"></path>
-                    </g>
-
-                    <g class="hero-illustration__person" transform="translate(560 236)">
-                        <circle cx="64" cy="54" r="34"></circle>
-                        <path d="M28 46c8-29 58-35 74 2-8-6-15-9-27-9-19 0-28 12-47 7Z"></path>
-                        <rect x="42" y="84" width="54" height="88" rx="20"></rect>
-                        <path d="M54 126c24-10 34-8 54 4 7 48 10 74 14 112H88c-6-39-10-67-18-93-6 31-10 62-14 93H22c6-40 16-90 32-116Z"></path>
-                        <rect x="22" y="122" width="46" height="56" rx="8" transform="rotate(-8 22 122)"></rect>
-                        <rect x="26" y="126" width="38" height="48" rx="6"></rect>
-                        <line x1="34" y1="142" x2="56" y2="138"></line>
-                        <line x1="34" y1="152" x2="56" y2="148"></line>
-                        <path d="M52 242 40 342"></path>
-                        <path d="M96 242 108 342"></path>
-                        <path d="M28 344c20 4 36 2 50-6"></path>
-                        <path d="M90 338c18 8 34 11 46 4"></path>
-                    </g>
-
-                    <g class="hero-illustration__question" transform="translate(640 112)">
-                        <circle cx="32" cy="32" r="32"></circle>
-                        <text x="32" y="44">?</text>
-                    </g>
-                </svg>
+                <div class="hero__scene">
+                    <img class="hero__illustration-image" src="{% static 'main/img/hero_tutor.png' %}" alt="Ilustracja korepetytora i rakiety">
+                </div>
             </div>
         </section>
 
@@ -226,33 +156,7 @@
 
         <section class="mentor-section landing-section" id="kontakt">
             <div class="mentor-section__visual" data-reveal>
-                <svg class="mentor-illustration" viewBox="0 0 700 500" aria-hidden="true">
-                    <ellipse class="mentor-illustration__shadow" cx="330" cy="410" rx="250" ry="70"></ellipse>
-                    <g class="mentor-illustration__board" transform="translate(150 120)">
-                        <rect x="0" y="0" width="250" height="170" rx="20"></rect>
-                        <line x1="30" y1="128" x2="218" y2="128"></line>
-                        <line x1="30" y1="96" x2="218" y2="96"></line>
-                        <line x1="30" y1="64" x2="218" y2="64"></line>
-                        <circle cx="70" cy="52" r="18"></circle>
-                        <path d="M50 128V78"></path>
-                        <path d="M90 128V90"></path>
-                        <path d="M130 128V44"></path>
-                        <path d="M170 128V68"></path>
-                    </g>
-                    <g class="mentor-illustration__teacher" transform="translate(54 276)">
-                        <circle cx="52" cy="42" r="28"></circle>
-                        <path d="M30 66c14-20 46-20 60 0v72H16Z"></path>
-                        <path d="M62 76 154 36"></path>
-                        <path d="M24 136 18 224"></path>
-                        <path d="M82 136 88 224"></path>
-                    </g>
-                    <g class="mentor-illustration__student" transform="translate(430 290)">
-                        <circle cx="44" cy="36" r="24"></circle>
-                        <path d="M20 58c12-16 40-16 52 0v66H8Z"></path>
-                        <path d="M18 124 8 214"></path>
-                        <path d="M64 124 74 214"></path>
-                    </g>
-                </svg>
+                <img class="mentor-section__illustration" src="{% static 'main/img/mentor_scene.png' %}" alt="Ilustracja korepetytora pomagajacego uczniowi przy tablicy">
             </div>
 
             <div class="mentor-section__content" data-reveal>

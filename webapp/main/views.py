@@ -56,19 +56,19 @@ def about(request):
 def login_user(request):
     if request.user.is_authenticated:
         return redirect('home')
-     
+
     if request.method == 'POST':
-         user = authenticate(username=request.POST['username'], password=request.POST['password'])
-         if user is not None:
-             login(request, user)
-             if request.session.get('next'):
+        user = authenticate(username=request.POST['username'], password=request.POST['password'])
+        if user is not None:
+            login(request, user)
+            if request.session.get('next'):
                 return redirect(request.session.pop('next'))
-             
-             return redirect('home')
-         else:
-             messages.error(request, 'Invalid credentials')
-             return redirect('login_user')
-         
+
+            return redirect('home')
+
+        messages.error(request, 'Nieprawidlowy login lub haslo.')
+        return redirect('login_user')
+
     if request.GET.get('next'):
         request.session['next'] = request.GET['next']
 
@@ -76,13 +76,34 @@ def login_user(request):
 
 def register(request):
     if request.user.is_authenticated:
-         return redirect('home')
-    
+        return redirect('home')
+
     if request.method == 'POST':
-        user = User.objects.create_user(request.POST['username'], request.POST['email'], request.POST['password'])
+        username = request.POST.get('username', '').strip()
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+        password_confirm = request.POST.get('password_confirm', '')
+
+        if not username or not email or not password or not password_confirm:
+            messages.error(request, 'Uzupelnij wszystkie pola formularza.')
+            return redirect('register_user')
+
+        if password != password_confirm:
+            messages.error(request, 'Hasla musza byc takie same.')
+            return redirect('register_user')
+
+        if User.objects.filter(username=username).exists():
+            messages.error(request, 'Ta nazwa uzytkownika jest juz zajeta.')
+            return redirect('register_user')
+
+        if User.objects.filter(email__iexact=email).exists():
+            messages.error(request, 'Konto z tym adresem e-mail juz istnieje.')
+            return redirect('register_user')
+
+        user = User.objects.create_user(username, email, password)
         login(request, user)
         return redirect('home')
-    
+
     return render(request, 'main/auth/register.html')
 
 def logout_user(request):

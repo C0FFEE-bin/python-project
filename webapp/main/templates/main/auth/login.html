@@ -1,37 +1,70 @@
 {% extends 'main/layouts/base_public.html' %}
- 
-{% block title%}Log in{% endblock %}
- 
-{% block content%}
- <div class="d-flex align-items-center justify-content-center px-4" style="height: 80vh">
-     <div style="max-width: 500px" class="w-100">
-         <h1>Log in</h1>
-         {% if messages %}
-         <div class="alert alert-danger" role="alert">
-           <ul class="mb-0">
-             {% for message in messages %}
-            <li {% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
-             {% endfor %}
-           </ul>
-         </div>
-         
-         {% endif %}
-         <form method="POST" action="/login">
-             {% csrf_token %}
- 
-             <div class="mb-3">
-               <label for="username" class="form-label">Username</label>
-               <input type="text" class="form-control" id="username" name="username" aria-describedby="username" required>
-             </div>
- 
-             <div class="mb-3">
-               <label for="password" class="form-label">Password</label>
-               <input type="password" class="form-control" id="password" name="password" required>
-             </div>
- 
-             <button type="submit" class="btn btn-primary btn-block">Log in</button>
-           </form>
-     </div>
- </div>
- 
- {% endblock %}
+{% load static %}
+
+{% block title %}Logowanie{% endblock %}
+{% block body_class %}auth-body{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'main/css/pages/auth.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="auth-shell">
+    <header class="auth-header">
+        <a class="auth-brand" href="{% url 'home' %}" aria-label="Rent Nerd home">
+            <img class="auth-brand__logo" src="{% static 'main/img/rent_nerd_logo.svg' %}" alt="Rent Nerd A">
+        </a>
+    </header>
+
+    <main class="auth-layout">
+        <section class="auth-card" aria-labelledby="login-title">
+            <div class="auth-card__panel">
+                <h1 class="auth-card__title" id="login-title">Zaloguj sie</h1>
+
+                {% if messages %}
+                <ul class="auth-messages" aria-live="polite">
+                    {% for message in messages %}
+                    <li class="auth-message">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                <form class="auth-form" method="post" action="{% url 'login_user' %}">
+                    {% csrf_token %}
+
+                    <div class="auth-field">
+                        <label for="username">Nazwa uzytkownika</label>
+                        <input class="auth-input" type="text" id="username" name="username" placeholder="Nazwa uzytkownika" autocomplete="username" required>
+                    </div>
+
+                    <div class="auth-field">
+                        <label for="password">Haslo</label>
+                        <input class="auth-input" type="password" id="password" name="password" placeholder="Haslo" autocomplete="current-password" required>
+                    </div>
+
+                    <div class="auth-actions">
+                        <button class="auth-button auth-button--primary" type="submit">Zaloguj sie</button>
+                        <a class="auth-button auth-button--secondary" href="{% url 'home' %}">Wroc</a>
+                    </div>
+                </form>
+
+                <div class="auth-card__footer">
+                    <a class="auth-link" href="{% url 'register_user' %}">Nie masz konta? Utworz konto</a>
+                </div>
+            </div>
+        </section>
+
+        <aside class="auth-promo" aria-labelledby="login-promo-title">
+            <div class="auth-promo__visual">
+                <img class="auth-promo__image" src="{% static 'main/img/auth_kids_scene.png' %}" alt="Ilustracja dzieci grajacych w klasy">
+            </div>
+
+            <div class="auth-promo__copy">
+                <h2 class="auth-promo__title" id="login-promo-title">Wroc do swojego konta</h2>
+                <p class="auth-promo__text">
+                    Zaloguj sie, aby sprawdzic dopasowania, wiadomosci i kolejne kroki w nauce bez szukania wszystkiego od nowa.
+                </p>
+            </div>
+        </aside>
+    </main>
+</div>
+{% endblock %}

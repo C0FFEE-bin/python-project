@@ -91,22 +91,14 @@ button {
 
 .brand {
     display: inline-flex;
-    align-items: flex-start;
-    gap: 10px;
+    align-items: center;
     color: #111318;
-    font-family: var(--font-display);
-    font-weight: 900;
-    letter-spacing: 0.03em;
 }
 
-.brand__stack {
-    font-size: 1.25rem;
-    line-height: 0.92;
-}
-
-.brand__mark {
-    font-size: clamp(3.4rem, 7vw, 5rem);
-    line-height: 0.78;
+.brand__logo {
+    display: block;
+    width: clamp(152px, 18vw, 184px);
+    height: auto;
 }
 
 .landing-header__toggle {
@@ -322,194 +314,42 @@ button {
 
 .hero__visual {
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
     min-height: 640px;
 }
 
-.hero__badge {
-    position: absolute;
-    top: 38px;
-    right: 102px;
-    padding: 12px 18px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.76);
-    color: var(--ink);
-    font-size: 0.95rem;
-    font-weight: 700;
-    box-shadow: var(--shadow-soft);
-    backdrop-filter: blur(10px);
+.hero__scene {
+    position: relative;
+    width: min(100%, 780px);
+    margin-left: auto;
 }
 
-.hero__halo {
+.hero__scene::after {
+    content: "";
     position: absolute;
+    inset: auto 8% 10% 16%;
+    height: 18%;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0));
-    filter: blur(8px);
+    background: radial-gradient(circle, rgba(205, 162, 225, 0.22), rgba(205, 162, 225, 0));
+    filter: blur(20px);
+    z-index: 0;
 }
 
-.hero__halo--one {
-    top: 112px;
-    right: 32px;
-    width: 180px;
-    height: 180px;
-}
-
-.hero__halo--two {
-    bottom: 42px;
-    left: 16px;
-    width: 220px;
-    height: 220px;
-}
-
-.hero-illustration,
+.hero__illustration-image,
 .mentor-illustration {
     width: 100%;
     height: auto;
     overflow: visible;
 }
 
-.hero-illustration {
+.hero__illustration-image {
+    position: relative;
+    z-index: 1;
+    display: block;
     animation: drift 8s ease-in-out infinite;
-}
-
-.hero-illustration__shadow,
-.mentor-illustration__shadow {
-    fill: rgba(140, 115, 162, 0.08);
-}
-
-.hero-illustration__planet {
-    fill: #f9f6fb;
-}
-
-.hero-illustration__orbit {
-    fill: none;
-    stroke: #dcb6eb;
-    stroke-width: 10;
-}
-
-.hero-illustration__sparkles circle,
-.hero-illustration__sparkles path {
-    fill: #f1e4f7;
-}
-
-.hero-illustration__sheet rect {
-    fill: rgba(255, 255, 255, 0.7);
-    stroke: rgba(130, 115, 142, 0.15);
-    stroke-width: 3;
-}
-
-.hero-illustration__sheet text {
-    fill: var(--ink);
-    font-family: var(--font-display);
-    font-size: 1.2rem;
-    font-weight: 700;
-}
-
-.hero-illustration__sheet line {
-    stroke: rgba(110, 99, 118, 0.18);
-    stroke-width: 4;
-    stroke-linecap: round;
-}
-
-.hero-illustration__sheet g path:first-child {
-    fill: #ebd6f5;
-    stroke: var(--ink);
-    stroke-width: 3;
-}
-
-.hero-illustration__sheet g path:last-child {
-    fill: #ffffff;
-    stroke: var(--ink);
-    stroke-width: 3;
-}
-
-.hero-illustration__rocket path:first-child {
-    fill: #b75fd4;
-}
-
-.hero-illustration__rocket rect,
-.hero-illustration__rocket ellipse {
-    fill: #344754;
-}
-
-.hero-illustration__rocket path:nth-child(4),
-.hero-illustration__rocket path:nth-child(5) {
-    fill: #2f3f4a;
-}
-
-.hero-illustration__rocket path:last-child {
-    fill: #e3b9f4;
-}
-
-.hero-illustration__rocket--side path:first-child {
-    fill: #e8d0f2;
-}
-
-.hero-illustration__rocket--main {
-    animation: float 5s ease-in-out infinite;
-}
-
-.hero-illustration__rocket--side {
-    animation: float 6.8s ease-in-out infinite 0.6s;
-}
-
-.hero-illustration__person circle {
-    fill: #f6a4a1;
-}
-
-.hero-illustration__person path:nth-child(2) {
-    fill: #2f4350;
-}
-
-.hero-illustration__person rect:nth-child(3) {
-    fill: #fff;
-}
-
-.hero-illustration__person path:nth-child(4) {
-    fill: #32434f;
-}
-
-.hero-illustration__person rect:nth-child(5) {
-    fill: #aa64cf;
-}
-
-.hero-illustration__person rect:nth-child(6) {
-    fill: #fff;
-}
-
-.hero-illustration__person line {
-    stroke: #e0d1ea;
-    stroke-width: 3;
-    stroke-linecap: round;
-}
-
-.hero-illustration__person path:nth-child(9),
-.hero-illustration__person path:nth-child(10) {
-    fill: none;
-    stroke: #32434f;
-    stroke-width: 12;
-    stroke-linecap: round;
-}
-
-.hero-illustration__person path:nth-child(11),
-.hero-illustration__person path:nth-child(12) {
-    fill: none;
-    stroke: #32434f;
-    stroke-width: 10;
-    stroke-linecap: round;
-}
-
-.hero-illustration__question circle {
-    fill: #fff;
-    stroke: #506173;
-    stroke-width: 4;
-}
-
-.hero-illustration__question text {
-    fill: var(--accent);
-    font-family: var(--font-display);
-    font-size: 2.4rem;
-    font-weight: 700;
-    text-anchor: middle;
+    filter: drop-shadow(0 24px 36px rgba(170, 125, 191, 0.16));
 }
 
 .section-panel,
@@ -739,17 +579,6 @@ button {
     transform: translateY(0);
 }
 
-@keyframes float {
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(-12px);
-    }
-}
-
 @keyframes drift {
     0%,
     100% {
@@ -854,12 +683,8 @@ button {
         padding-bottom: 88px;
     }
 
-    .brand__stack {
-        font-size: 1rem;
-    }
-
-    .brand__mark {
-        font-size: 3rem;
+    .brand__logo {
+        width: 148px;
     }
 
     .hero__title,

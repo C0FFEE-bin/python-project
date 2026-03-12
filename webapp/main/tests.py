@@ -27,3 +27,33 @@ class MainViewsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'main/pages/cars/index.html')
+
+    def test_register_rejects_password_confirmation_mismatch(self):
+        response = self.client.post(
+            reverse('register_user'),
+            {
+                'username': 'newuser',
+                'email': 'newuser@example.com',
+                'password': 'secret123',
+                'password_confirm': 'secret456',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('register_user'))
+        self.assertFalse(User.objects.filter(username='newuser').exists())
+
+    def test_register_creates_user_when_confirmation_matches(self):
+        response = self.client.post(
+            reverse('register_user'),
+            {
+                'username': 'newuser',
+                'email': 'newuser@example.com',
+                'password': 'secret123',
+                'password_confirm': 'secret123',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('home'))
+        self.assertTrue(User.objects.filter(username='newuser').exists())
