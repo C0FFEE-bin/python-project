@@ -1,0 +1,11 @@
+{
+  "src/home/main.jsx": {
+    "file": "assets/home-CJe8X2Ym.js",
+    "name": "home",
+    "src": "src/home/main.jsx",
+    "isEntry": true,
+    "css": [
+      "assets/home-DW0FAtzj.css"
+    ]
+  }
+}

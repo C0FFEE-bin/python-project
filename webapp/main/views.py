@@ -1,15 +1,36 @@
 # Plik do definiowania widoków, które są renderowane za pomocą szablonizatora Jinja oraz wyświetlane w przeglądarce
 
-from django.http import HttpResponse
-from django.shortcuts import redirect, render
-from django.contrib.auth.models import User
 from django.contrib.auth import login, logout, authenticate
-from django.contrib import messages #to show message back for errors
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.contrib import messages #to show message back for errors
+from django.middleware.csrf import get_token
+from django.shortcuts import redirect, render
+from django.templatetags.static import static
+from django.urls import reverse
 
 # Create your views here.
 def index(request):
-    return render(request, 'main/pages/home/index.html')
+    values = {
+        'home_props': {
+            'csrfToken': get_token(request),
+            'images': {
+                'hero': static('main/img/hero_tutor.png'),
+                'logo': static('main/img/rent_nerd_logo.png'),
+                'mentor': static('main/img/mentor_scene.png'),
+            },
+            'isAuthenticated': request.user.is_authenticated,
+            'urls': {
+                'about': reverse('about'),
+                'home': reverse('home'),
+                'login': reverse('login_user'),
+                'logout': reverse('logout_user'),
+                'register': reverse('register_user'),
+            },
+        },
+    }
+
+    return render(request, 'main/pages/home/index.html', values)
 
 @login_required
 def cars(request):

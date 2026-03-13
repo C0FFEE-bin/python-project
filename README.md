@@ -1,31 +1,50 @@
 
 # Django blueprint app
-PyCharm will prepare the virtual environment for project automatically. For non-PyCharm users (for example VSCode) look an instructions below how to do this manually
 
-## How to run local server
-Get to the `webapp` directory: `cd webapp` and run `python3 manage.py runserver` from webapp folder
+PyCharm can prepare the Python virtual environment automatically. If you are using VS Code or another editor, follow the steps below.
 
-*In some enviroments it could be not `python3` but `python`* 
+## Backend setup
 
+1. Create a virtual environment:
+   `python3 -m venv .venv`
+2. Activate it:
+   Windows: `.venv\Scripts\Activate`
+   macOS/Linux: `source .venv/bin/activate`
+3. Install Python dependencies:
+   `pip3 install -r requirements.txt`
 
-### How to set up a virtual environment:
+## Frontend setup
 
-`python3 -m venv .venv` and then select new environment in a VSCode (bottom-right corner)
+The home page is rendered by React and bundled with Vite.
 
-### How to switch to a virtual environment in a terminal
+1. Install Node dependencies from the repository root:
+   `npm install`
+2. Start the Vite dev server:
+   `npm run dev`
+3. In a second terminal, start Django from the `webapp` directory:
+   `python manage.py runserver`
 
-On Windows: Run `.venv\Scripts\Activate`. Then you will see (.venv) on the left from a CLI prompt.
+To let Django use the Vite dev server, set:
 
-On macOS: Run `source .venv/bin/activate`. Then you will see (.venv) on the left from a CLI prompt.
-If you have a Python extension installed on your Visual Studio Code, it can try to run `source .venv/bin/activate` command on its own right after terminal opening.
+Windows PowerShell:
+`$env:VITE_DEV_SERVER_URL='http://127.0.0.1:5173'`
 
-### How to install all dependencies in an env
+macOS/Linux:
+`export VITE_DEV_SERVER_URL='http://127.0.0.1:5173'`
 
-`pip3 install -r requirements.txt`
+If the variable is not set, Django serves the last built frontend bundle from `webapp/main/static/main/frontend/`.
 
-### How Quit the server :
-Quit the server with CTRL-C in command line
+## Build frontend assets
 
-## Happy coding!
-=======
+Run from the repository root:
+`npm run build`
+
+## Run Django only
+
+If frontend assets were already built, you can just run:
+
+1. `cd webapp`
+2. `python manage.py runserver`
+
+In some environments the command can be `python` instead of `python3`.
 
