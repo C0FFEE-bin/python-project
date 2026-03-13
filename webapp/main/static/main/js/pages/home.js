@@ -2,9 +2,6 @@ const header = document.querySelector("[data-header]");
 const navToggle = document.querySelector("[data-nav-toggle]");
 const sectionLinks = document.querySelectorAll("[data-section-link]");
 const revealItems = document.querySelectorAll("[data-reveal]");
-const subjectButtons = document.querySelectorAll("[data-subject]");
-const subjectOutput = document.querySelector("[data-subject-output]");
-const subjectCopyOutput = document.querySelector("[data-subject-copy-output]");
 
 if (navToggle && header) {
     navToggle.addEventListener("click", () => {
@@ -74,18 +71,3 @@ if (sectionLinks.length) {
 
     sections.forEach((section) => sectionObserver.observe(section));
 }
-
-subjectButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-        subjectButtons.forEach((item) => item.classList.remove("is-active"));
-        button.classList.add("is-active");
-
-        if (subjectOutput) {
-            subjectOutput.textContent = button.dataset.subject || "";
-        }
-
-        if (subjectCopyOutput) {
-            subjectCopyOutput.textContent = button.dataset.subjectCopy || "";
-        }
-    });
-});
