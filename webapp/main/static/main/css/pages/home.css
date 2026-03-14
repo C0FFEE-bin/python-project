@@ -455,6 +455,10 @@ button {
     gap: 18px 30px;
 }
 
+.search-filter {
+    position: relative;
+}
+
 .search-pill {
     display: flex;
     align-items: center;
@@ -477,6 +481,10 @@ button {
     transform: translateY(-2px);
 }
 
+.search-pill.is-open i {
+    transform: rotate(180deg);
+}
+
 .search-pill--light {
     background: linear-gradient(180deg, #aeadb0, #a3a3a6);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 12px 20px rgba(112, 112, 119, 0.16);
@@ -490,6 +498,57 @@ button {
 .search-pill i {
     font-size: 1.35rem;
     color: rgba(255, 255, 255, 0.9);
+    transition: transform 0.2s ease;
+}
+
+.search-pill__value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-filter__menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    right: 0;
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid rgba(133, 126, 139, 0.14);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 16px 26px rgba(99, 92, 108, 0.16);
+    z-index: 5;
+}
+
+.search-filter__option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+    color: #7f777d;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: left;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.search-filter__option:hover,
+.search-filter__option.is-selected {
+    background: rgba(233, 219, 241, 0.82);
+    color: var(--ink);
+}
+
+.search-filter__check {
+    color: var(--accent-strong);
+    font-size: 0.88rem;
 }
 
 .search-calendar {
@@ -545,11 +604,52 @@ button {
     box-shadow: 0 8px 14px rgba(186, 100, 211, 0.28);
 }
 
+.search-calendar__day-button {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    min-height: 22px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.search-calendar__day-button:hover {
+    transform: translateY(-1px);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.search-calendar__day.is-selected .search-calendar__day-button {
+    color: #fff;
+}
+
+.search-calendar__selection {
+    justify-self: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
 .search-section__actions {
     display: flex;
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
+}
+
+.search-section__selection {
+    max-width: 180px;
+    margin: 0;
+    color: #8b8085;
+    font-family: var(--font-display);
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
 }
 
 .search-section__actions .button {
@@ -725,6 +825,11 @@ button {
         align-self: flex-start;
     }
 
+    .search-section__selection {
+        max-width: none;
+        text-align: left;
+    }
+
     .portal-grid {
         grid-template-columns: 1fr;
     }
@@ -860,6 +965,11 @@ button {
     .search-section__actions {
         flex-direction: column;
         width: 100%;
+    }
+
+    .search-section__selection {
+        max-width: none;
+        text-align: center;
     }
 
     .search-section .button,
