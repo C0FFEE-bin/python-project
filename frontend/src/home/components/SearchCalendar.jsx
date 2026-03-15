@@ -1,12 +1,53 @@
-import { calendarDays, weekdayLabels } from "../content.js";
+import { useEffect, useMemo, useState } from "react";
+
+import { weekdayLabels } from "../content.js";
+import {
+    addMonths,
+    formatDateLabelFromIso,
+    getCalendarDaysForMonth,
+    getMonthLabel,
+    parseIsoDate,
+    startOfMonth,
+} from "../utils/dateHelpers.js";
 import joinClasses from "../utils/joinClasses.js";
 
 export default function SearchCalendar({ selectedDate, onSelectDate }) {
-    const selectedDateLabel = calendarDays.find((item) => item.value === selectedDate)?.label ?? "Brak daty";
+    const [displayedMonth, setDisplayedMonth] = useState(() => startOfMonth(parseIsoDate(selectedDate)));
+
+    useEffect(() => {
+        const parsedDate = parseIsoDate(selectedDate);
+
+        if (!parsedDate) {
+            return;
+        }
+
+        setDisplayedMonth(startOfMonth(parsedDate));
+    }, [selectedDate]);
+
+    const selectedDateLabel = formatDateLabelFromIso(selectedDate);
+    const calendarDays = useMemo(() => getCalendarDaysForMonth(displayedMonth), [displayedMonth]);
 
     return (
-        <div className="search-calendar" aria-label="Dostepne terminy w marcu">
-            <div className="search-calendar__month">marzec</div>
+        <div className="search-calendar" aria-label={`Dostepne terminy w ${getMonthLabel(displayedMonth)}`}>
+            <div className="search-calendar__header">
+                <button
+                    className="search-calendar__nav"
+                    type="button"
+                    onClick={() => setDisplayedMonth((currentValue) => addMonths(currentValue, -1))}
+                    aria-label="Pokaz poprzedni miesiac"
+                >
+                    <i className="fa-solid fa-chevron-left" aria-hidden="true"></i>
+                </button>
+                <div className="search-calendar__month">{getMonthLabel(displayedMonth)}</div>
+                <button
+                    className="search-calendar__nav"
+                    type="button"
+                    onClick={() => setDisplayedMonth((currentValue) => addMonths(currentValue, 1))}
+                    aria-label="Pokaz nastepny miesiac"
+                >
+                    <i className="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                </button>
+            </div>
             <div className="search-calendar__weekdays">
                 {weekdayLabels.map((label) => (
                     <span key={label}>{label}</span>

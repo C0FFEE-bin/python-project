@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
 import {
-    calendarDays,
     defaultSearchDate,
     defaultSearchSelections,
     searchFilterDefinitions,
@@ -9,6 +8,7 @@ import {
 import Reveal from "./Reveal.jsx";
 import SearchCalendar from "./SearchCalendar.jsx";
 import SearchFilterSelect from "./SearchFilterSelect.jsx";
+import { formatDateLabelFromIso } from "../utils/dateHelpers.js";
 
 export default function SearchSection() {
     const [selectedFilters, setSelectedFilters] = useState(defaultSearchSelections);
@@ -28,10 +28,7 @@ export default function SearchSection() {
         return () => document.removeEventListener("pointerdown", handlePointerDown);
     }, []);
 
-    const selectedDateLabel = useMemo(
-        () => calendarDays.find((item) => item.value === selectedDate)?.label ?? "Brak daty",
-        [selectedDate],
-    );
+    const selectedDateLabel = useMemo(() => formatDateLabelFromIso(selectedDate), [selectedDate]);
 
     const handleFilterSelect = (filterKey, option) => {
         setSelectedFilters((currentValue) => ({
@@ -75,7 +72,7 @@ export default function SearchSection() {
 
                 <aside className="search-section__actions">
                     <p className="search-section__selection">
-                        {selectedFilters.subject}, {selectedFilters.level}, {selectedDateLabel}
+                        {selectedFilters.subject}, {selectedFilters.level}, {selectedDateLabel}, {selectedFilters.hour}
                     </p>
                     <a className="button button--primary" href="#kontakt">Szukaj wynikow</a>
                     <button className="button button--muted" type="button" onClick={handleReset}>Resetuj</button>
