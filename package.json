@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "django": "node ./scripts/run-django.mjs runserver"
   },
   "dependencies": {
     "react": "^19.2.4",

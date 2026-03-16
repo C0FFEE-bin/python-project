@@ -15,6 +15,13 @@ class MainViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'main/pages/home/index.html')
 
+    def test_home_page_uses_built_frontend_asset_paths(self):
+        response = self.client.get(reverse('home'))
+        html = response.content.decode()
+
+        self.assertIn('/static/main/frontend/assets/', html)
+        self.assertNotIn('/static/assets/', html)
+
     def test_auth_pages_render(self):
         login_response = self.client.get(reverse('login_user'))
         register_response = self.client.get(reverse('register_user'))

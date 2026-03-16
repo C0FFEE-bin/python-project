@@ -8,6 +8,10 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
+def _built_asset_path(asset_path):
+    return f'main/frontend/{asset_path.lstrip("/")}'
+
+
 def _manifest_path():
     return settings.BASE_DIR / 'main' / 'static' / 'main' / 'frontend' / '.vite' / 'manifest.json'
 
@@ -70,7 +74,7 @@ def vite_styles(entry_name):
 
     entry = _get_manifest_entry(entry_name)
     stylesheet_tags = [
-        f'<link rel="stylesheet" href="{static(css_path)}">'
+        f'<link rel="stylesheet" href="{static(_built_asset_path(css_path))}">'
         for css_path in entry.get('css', [])
     ]
 
@@ -85,4 +89,6 @@ def vite_script(entry_name):
         return mark_safe(f'<script type="module" src="{dev_server_url}/{entry_name}"></script>')
 
     entry = _get_manifest_entry(entry_name)
-    return mark_safe(f'<script type="module" src="{static(entry["file"])}"></script>')
+    return mark_safe(
+        f'<script type="module" src="{static(_built_asset_path(entry["file"]))}"></script>'
+    )
