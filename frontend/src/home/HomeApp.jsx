@@ -79,7 +79,7 @@ export default function HomeApp({
             <main className="landing-main">
                 <HeroSection aboutUrl={urls.about} heroImageSrc={images.hero} />
                 <PortalSection />
-                <SearchSection />
+                <SearchSection isAuthenticated={isAuthenticated} urls={urls} />
                 <MentorSection mentorImageSrc={images.mentor} registerUrl={urls.register} />
             </main>
         </div>
