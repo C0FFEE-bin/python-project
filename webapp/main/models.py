@@ -30,7 +30,7 @@ class Tutor(models.Model):
     opis = models.TextField(blank=True, null=True)
     stawka_godzinowa = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     przedmioty = models.ManyToManyField(Przedmiot, related_name='tutorzy')
-    rating = models.ManyToManyField(Przedmiot, related_name='tutorzy')
+    rating = models.FloatField()
 
     # ------- pozniej dodac aby ten rating, byl wyliczany automatycznie z opini od uzytkowników ----
 
