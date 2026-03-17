@@ -30,6 +30,10 @@ class Tutor(models.Model):
     opis = models.TextField(blank=True, null=True)
     stawka_godzinowa = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     przedmioty = models.ManyToManyField(Przedmiot, related_name='tutorzy')
+    rating = models.ManyToManyField(Przedmiot, related_name='tutorzy')
+
+    # ------- pozniej dodac aby ten rating, byl wyliczany automatycznie z opini od uzytkowników ----
+
 
     def __str__(self):
         return f"Tutor: {self.uzytkownik.imie} {self.uzytkownik.nazwisko}"
@@ -63,3 +67,19 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Komentarz od {self.uzytkownik.imie} do posta {self.post.id}"
+
+
+
+
+# tabela - opinie
+#     class Opinie(models.Model):
+#         autor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='opinia-od')
+#         tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='opinie-dla')
+#         ocena = models.FloatField()
+#         tresc = models.TextField()
+#         data_dodania = models.DateTimeField(auto_now_add=True)
+#
+#         def __str__(self):
+#             return f"Opinia ({self.ocena}) od {self.autor} dla {self.tutor}"
+
+# ------dodac ograniczenie aby rating byl w wartosciach 0-5  --------
