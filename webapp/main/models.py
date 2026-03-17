@@ -1,6 +1,5 @@
 from django.db import models
 
-from django.db import models
 
 
 class User(models.Model):
@@ -30,7 +29,6 @@ class Tutor(models.Model):
     opis = models.TextField(blank=True, null=True)
     stawka_godzinowa = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     przedmioty = models.ManyToManyField(Przedmiot, related_name='tutorzy')
-    rating = models.FloatField()
 
     # ------- pozniej dodac aby ten rating, byl wyliczany automatycznie z opini od uzytkowników ----
 
@@ -71,15 +69,15 @@ class Comment(models.Model):
 
 
 
-# tabela - opinie
-#     class Opinie(models.Model):
-#         autor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='opinia-od')
-#         tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='opinie-dla')
-#         ocena = models.FloatField()
-#         tresc = models.TextField()
-#         data_dodania = models.DateTimeField(auto_now_add=True)
-#
-#         def __str__(self):
-#             return f"Opinia ({self.ocena}) od {self.autor} dla {self.tutor}"
 
-# ------dodac ograniczenie aby rating byl w wartosciach 0-5  --------
+class Opinie(models.Model):
+    autor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='opinia_od')
+    tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='opinie_dla')
+    rating = models.FloatField()
+    tresc = models.TextField()
+    data_dodania = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Opinia ({self.ocena}) od {self.autor.imie} dla {self.tutor.uzytkownik.imie}"
+
+#------dodac ograniczenie aby rating byl w wartosciach 0-5  --------#
