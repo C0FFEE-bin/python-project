@@ -43,8 +43,10 @@ INSTALLED_APPS = [
 
     # custom apps
     'main',
-    'news',
     'forum',
+    'news',
+
+
 ]
 
 MIDDLEWARE = [ # now default, used for verification/modification processing data from requests
@@ -85,7 +87,7 @@ WSGI_APPLICATION = 'webapp.wsgi.application' #created as an implementation-neutr
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': REPO_DIR / 'database.db',
+        'NAME': REPO_DIR / 'db.sqlite3',
     }
 }
 
