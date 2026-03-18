@@ -30,15 +30,18 @@
 
                 <form class="auth-form" method="post" action="{% url 'register_user' %}">
                     {% csrf_token %}
+                    {% if next_target %}
+                    <input type="hidden" name="next" value="{{ next_target }}">
+                    {% endif %}
 
                     <div class="auth-field">
                         <label for="username">Nazwa uzytkownika</label>
-                        <input class="auth-input" type="text" id="username" name="username" placeholder="Nazwa uzytkownika" autocomplete="username" required>
+                        <input class="auth-input" type="text" id="username" name="username" placeholder="Nazwa uzytkownika" autocomplete="username" value="{{ form_values.username|default:'' }}" required>
                     </div>
 
                     <div class="auth-field">
                         <label for="email">Adres e-mail</label>
-                        <input class="auth-input" type="email" id="email" name="email" placeholder="Podaj e-mail" autocomplete="email" required>
+                        <input class="auth-input" type="email" id="email" name="email" placeholder="Podaj e-mail" autocomplete="email" value="{{ form_values.email|default:'' }}" required>
                     </div>
 
                     <div class="auth-field">
@@ -58,7 +61,7 @@
                 </form>
 
                 <div class="auth-card__footer">
-                    <a class="auth-link" href="{% url 'login_user' %}">Masz juz konto? Zaloguj sie</a>
+                    <a class="auth-link" href="{% url 'login_user' %}{% if next_target %}?next={{ next_target|urlencode }}{% endif %}">Masz juz konto? Zaloguj sie</a>
                 </div>
             </div>
         </section>

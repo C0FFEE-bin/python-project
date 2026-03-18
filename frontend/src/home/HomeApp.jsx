@@ -9,6 +9,7 @@ import { navLinks } from "./content.js";
 
 export default function HomeApp({
     csrfToken = "",
+    currentUser = null,
     images = {},
     isAuthenticated = false,
     urls = {},
@@ -67,6 +68,7 @@ export default function HomeApp({
             <HomeHeader
                 activeSection={activeSection}
                 csrfToken={csrfToken}
+                currentUser={currentUser}
                 isAuthenticated={isAuthenticated}
                 isMenuOpen={isMenuOpen}
                 isScrolled={isScrolled}

@@ -158,6 +158,32 @@ button {
     gap: 14px;
 }
 
+.quick-actions__account {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.quick-actions__user {
+    display: inline-flex;
+    align-items: center;
+    max-width: 220px;
+    min-height: 58px;
+    padding: 0 20px;
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: var(--shadow-soft);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .quick-actions__form {
     margin: 0;
 }
@@ -1250,7 +1276,17 @@ button {
     }
 
     .quick-actions {
+        flex-wrap: wrap;
         justify-content: center;
+    }
+
+    .quick-actions__account {
+        justify-content: center;
+    }
+
+    .quick-actions__user {
+        min-height: 50px;
+        padding: 0 16px;
     }
 
     .quick-actions__button {

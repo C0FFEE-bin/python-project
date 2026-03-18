@@ -5,6 +5,7 @@ import AuthAction from "./AuthAction.jsx";
 export default function HomeHeader({
     activeSection,
     csrfToken,
+    currentUser,
     isAuthenticated,
     isMenuOpen,
     isScrolled,
@@ -47,7 +48,12 @@ export default function HomeHeader({
                     <button className="quick-actions__button" type="button" aria-label="Powiadomienia">
                         <i className="fa-regular fa-bell"></i>
                     </button>
-                    <AuthAction csrfToken={csrfToken} isAuthenticated={isAuthenticated} urls={urls} />
+                    <AuthAction
+                        csrfToken={csrfToken}
+                        currentUser={currentUser}
+                        isAuthenticated={isAuthenticated}
+                        urls={urls}
+                    />
                 </div>
             </div>
         </header>

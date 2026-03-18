@@ -1,3 +1,6 @@
+import json
+import re
+
 from django.db import OperationalError
 from django.contrib.auth.models import User
 from django.http import HttpResponse
@@ -9,6 +12,17 @@ from main.middleware import DatabaseErrorPageMiddleware
 
 
 class MainViewsTests(TestCase):
+    def _extract_home_props(self, response):
+        html = response.content.decode()
+        match = re.search(
+            r'<script id="home-app-props" type="application/json">(.*?)</script>',
+            html,
+            re.DOTALL,
+        )
+
+        self.assertIsNotNone(match)
+        return json.loads(match.group(1))
+
     def test_home_page_renders(self):
         response = self.client.get(reverse('home'))
 
@@ -21,6 +35,21 @@ class MainViewsTests(TestCase):
 
         self.assertIn('/static/main/frontend/assets/', html)
         self.assertNotIn('/static/assets/', html)
+
+    def test_home_page_exposes_authenticated_user_in_frontend_props(self):
+        user = User.objects.create_user(
+            username='tester',
+            email='tester@example.com',
+            password='secret123',
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse('home'))
+        home_props = self._extract_home_props(response)
+
+        self.assertTrue(home_props['isAuthenticated'])
+        self.assertEqual(home_props['currentUser']['email'], 'tester@example.com')
+        self.assertEqual(home_props['currentUser']['username'], 'tester')
 
     def test_auth_pages_render(self):
         login_response = self.client.get(reverse('login_user'))
@@ -48,14 +77,45 @@ class MainViewsTests(TestCase):
                 'email': 'newuser@example.com',
                 'password': 'secret123',
                 'password_confirm': 'secret456',
+                'next': reverse('cars'),
             },
         )
 
-        self.assertEqual(response.status_code, 302)
-        self.assertRedirects(response, reverse('register_user'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'main/auth/register.html')
+        self.assertContains(response, 'Hasla musza byc takie same.')
+        self.assertContains(response, f'value="{reverse("cars")}"')
         self.assertFalse(User.objects.filter(username='newuser').exists())
 
-    def test_register_creates_user_when_confirmation_matches(self):
+    def test_login_redirects_to_safe_next_target(self):
+        User.objects.create_user(username='tester', password='secret123')
+
+        response = self.client.post(
+            reverse('login_user'),
+            {
+                'username': 'tester',
+                'password': 'secret123',
+                'next': reverse('cars'),
+            },
+        )
+
+        self.assertRedirects(response, reverse('cars'))
+
+    def test_login_ignores_external_next_target(self):
+        User.objects.create_user(username='tester', password='secret123')
+
+        response = self.client.post(
+            reverse('login_user'),
+            {
+                'username': 'tester',
+                'password': 'secret123',
+                'next': 'https://example.com/evil',
+            },
+        )
+
+        self.assertRedirects(response, reverse('home'))
+
+    def test_register_creates_user_and_redirects_to_safe_next_target(self):
         response = self.client.post(
             reverse('register_user'),
             {
@@ -63,11 +123,11 @@ class MainViewsTests(TestCase):
                 'email': 'newuser@example.com',
                 'password': 'secret123',
                 'password_confirm': 'secret123',
+                'next': reverse('cars'),
             },
         )
 
-        self.assertEqual(response.status_code, 302)
-        self.assertRedirects(response, reverse('home'))
+        self.assertRedirects(response, reverse('cars'))
         self.assertTrue(User.objects.filter(username='newuser').exists())
 
     def test_database_error_middleware_returns_custom_error_page(self):
