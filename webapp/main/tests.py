@@ -1,14 +1,16 @@
 import json
 import re
+from datetime import time
 
-from django.db import OperationalError
 from django.contrib.auth.models import User
+from django.db import OperationalError
 from django.http import HttpResponse
 from django.test import RequestFactory
 from django.test import TestCase
 from django.urls import reverse
 
 from main.middleware import DatabaseErrorPageMiddleware
+from main.models import Dostepnosc, Przedmiot, Tutor, User as TutorUser
 
 
 class MainViewsTests(TestCase):
@@ -50,6 +52,7 @@ class MainViewsTests(TestCase):
         self.assertTrue(home_props['isAuthenticated'])
         self.assertEqual(home_props['currentUser']['email'], 'tester@example.com')
         self.assertEqual(home_props['currentUser']['username'], 'tester')
+        self.assertEqual(home_props['urls']['tutorSearch'], reverse('tutor_search'))
 
     def test_auth_pages_render(self):
         login_response = self.client.get(reverse('login_user'))
@@ -129,6 +132,82 @@ class MainViewsTests(TestCase):
 
         self.assertRedirects(response, reverse('cars'))
         self.assertTrue(User.objects.filter(username='newuser').exists())
+
+    def test_tutor_search_returns_exact_and_suggested_results(self):
+        exact_user = TutorUser.objects.create(
+            imie='Jan',
+            nazwisko='Kowalski',
+            email='jan@example.com',
+            haslo='sekret',
+        )
+        exact_tutor = Tutor.objects.create(
+            uzytkownik=exact_user,
+            stawka_godzinowa='120.00',
+            rating=4.8,
+        )
+        exact_tutor.przedmioty.add(
+            Przedmiot.objects.create(
+                nazwa='Matematyka',
+                temat='Algebra',
+                poziom='Liceum',
+            )
+        )
+        Dostepnosc.objects.create(
+            tutor=exact_tutor,
+            dzien_tygodnia=2,
+            godzina_od=time(19, 0),
+            godzina_do=time(20, 0),
+        )
+
+        suggested_user = TutorUser.objects.create(
+            imie='Anna',
+            nazwisko='Nowak',
+            email='anna@example.com',
+            haslo='sekret',
+        )
+        suggested_tutor = Tutor.objects.create(
+            uzytkownik=suggested_user,
+            stawka_godzinowa='95.00',
+            rating=4.5,
+        )
+        suggested_tutor.przedmioty.add(
+            Przedmiot.objects.create(
+                nazwa='Matematyka',
+                temat='Algebra',
+                poziom='Liceum',
+            )
+        )
+        Dostepnosc.objects.create(
+            tutor=suggested_tutor,
+            dzien_tygodnia=2,
+            godzina_od=time(18, 0),
+            godzina_do=time(19, 0),
+        )
+
+        response = self.client.get(
+            reverse('tutor_search'),
+            {
+                'subject': 'Matematyka',
+                'topic': 'Algebra',
+                'level': 'Liceum',
+                'hour': '19:00-20:00',
+                'date': '2026-03-11',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        self.assertEqual(len(payload['exactMatches']), 1)
+        self.assertEqual(payload['exactMatches'][0]['name'], 'Jan Kowalski')
+        self.assertEqual(len(payload['suggestedTutors']), 1)
+        self.assertEqual(payload['suggestedTutors'][0]['name'], 'Anna Nowak')
+
+    def test_tutor_search_rejects_missing_filters(self):
+        response = self.client.get(reverse('tutor_search'), {'subject': 'Matematyka'})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('Brakuje wymaganych parametrow', response.json()['detail'])
 
     def test_database_error_middleware_returns_custom_error_page(self):
         def raising_view(_request):

@@ -34,12 +34,14 @@ export default function SearchResultsView({
     appliedFilters,
     exactMatches,
     filterDefinitions,
+    isLoading = false,
     onFilterSelect,
     onReset,
     onSearch,
     onSelectDate,
     onToggleFilter,
     openFilterKey,
+    searchError = "",
     selectedDate,
     selectedFilters,
     suggestedTutors,
@@ -77,10 +79,21 @@ export default function SearchResultsView({
                     <SearchCalendar selectedDate={selectedDate} onSelectDate={onSelectDate} />
 
                     <div className="search-results__actions">
-                        <button className="button button--primary" type="button" onClick={onSearch}>
-                            Szukaj wynikow
+                        {searchError ? <p className="search-section__error">{searchError}</p> : null}
+                        <button
+                            className="button button--primary"
+                            type="button"
+                            onClick={onSearch}
+                            disabled={isLoading}
+                        >
+                            {isLoading ? "Szukanie..." : "Szukaj wynikow"}
                         </button>
-                        <button className="button button--muted" type="button" onClick={onReset}>
+                        <button
+                            className="button button--muted"
+                            type="button"
+                            onClick={onReset}
+                            disabled={isLoading}
+                        >
                             Resetuj
                         </button>
                     </div>

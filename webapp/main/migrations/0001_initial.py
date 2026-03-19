@@ -19,6 +19,9 @@ class Migration(migrations.Migration):
                 ('nazwa', models.CharField(max_length=100)),
                 ('poziom', models.CharField(blank=True, max_length=50, null=True)),
             ],
+            options={
+                'db_table': 'przedmiot',
+            },
         ),
         migrations.CreateModel(
             name='User',
@@ -32,16 +35,22 @@ class Migration(migrations.Migration):
                 ('typ', models.CharField(default='uczen', max_length=20)),
                 ('data_utworzenia', models.DateTimeField(auto_now_add=True)),
             ],
+            options={
+                'db_table': 'user',
+            },
         ),
         migrations.CreateModel(
-          name='Tutor',
+            name='Tutor',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('opis', models.TextField(blank=True, null=True)),
                 ('stawka_godzinowa', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('przedmioty', models.ManyToManyField(related_name='tutorzy', to='main.przedmiot')),
+                ('przedmioty', models.ManyToManyField(db_table='tutor_przedmiot', related_name='tutorzy', to='main.przedmiot')),
                 ('uzytkownik', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='tutor_profile', to='main.user')),
             ],
+            options={
+                'db_table': 'tutor',
+            },
         ),
         migrations.CreateModel(
             name='Post',
@@ -52,6 +61,9 @@ class Migration(migrations.Migration):
                 ('data_utworzenia', models.DateTimeField(auto_now_add=True)),
                 ('tutor', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='posty', to='main.tutor')),
             ],
+            options={
+                'db_table': 'post',
+            },
         ),
         migrations.CreateModel(
             name='Dostepnosc',
@@ -62,6 +74,9 @@ class Migration(migrations.Migration):
                 ('godzina_do', models.TimeField()),
                 ('tutor', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='dostepnosci', to='main.tutor')),
             ],
+            options={
+                'db_table': 'dostepnosc',
+            },
         ),
         migrations.CreateModel(
             name='Comment',
@@ -72,5 +87,8 @@ class Migration(migrations.Migration):
                 ('post', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='komentarze', to='main.post')),
                 ('uzytkownik', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='komentarze_uzytkownika', to='main.user')),
             ],
+            options={
+                'db_table': 'comment',
+            },
         ),
     ]

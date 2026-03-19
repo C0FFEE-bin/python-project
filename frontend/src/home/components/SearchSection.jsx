@@ -3,16 +3,20 @@ import { useEffect, useMemo, useState } from "react";
 import {
     defaultSearchDate,
     defaultSearchSelections,
-    getTutorSearchResults,
     searchFilterDefinitions,
     searchResultsSidebarDefinitions,
 } from "../content.js";
+import { formatDateLabelFromIso } from "../utils/dateHelpers.js";
 import joinClasses from "../utils/joinClasses.js";
 import Reveal from "./Reveal.jsx";
 import SearchCalendar from "./SearchCalendar.jsx";
 import SearchFilterSelect from "./SearchFilterSelect.jsx";
 import SearchResultsView from "./SearchResultsView.jsx";
-import { formatDateLabelFromIso } from "../utils/dateHelpers.js";
+
+const emptySearchResults = {
+    exactMatches: [],
+    suggestedTutors: [],
+};
 
 export default function SearchSection({
     isAuthenticated = false,
@@ -24,6 +28,9 @@ export default function SearchSection({
     const [appliedDate, setAppliedDate] = useState(defaultSearchDate);
     const [openFilterKey, setOpenFilterKey] = useState(null);
     const [isShowingResults, setIsShowingResults] = useState(false);
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchError, setSearchError] = useState("");
+    const [searchResults, setSearchResults] = useState(emptySearchResults);
 
     useEffect(() => {
         const handlePointerDown = (event) => {
@@ -40,10 +47,6 @@ export default function SearchSection({
 
     const selectedDateLabel = useMemo(() => formatDateLabelFromIso(selectedDate), [selectedDate]);
     const appliedDateLabel = useMemo(() => formatDateLabelFromIso(appliedDate), [appliedDate]);
-    const searchResults = useMemo(
-        () => getTutorSearchResults(appliedFilters, appliedDate),
-        [appliedDate, appliedFilters],
-    );
 
     const selectionSummary = `${selectedFilters.subject}, ${selectedFilters.level}, ${selectedDateLabel}, ${selectedFilters.hour}`;
     const appliedSelectionSummary = `${appliedFilters.subject}, ${appliedFilters.level}, ${appliedDateLabel}, ${appliedFilters.hour}`;
@@ -56,7 +59,7 @@ export default function SearchSection({
         setOpenFilterKey(null);
     };
 
-    const handleSearch = () => {
+    const handleSearch = async () => {
         if (!isAuthenticated) {
             const loginUrl = urls.login ?? "/login";
             const nextTarget = `${window.location.pathname}${window.location.search}#wyszukiwarka`;
@@ -65,10 +68,48 @@ export default function SearchSection({
             return;
         }
 
-        setAppliedFilters({ ...selectedFilters });
-        setAppliedDate(selectedDate);
-        setIsShowingResults(true);
+        const searchUrl = new URL(urls.tutorSearch ?? "/api/tutor-search", window.location.origin);
+        searchUrl.search = new URLSearchParams({
+            ...selectedFilters,
+            date: selectedDate,
+        }).toString();
+
+        setIsSearching(true);
+        setSearchError("");
         setOpenFilterKey(null);
+
+        try {
+            const response = await fetch(searchUrl.toString(), {
+                headers: {
+                    Accept: "application/json",
+                },
+            });
+
+            let payload = {};
+            try {
+                payload = await response.json();
+            } catch {
+                payload = {};
+            }
+
+            if (!response.ok) {
+                throw new Error(payload.detail || "Nie udalo sie pobrac wynikow z bazy.");
+            }
+
+            setSearchResults({
+                exactMatches: payload.exactMatches ?? [],
+                suggestedTutors: payload.suggestedTutors ?? [],
+            });
+            setAppliedFilters({ ...selectedFilters });
+            setAppliedDate(selectedDate);
+            setIsShowingResults(true);
+        } catch (error) {
+            setSearchError(
+                error instanceof Error ? error.message : "Nie udalo sie pobrac wynikow z bazy.",
+            );
+        } finally {
+            setIsSearching(false);
+        }
     };
 
     const handleReset = () => {
@@ -76,6 +117,9 @@ export default function SearchSection({
         setSelectedDate(defaultSearchDate);
         setAppliedFilters({ ...defaultSearchSelections });
         setAppliedDate(defaultSearchDate);
+        setSearchResults(emptySearchResults);
+        setIsSearching(false);
+        setSearchError("");
         setIsShowingResults(false);
         setOpenFilterKey(null);
     };
@@ -98,6 +142,7 @@ export default function SearchSection({
                             appliedFilters={appliedFilters}
                             exactMatches={searchResults.exactMatches}
                             filterDefinitions={searchResultsSidebarDefinitions}
+                            isLoading={isSearching}
                             onFilterSelect={handleFilterSelect}
                             onReset={handleReset}
                             onSearch={handleSearch}
@@ -106,6 +151,7 @@ export default function SearchSection({
                                 currentValue === filterKey ? null : filterKey
                             ))}
                             openFilterKey={openFilterKey}
+                            searchError={searchError}
                             selectedDate={selectedDate}
                             selectedFilters={selectedFilters}
                             suggestedTutors={searchResults.suggestedTutors}
@@ -140,10 +186,21 @@ export default function SearchSection({
 
                         <aside className="search-section__actions">
                             <p className="search-section__selection">{selectionSummary}</p>
-                            <button className="button button--primary" type="button" onClick={handleSearch}>
-                                Szukaj wynikow
+                            {searchError ? <p className="search-section__error">{searchError}</p> : null}
+                            <button
+                                className="button button--primary"
+                                type="button"
+                                onClick={handleSearch}
+                                disabled={isSearching}
+                            >
+                                {isSearching ? "Szukanie..." : "Szukaj wynikow"}
                             </button>
-                            <button className="button button--muted" type="button" onClick={handleReset}>
+                            <button
+                                className="button button--muted"
+                                type="button"
+                                onClick={handleReset}
+                                disabled={isSearching}
+                            >
                                 Resetuj
                             </button>
                         </aside>

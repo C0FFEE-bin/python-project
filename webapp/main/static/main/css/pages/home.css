@@ -291,6 +291,12 @@ button {
     transform: translateY(-3px);
 }
 
+.button:disabled {
+    cursor: wait;
+    opacity: 0.72;
+    transform: none;
+}
+
 .button--primary {
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
     color: #fff;
@@ -703,6 +709,14 @@ button {
     font-weight: 700;
     line-height: 1.4;
     text-align: center;
+}
+
+.search-section__error {
+    margin: 0;
+    color: #8b4c65;
+    font-size: 0.92rem;
+    font-weight: 700;
+    line-height: 1.45;
 }
 
 .search-section__actions .button {

@@ -46,22 +46,10 @@ npm install
 If PowerShell blocks `npm`, use:
 
 ```powershell
-npm.cmd install
+npm.cmd run dev
+python webapp/manage.py runserver
 ```
 
-## Run Django only
-
-If you want to run the app with the built frontend bundle:
-
-```powershell
-.\run-django.cmd
-```
-
-Alternative:
-
-```powershell
-npm.cmd run django
-```
 
 The app will be available at `http://127.0.0.1:8000/`.
 
