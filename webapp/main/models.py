@@ -104,7 +104,6 @@ def delete_custom_user(sender, instance, **kwargs):
 
 @receiver(post_delete, sender=User)
 def delete_auth_user(sender, instance, **kwargs):
-    # Lokalny import użyty dopiero w momencie aktywacji sygnału
     from django.contrib.auth.models import User as AuthUser
     if instance.email:
         AuthUser.objects.filter(email__iexact=instance.email).delete()
