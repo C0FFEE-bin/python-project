@@ -85,3 +85,14 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Komentarz od {self.uzytkownik.imie} do posta {self.post.id}"
+
+class Opinie(models.Model):
+    autor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='opinia_od')
+    tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='opinie_dla')
+    rating = models.FloatField()
+    tresc = models.TextField()
+    data_dodania = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Opinia ({self.rating}) od {self.autor.imie} dla {self.tutor.uzytkownik.imie}"
+
