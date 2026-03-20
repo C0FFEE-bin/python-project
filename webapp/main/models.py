@@ -112,3 +112,30 @@ def delete_auth_user(sender, instance, **kwargs):
 def sync_user_email(sender, instance, created, **kwargs):
     if not created and instance.email:
         User.objects.filter(imie=instance.username).update(email=instance.email)
+
+
+# Przykładowa funkcja do łączenia korepetytorów z uczniami na bazie dostępności
+# Funkcja będzie dopracowywana na późniejszym etapie projektu
+"""
+def match_tutors_to_student(student_availability):
+    from django.db.models import Q
+    
+    # student_availability: lista słowników, np. [{'dzien': 1, 'godzina_od': '10:00', 'godzina_do': '12:00'}, ...]
+    
+    query = Q()
+    for avail in student_availability:
+        dzien = avail['dzien']
+        godz_od = avail['godzina_od']
+        godz_do = avail['godzina_do']
+        
+        query |= Q(
+            dostepnosci__dzien_tygodnia=dzien,
+            dostepnosci__godzina_od__lte=godz_od,
+            dostepnosci__godzina_do__gte=godz_do
+        )
+    
+    return Tutor.objects.filter(query).distinct()
+"""
+
+
+
