@@ -3,6 +3,7 @@ import re
 from datetime import time
 
 from django.contrib.auth.models import User
+from django.core.management import call_command
 from django.db import OperationalError
 from django.http import HttpResponse
 from django.test import RequestFactory
@@ -149,7 +150,7 @@ class MainViewsTests(TestCase):
             Przedmiot.objects.create(
                 nazwa='Matematyka',
                 temat='Algebra',
-                poziom='Liceum',
+                poziom='Szkola srednia',
             )
         )
         Dostepnosc.objects.create(
@@ -174,7 +175,7 @@ class MainViewsTests(TestCase):
             Przedmiot.objects.create(
                 nazwa='Matematyka',
                 temat='Algebra',
-                poziom='Liceum',
+                poziom='Szkola srednia',
             )
         )
         Dostepnosc.objects.create(
@@ -189,7 +190,7 @@ class MainViewsTests(TestCase):
             {
                 'subject': 'Matematyka',
                 'topic': 'Algebra',
-                'level': 'Liceum',
+                'level': 'Szkola srednia',
                 'hour': '19:00-20:00',
                 'date': '2026-03-11',
             },
@@ -226,3 +227,39 @@ class MainViewsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b'ok')
+
+
+class SeedTutorsCommandTests(TestCase):
+    def test_seed_tutors_populates_database_and_is_idempotent(self):
+        call_command('seed_tutors', verbosity=0)
+
+        tutor_count = Tutor.objects.count()
+        user_count = TutorUser.objects.count()
+        subject_count = Przedmiot.objects.count()
+        availability_count = Dostepnosc.objects.count()
+
+        self.assertGreaterEqual(tutor_count, 8)
+        self.assertGreaterEqual(subject_count, 8)
+
+        response = self.client.get(
+            reverse('tutor_search'),
+            {
+                'subject': 'Matematyka',
+                'topic': 'Algebra',
+                'level': 'Szkola srednia',
+                'hour': '19:00-20:00',
+                'date': '2026-03-11',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertGreaterEqual(len(payload['exactMatches']), 2)
+        self.assertGreaterEqual(len(payload['suggestedTutors']), 1)
+
+        call_command('seed_tutors', verbosity=0)
+
+        self.assertEqual(Tutor.objects.count(), tutor_count)
+        self.assertEqual(TutorUser.objects.count(), user_count)
+        self.assertEqual(Przedmiot.objects.count(), subject_count)
+        self.assertEqual(Dostepnosc.objects.count(), availability_count)
