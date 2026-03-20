@@ -15,7 +15,7 @@ function getResultWord(count) {
     return "wynikow";
 }
 
-function SearchResultList({ emptyMessage, tutors }) {
+function SearchResultList({ emptyMessage, onOpenTutorProfile, tutors }) {
     if (!tutors.length) {
         return <div className="search-results__empty">{emptyMessage}</div>;
     }
@@ -23,7 +23,7 @@ function SearchResultList({ emptyMessage, tutors }) {
     return (
         <div className="search-results__list">
             {tutors.map((tutor) => (
-                <TutorResultCard key={tutor.id} tutor={tutor} />
+                <TutorResultCard key={tutor.id} onOpenProfile={onOpenTutorProfile} tutor={tutor} />
             ))}
         </div>
     );
@@ -35,6 +35,7 @@ export default function SearchResultsView({
     exactMatches,
     filterDefinitions,
     onFilterSelect,
+    onOpenTutorProfile,
     onReset,
     onSearch,
     onSelectDate,
@@ -112,6 +113,7 @@ export default function SearchResultsView({
                     </header>
 
                     <SearchResultList
+                        onOpenTutorProfile={onOpenTutorProfile}
                         tutors={exactMatches}
                         emptyMessage="Brak idealnych trafien dla tej godziny. Zmien termin albo poziom i wyszukaj ponownie."
                     />
@@ -125,6 +127,7 @@ export default function SearchResultsView({
                     </header>
 
                     <SearchResultList
+                        onOpenTutorProfile={onOpenTutorProfile}
                         tutors={suggestedTutors}
                         emptyMessage="Nie mamy jeszcze tutorow podobnych do tego zapytania."
                     />

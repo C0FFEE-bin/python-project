@@ -6,7 +6,10 @@ const metaIcons = {
     status: "fa-solid fa-circle-check",
 };
 
-export default function TutorResultCard({ tutor }) {
+export default function TutorResultCard({ onOpenProfile, tutor }) {
+    const ratingLabel = typeof tutor.rating === "number" ? `${tutor.rating.toFixed(1)}/5` : "Brak opinii";
+    const ageLabel = typeof tutor.age === "number" ? `${tutor.age} lat` : "Profil aktywny";
+
     return (
         <article className="tutor-card">
             <div className={joinClasses("tutor-card__avatar", `tutor-card__avatar--${tutor.avatarTone}`)}>
@@ -16,13 +19,13 @@ export default function TutorResultCard({ tutor }) {
             <div className="tutor-card__body">
                 <div className="tutor-card__heading">
                     <h4 className="tutor-card__name">{tutor.name}</h4>
-                    <span className="tutor-card__age">{tutor.age} lat</span>
+                    <span className="tutor-card__age">{ageLabel}</span>
                 </div>
 
                 <div className="tutor-card__meta">
                     <span className="tutor-card__pill">
                         <i className={metaIcons.rating} aria-hidden="true"></i>
-                        {tutor.rating.toFixed(1)}/5 ({tutor.opinions} opinii)
+                        {ratingLabel} ({tutor.opinions} opinii)
                     </span>
                     <span className="tutor-card__pill">
                         <i className={metaIcons.experience} aria-hidden="true"></i>
@@ -40,6 +43,24 @@ export default function TutorResultCard({ tutor }) {
                     {tutor.tags.map((tag) => (
                         <span key={tag} className="tutor-card__tag">{tag}</span>
                     ))}
+                </div>
+
+                <div className="tutor-card__actions">
+                    <a
+                        className="tutor-card__link"
+                        href={tutor.profileUrl}
+                        onClick={(event) => {
+                            if (!onOpenProfile) {
+                                return;
+                            }
+
+                            event.preventDefault();
+                            onOpenProfile(tutor.id);
+                        }}
+                    >
+                        Zobacz profil
+                        <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
                 </div>
             </div>
         </article>
