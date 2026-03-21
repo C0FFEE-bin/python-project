@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 
 const repoRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -8,7 +9,7 @@ const frontendRoot = path.resolve(repoRoot, "frontend");
 
 export default defineConfig({
     root: frontendRoot,
-    plugins: [react()],
+    plugins: [tailwindcss(), react()],
     server: {
         host: "127.0.0.1",
         port: 5173,
