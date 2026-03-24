@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 from django.contrib import messages
@@ -10,8 +11,10 @@ from django.shortcuts import redirect, render
 from django.templatetags.static import static
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.csrf import csrf_exempt
 
-from .models import Tutor
+# Importujemy Twój customowy model User pod aliasem, żeby nie nadpisał domyślnego User z Django
+from .models import Tutor, User as CustomUser
 
 AVATAR_TONES = (
     "violet",
@@ -30,9 +33,9 @@ AVATAR_TONES = (
 def _get_safe_next_target(request):
     candidate = request.POST.get("next") or request.GET.get("next") or ""
     if candidate and url_has_allowed_host_and_scheme(
-        candidate,
-        allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
+            candidate,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
     ):
         return candidate
 
@@ -375,7 +378,7 @@ def register(request):
                 },
             )
 
-        if User.objects.filter(email__iexact=email).exists():
+        if User.objects.filter(email__iexact=email).exists() or CustomUser.objects.filter(email__iexact=email).exists():
             messages.error(request, "Konto z tym adresem e-mail juz istnieje.")
             return render(
                 request,
@@ -386,7 +389,17 @@ def register(request):
                 },
             )
 
+        # 1. Tworzenie usera systemowego (do logowania)
         user = User.objects.create_user(username, email, password)
+
+        # 2. Tworzenie usera w Twojej customowej tabeli
+        CustomUser.objects.create(
+            imie=username,  # Brak imienia w formularzu, dajemy username
+            nazwisko="",
+            email=email,
+            haslo=password
+        )
+
         login(request, user)
         return redirect(next_target or "home")
 
@@ -403,3 +416,55 @@ def register(request):
 def logout_user(request):
     logout(request)
     return redirect("home")
+
+
+# === ENDPOINTY DO REACTA ===
+@csrf_exempt
+def api_register(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            username = data.get('username')
+            password = data.get('password')
+            email = data.get('email')
+
+            if not username or not password or not email:
+                return JsonResponse({'error': 'Wypełnij wszystkie pola'}, status=400)
+
+            if User.objects.filter(username=username).exists():
+                return JsonResponse({'error': 'Taki użytkownik już istnieje'}, status=400)
+
+            if CustomUser.objects.filter(email__iexact=email).exists():
+                return JsonResponse({'error': 'Adres e-mail jest już zajęty'}, status=400)
+
+            # 1. Tworzenie usera systemowego
+            user = User.objects.create_user(username=username, email=email, password=password)
+
+            # 2. Tworzenie usera w Twojej customowej tabeli
+            CustomUser.objects.create(
+                imie=username,
+                nazwisko="",
+                email=email,
+                haslo=password
+            )
+
+            login(request, user)
+
+            return JsonResponse({
+                'message': 'Zarejestrowano pomyślnie',
+                'user': {'username': user.username, 'email': user.email}
+            })
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Zła metoda'}, status=405)
+
+
+def api_current_user(request):
+    if request.user.is_authenticated:
+        return JsonResponse({
+            'is_logged_in': True,
+            'username': request.user.username,
+            'email': request.user.email,
+        })
+    return JsonResponse({'is_logged_in': False}, status=401)

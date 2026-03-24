@@ -11,4 +11,8 @@ urlpatterns = [
     path('register', views.register, name='register_user'),
     path('logout', views.logout_user, name='logout_user'),
     path('api/tutor-search', views.tutor_search, name='tutor_search'),
+
+    # Nowe ścieżki dla Reacta
+    path('api/register/', views.api_register, name='api_register'),
+    path('api/user/', views.api_current_user, name='api_current_user'),
 ]
