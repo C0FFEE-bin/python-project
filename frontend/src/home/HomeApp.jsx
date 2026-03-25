@@ -9,6 +9,7 @@ import {
 import HomeHeader from "./components/HomeHeader.jsx";
 import HeroSection from "./components/HeroSection.jsx";
 import MentorSection from "./components/MentorSection.jsx";
+import OnboardingPreviewPage from "./components/OnboardingPreviewPage.jsx";
 import PortalSection from "./components/PortalSection.jsx";
 import SearchResultsPage from "./components/SearchResultsPage.jsx";
 import SearchSection from "./components/SearchSection.jsx";
@@ -64,8 +65,10 @@ export default function HomeApp({
     currentUser = null,
     images = {},
     isAuthenticated = false,
+    previewComponent = "",
     urls = {},
 }) {
+    const isPreview = Boolean(previewComponent);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const [activeSection, setActiveSection] = useState("home");
@@ -77,6 +80,10 @@ export default function HomeApp({
     );
 
     useEffect(() => {
+        if (isPreview) {
+            return undefined;
+        }
+
         const updateHeaderState = () => {
             setIsScrolled(window.scrollY > 18);
         };
@@ -85,18 +92,26 @@ export default function HomeApp({
         window.addEventListener("scroll", updateHeaderState, { passive: true });
 
         return () => window.removeEventListener("scroll", updateHeaderState);
-    }, []);
+    }, [isPreview]);
 
     useEffect(() => {
+        if (isPreview) {
+            return undefined;
+        }
+
         const handlePopState = () => {
             setPageState(getSearchParamsState());
         };
 
         window.addEventListener("popstate", handlePopState);
         return () => window.removeEventListener("popstate", handlePopState);
-    }, []);
+    }, [isPreview]);
 
     useEffect(() => {
+        if (isPreview) {
+            return undefined;
+        }
+
         if (pageState.mode === "results" || selectedTutor) {
             setActiveSection("wyszukiwarka");
             return undefined;
@@ -125,7 +140,11 @@ export default function HomeApp({
         sections.forEach((section) => observer.observe(section));
 
         return () => observer.disconnect();
-    }, [pageState.mode, selectedTutor]);
+    }, [isPreview, pageState.mode, selectedTutor]);
+
+    if (isPreview) {
+        return <OnboardingPreviewPage previewComponent={previewComponent} urls={urls} />;
+    }
 
     const handleNavClick = (sectionId) => {
         if (pageState.mode !== "landing" || pageState.tutorId) {

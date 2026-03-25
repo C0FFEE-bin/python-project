@@ -51,6 +51,31 @@ class MainViewsTests(TestCase):
         self.assertEqual(home_props['currentUser']['email'], 'tester@example.com')
         self.assertEqual(home_props['currentUser']['username'], 'tester')
 
+    def test_component_preview_page_exposes_requested_component(self):
+        response = self.client.get(
+            reverse('component_preview', kwargs={'component_slug': 'subject-select'})
+        )
+        home_props = self._extract_home_props(response)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'main/pages/home/index.html')
+        self.assertEqual(home_props['previewComponent'], 'subject-select')
+        self.assertEqual(
+            home_props['urls']['schoolLevelSelectPreview'],
+            reverse('component_preview', kwargs={'component_slug': 'school-level-select'}),
+        )
+        self.assertEqual(
+            home_props['urls']['subjectSelectPreview'],
+            reverse('component_preview', kwargs={'component_slug': 'subject-select'}),
+        )
+
+    def test_component_preview_page_rejects_unsupported_component(self):
+        response = self.client.get(
+            reverse('component_preview', kwargs={'component_slug': 'unknown-component'})
+        )
+
+        self.assertEqual(response.status_code, 404)
+
     def test_auth_pages_render(self):
         login_response = self.client.get(reverse('login_user'))
         register_response = self.client.get(reverse('register_user'))

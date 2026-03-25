@@ -7,8 +7,14 @@ from django.contrib import messages #to show message back for errors
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
 from django.templatetags.static import static
+from django.http import Http404
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
+
+SUPPORTED_PREVIEW_COMPONENTS = {
+    'subject-select': 'subject-select',
+    'school-level-select': 'school-level-select',
+}
 
 # Create your views here.
 def _get_safe_next_target(request):
@@ -46,13 +52,38 @@ def _get_home_props(request):
             'login': reverse('login_user'),
             'logout': reverse('logout_user'),
             'register': reverse('register_user'),
+            'schoolLevelSelectPreview': reverse(
+                'component_preview',
+                kwargs={'component_slug': 'school-level-select'},
+            ),
+            'subjectSelectPreview': reverse(
+                'component_preview',
+                kwargs={'component_slug': 'subject-select'},
+            ),
         },
+        'previewComponent': None,
     }
 
 
 def index(request):
     values = {
         'home_props': _get_home_props(request),
+    }
+
+    return render(request, 'main/pages/home/index.html', values)
+
+
+def component_preview(request, component_slug):
+    preview_component = SUPPORTED_PREVIEW_COMPONENTS.get(component_slug)
+
+    if preview_component is None:
+        raise Http404('Unsupported preview component.')
+
+    values = {
+        'home_props': {
+            **_get_home_props(request),
+            'previewComponent': preview_component,
+        },
     }
 
     return render(request, 'main/pages/home/index.html', values)

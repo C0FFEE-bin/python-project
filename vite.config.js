@@ -10,6 +10,11 @@ const frontendRoot = path.resolve(repoRoot, "frontend");
 export default defineConfig({
     root: frontendRoot,
     plugins: [tailwindcss(), react()],
+    resolve: {
+        alias: {
+            gsap: path.resolve(frontendRoot, "src/home/utils/gsap-lite.js"),
+        },
+    },
     server: {
         host: "127.0.0.1",
         port: 5173,
