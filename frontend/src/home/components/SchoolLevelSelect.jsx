@@ -1,220 +1,263 @@
-import { useEffect, useRef, useState } from "react";
-import { gsap } from "gsap";
+import { useState } from "react";
 
-const LEVELS = [
-    {
-        id: "podstawowa",
-        title: "Podstawowa",
-        subtitle: ["Szkoła podstawowa 1-8"],
-    },
-    {
-        id: "srednia",
-        title: "Średnia",
-        subtitle: ["Szkoła średnia", "Liceum / Technikum"],
-    },
-    {
-        id: "studia",
-        title: "Studia",
-        subtitle: ["Szkoła wyższa"],
-    },
+const schools = [
+  {
+    id: "podstawowa",
+    title: "Podstawowa",
+    subtitle: "Szkoła podstawowa 1-8",
+  },
+  {
+    id: "srednia",
+    title: "Średnia",
+    subtitle: "Szkoła średnia\nLiceum / Technikum",
+  },
+  {
+    id: "studia",
+    title: "Studia",
+    subtitle: "Szkoła wyższa",
+  },
 ];
 
-function BrandMark() {
-    return (
-        <div className="w-fit select-none">
-            <div className="flex items-center gap-0.5 font-black text-black">
-                <span className="text-[1.1rem] leading-none tracking-tight uppercase font-extrabold">
-                    RENT
-                    <br />
-                    NERD
-                </span>
-                <span
-                    className="text-[3.2rem] font-extrabold leading-none"
-                    style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-                >
-                    A
-                </span>
-            </div>
-        </div>
-    );
-}
+const steps = ["Wybierz typ konta", "Uzupełnij profil", "Poznaj RENT A NERD"];
 
-function StepIndicator() {
-    return (
-        <div className="flex flex-wrap items-center justify-center gap-2 text-center text-[clamp(0.85rem,1.2vw,1rem)] font-semibold text-[#3d2e44]">
-            <span className="font-bold">Wybierz typ konta</span>
-            <span className="text-[1.4rem] font-normal text-[#8a6492]">→</span>
-            <span className="text-[#5a4862]">Uzupełnij profil</span>
-            <span className="text-[1.4rem] font-normal text-[#8a6492]">→</span>
-            <span className="text-[#5a4862]">Poznaj RENT A NERD</span>
-        </div>
-    );
-}
+export default function SchoolSelector() {
+  const [selected, setSelected] = useState(null);
 
-function LevelCard({ active, card, onChoose, registerRef }) {
-    const cardRef = useRef(null);
+  return (
+    <div style={styles.page}>
+      {/* Background decoration */}
+      <div style={styles.bgBlob} />
 
-    useEffect(() => {
-        registerRef(cardRef.current);
-    }, [registerRef]);
+      {/* Logo */}
+      <div style={styles.logo}>
+        <span style={styles.logoRent}>RENT</span>
+        <span style={styles.logoNerd}>NERD</span>
+        <span style={styles.logoA}>A</span>
+      </div>
 
-    const handleMouseEnter = () => {
-        if (!active) {
-            gsap.to(cardRef.current, { y: -5, scale: 1.012, duration: 0.2, ease: "power2.out" });
-        }
-    };
-
-    const handleMouseLeave = () => {
-        if (!active) {
-            gsap.to(cardRef.current, { y: 0, scale: 1, duration: 0.18, ease: "power2.out" });
-        }
-    };
-
-    const handleChoose = () => {
-        gsap.timeline()
-            .to(cardRef.current, { scale: 0.97, duration: 0.08, ease: "power2.in" })
-            .to(cardRef.current, { scale: 1.015, duration: 0.14, ease: "back.out(1.8)" })
-            .to(cardRef.current, { scale: 1, duration: 0.1 });
-
-        onChoose(card.id);
-    };
-
-    return (
-        <article
-            ref={cardRef}
-            className="flex flex-col overflow-hidden rounded-[1.1rem]"
-            style={{
-                width: "210px",
-                minHeight: "320px",
-                background: "#cba8d8",
-                border: "1px solid #ba8fcc",
-                boxShadow: active
-                    ? "0 12px 28px rgba(140, 80, 170, 0.28)"
-                    : "0 6px 16px rgba(140, 80, 170, 0.15)",
-            }}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-        >
-            {/* Header */}
-            <div
-                className="px-5 py-4 text-center text-white"
-                style={{
-                    background: active
-                        ? "linear-gradient(135deg, #9e52b8 0%, #8f3fa8 100%)"
-                        : "linear-gradient(135deg, #a85dbf 0%, #9849b2 100%)",
-                    borderBottom: "1px solid #9e52b5",
-                }}
+      {/* Stepper */}
+      <div style={styles.stepper}>
+        {steps.map((step, i) => (
+          <div key={step} style={styles.stepItem}>
+            <span
+              style={{
+                ...styles.stepLabel,
+                fontWeight: i === 0 ? 600 : 400,
+                color: i === 0 ? "#222" : "#888",
+              }}
             >
-                <h2 className="text-[1.6rem] font-bold leading-none tracking-tight">{card.title}</h2>
-            </div>
+              {step}
+            </span>
+            {i < steps.length - 1 && <span style={styles.arrow}>→</span>}
+          </div>
+        ))}
+      </div>
 
-            {/* Body */}
-            <div className="flex flex-1 flex-col items-center px-5 pb-5 pt-4 text-center">
-                <div className="text-[0.82rem] font-semibold italic leading-snug text-white/90">
-                    {card.subtitle.map((line) => (
-                        <div key={line}>{line}</div>
-                    ))}
-                </div>
+      {/* Heading */}
+      <h1 style={styles.heading}>Wybierz swoją szkołę</h1>
 
-                <div className="mt-auto w-full">
-                    <button
-                        className="w-full rounded-full px-4 py-2.5 text-[1rem] font-bold text-white transition-all duration-200 hover:brightness-110 hover:translate-y-[-1px]"
-                        style={{
-                            background: active
-                                ? "linear-gradient(135deg, #9348b5 0%, #8437a6 100%)"
-                                : "linear-gradient(135deg, #a050c2 0%, #9240b0 100%)",
-                            boxShadow: "0 4px 12px rgba(140, 60, 180, 0.30)",
-                        }}
-                        type="button"
-                        onClick={handleChoose}
-                    >
-                        Wybierz
-                    </button>
-                </div>
-            </div>
-        </article>
-    );
-}
+      {/* Cards */}
+      <div style={styles.cards}>
+        {schools.map((school) => {
+          const isSelected = selected === school.id;
+          return (
+            <div
+              key={school.id}
+              style={{
+                ...styles.card,
+                boxShadow: isSelected
+                  ? "0 0 0 3px #9b59b6, 0 8px 32px rgba(155,89,182,0.25)"
+                  : "0 4px 24px rgba(155,89,182,0.10)",
+                transform: isSelected ? "translateY(-4px) scale(1.02)" : "none",
+              }}
+              onClick={() => setSelected(school.id)}
+            >
+              {/* Card Header */}
+              <div style={styles.cardHeader}>
+                <span style={styles.cardTitle}>{school.title}</span>
+              </div>
 
-export default function SchoolLevelSelect({ onNext, onSelect }) {
-    const [selected, setSelected] = useState(null);
-    const shellRef = useRef(null);
-    const headingRef = useRef(null);
-    const cardRefs = useRef([]);
+              {/* Card Body */}
+              <div style={styles.cardBody}>
+                <p style={styles.cardSubtitle}>{school.subtitle}</p>
+              </div>
 
-    useEffect(() => {
-        const ctx = gsap.context(() => {
-            gsap.fromTo(
-                headingRef.current,
-                { opacity: 0, y: -18 },
-                { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
-            );
-
-            gsap.fromTo(
-                cardRefs.current.filter(Boolean),
-                { opacity: 0, y: 30, scale: 0.95 },
-                { opacity: 1, y: 0, scale: 1, duration: 0.46, stagger: 0.1, ease: "power3.out" },
-            );
-        }, shellRef);
-
-        return () => ctx.revert();
-    }, []);
-
-    const handleChoose = (levelId) => {
-        setSelected(levelId);
-        onSelect?.(levelId);
-        onNext?.(levelId);
-    };
-
-    return (
-        <section
-            ref={shellRef}
-            className="relative min-h-screen overflow-hidden px-6 py-5 md:px-10"
-            style={{
-                /*
-                 * Tło jak na zdjęciu:
-                 * – duże białe "ćwiartki koła" w lewym-górnym i lewym-dolnym rogu
-                 * – reszta: jednolity jasny fiolet
-                 */
-                background: [
-                    "radial-gradient(ellipse 90% 75% at -5% 5%, #ffffff 0%, #ffffff 38%, transparent 38.5%)",
-                    "radial-gradient(ellipse 80% 70% at 5% 105%, #ffffff 0%, #ffffff 36%, transparent 36.5%)",
-                    "linear-gradient(135deg, #d8a8e8 0%, #cb98df 50%, #c290d8 100%)",
-                ].join(", "),
-            }}
-        >
-            <div className="relative z-10 mx-auto flex min-h-[calc(100vh-2.5rem)] w-full max-w-[1100px] flex-col">
-                {/* Logo */}
-                <div className="pt-0">
-                    <BrandMark />
-                </div>
-
-                {/* Heading area */}
-                <div
-                    ref={headingRef}
-                    className="mx-auto mt-5 flex w-full max-w-[860px] flex-col items-center text-center"
+              {/* Card Footer */}
+              <div style={styles.cardFooter}>
+                <button
+                  style={{
+                    ...styles.btn,
+                    background: isSelected ? "#7d3c98" : "#b07cc6",
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelected(school.id);
+                  }}
                 >
-                    <StepIndicator />
-                    <h1 className="mt-3 text-[clamp(2rem,3.6vw,3.4rem)] font-black tracking-[-0.04em] text-black">
-                        Wybierz swoją szkołę
-                    </h1>
-                </div>
-
-                {/* Cards */}
-                <div className="mt-10 grid flex-1 place-items-center gap-6 md:mt-12 md:grid-cols-3 md:gap-12">
-                    {LEVELS.map((level, index) => (
-                        <LevelCard
-                            key={level.id}
-                            card={level}
-                            active={selected === level.id}
-                            onChoose={handleChoose}
-                            registerRef={(element) => {
-                                cardRefs.current[index] = element;
-                            }}
-                        />
-                    ))}
-                </div>
+                  Wybierz
+                </button>
+              </div>
             </div>
-        </section>
-    );
+          );
+        })}
+      </div>
+    </div>
+  );
 }
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "#f3e8f9",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    fontFamily: "'Nunito', 'Segoe UI', sans-serif",
+    position: "relative",
+    overflow: "hidden",
+    paddingBottom: 60,
+  },
+  bgBlob: {
+    position: "absolute",
+    bottom: -80,
+    right: -80,
+    width: 380,
+    height: 380,
+    borderRadius: "50% 40% 60% 30%",
+    background:
+      "radial-gradient(ellipse at 60% 40%, #d7a8f0 0%, #b97dd4 60%, transparent 100%)",
+    opacity: 0.55,
+    zIndex: 0,
+    pointerEvents: "none",
+  },
+  logo: {
+    marginTop: 28,
+    marginBottom: 4,
+    display: "flex",
+    alignItems: "center",
+    gap: 2,
+    fontWeight: 900,
+    fontSize: 22,
+    letterSpacing: 1,
+    zIndex: 1,
+    position: "relative",
+  },
+  logoRent: {
+    color: "#222",
+    fontWeight: 800,
+  },
+  logoNerd: {
+    color: "#222",
+    fontWeight: 800,
+    marginLeft: 4,
+  },
+  logoA: {
+    background: "#222",
+    color: "#fff",
+    borderRadius: 6,
+    padding: "2px 7px",
+    fontWeight: 900,
+    fontSize: 20,
+    marginLeft: 4,
+  },
+  stepper: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 18,
+    marginBottom: 2,
+    zIndex: 1,
+    position: "relative",
+  },
+  stepItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+  },
+  stepLabel: {
+    fontSize: 13,
+    color: "#888",
+    whiteSpace: "nowrap",
+  },
+  arrow: {
+    color: "#aaa",
+    fontSize: 14,
+    marginLeft: 2,
+    marginRight: 2,
+  },
+  heading: {
+    fontSize: 30,
+    fontWeight: 800,
+    color: "#1a1a2e",
+    margin: "18px 0 36px 0",
+    zIndex: 1,
+    position: "relative",
+    letterSpacing: -0.5,
+  },
+  cards: {
+    display: "flex",
+    gap: 24,
+    zIndex: 1,
+    position: "relative",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    padding: "0 16px",
+  },
+  card: {
+    background: "#fff",
+    borderRadius: 20,
+    width: 180,
+    minHeight: 260,
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+    cursor: "pointer",
+    transition: "transform 0.2s, box-shadow 0.2s",
+  },
+  cardHeader: {
+    background: "linear-gradient(135deg, #c47fe0 0%, #a855c8 100%)",
+    padding: "18px 16px 14px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardTitle: {
+    color: "#fff",
+    fontWeight: 800,
+    fontSize: 18,
+    letterSpacing: 0.2,
+  },
+  cardBody: {
+    flex: 1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "20px 16px",
+  },
+  cardSubtitle: {
+    color: "#a07ab8",
+    fontSize: 13,
+    textAlign: "center",
+    whiteSpace: "pre-line",
+    lineHeight: 1.5,
+    margin: 0,
+  },
+  cardFooter: {
+    padding: "0 20px 20px",
+    display: "flex",
+    justifyContent: "center",
+  },
+  btn: {
+    background: "#b07cc6",
+    color: "#fff",
+    border: "none",
+    borderRadius: 10,
+    padding: "9px 32px",
+    fontWeight: 700,
+    fontSize: 14,
+    cursor: "pointer",
+    transition: "background 0.2s",
+    width: "100%",
+    letterSpacing: 0.3,
+  },
+};
