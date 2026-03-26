@@ -1,0 +1,265 @@
+.tutor-profile-step {
+    display: grid;
+    gap: 12px;
+}
+
+.tutor-profile-card {
+    border: 1px solid #d8d4df;
+    border-radius: 14px;
+    background: #f2f2f6;
+    box-shadow: 0 8px 20px rgba(87, 79, 97, 0.12);
+    padding: 12px;
+}
+
+.tutor-profile-card--identity {
+    padding-top: 10px;
+}
+
+.tutor-profile-file-input {
+    display: none;
+}
+
+.tutor-profile-banner {
+    width: 100%;
+    min-height: 118px;
+    border-radius: 14px;
+    border: 2px solid #e3d4ec;
+    background: linear-gradient(145deg, #b26dcb 0%, #a45fc1 100%);
+    color: #f8f1fc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55);
+    cursor: pointer;
+    overflow: hidden;
+    padding: 0 18px;
+}
+
+.tutor-profile-banner.has-image {
+    padding: 0;
+    background: #ede7f4;
+    box-shadow: 0 6px 16px rgba(98, 83, 113, 0.14);
+}
+
+.tutor-profile-banner img {
+    width: 100%;
+    min-height: 118px;
+    object-fit: cover;
+}
+
+.tutor-profile-name-row {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 12px;
+}
+
+.tutor-profile-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #c687df 0%, #b364d2 100%);
+    color: #fff;
+    border: 4px solid #ece8f4;
+    display: grid;
+    place-items: center;
+    font-size: 28px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.tutor-profile-icon.has-image {
+    background: #fff;
+    border-color: #d8c7e2;
+}
+
+.tutor-profile-icon img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.tutor-profile-name-row input {
+    min-height: 54px;
+    border-radius: 12px;
+    border: 1px solid #d7d1e0;
+    background: #ffffff;
+    padding: 0 14px;
+    font-size: 38px;
+    font-weight: 700;
+    color: #1f1e27;
+    outline: none;
+}
+
+.tutor-profile-name-row input:focus,
+.tutor-profile-card textarea:focus {
+    border-color: #b882d0;
+    box-shadow: 0 0 0 3px rgba(184, 130, 208, 0.18);
+}
+
+.tutor-profile-label {
+    margin: 0;
+    color: #26242d;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.tutor-profile-label--with-margin {
+    margin-top: 12px;
+}
+
+.tutor-profile-chip-row {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tutor-profile-chip {
+    min-height: 28px;
+    padding: 0 12px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #be87d2;
+    background: linear-gradient(145deg, #c887de 0%, #b364d2 100%);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.tutor-profile-chip--level {
+    border-color: #50515a;
+    background: #50515a;
+}
+
+.tutor-profile-placeholder {
+    color: #7e7888;
+    font-size: 13px;
+}
+
+.tutor-profile-card textarea {
+    margin-top: 8px;
+    min-height: 72px;
+    width: 100%;
+    resize: vertical;
+    border-radius: 12px;
+    border: 1px solid #d8d2e1;
+    background: #ffffff;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: #292733;
+    outline: none;
+}
+
+.tutor-profile-schedule-wrap {
+    margin-top: 8px;
+    overflow-x: auto;
+}
+
+.tutor-profile-schedule-wrap table {
+    width: 100%;
+    min-width: 620px;
+    border-collapse: separate;
+    border-spacing: 6px;
+}
+
+.tutor-profile-schedule-wrap th,
+.tutor-profile-schedule-wrap td {
+    text-align: center;
+    font-size: 12px;
+}
+
+.tutor-profile-schedule-wrap th {
+    min-width: 54px;
+    border-radius: 6px;
+    background: #5a5a61;
+    color: #fff;
+    font-weight: 700;
+    padding: 6px 8px;
+}
+
+.tutor-profile-schedule-wrap td:first-child {
+    border-radius: 6px;
+    background: #6a6a72;
+    color: #fff;
+    font-weight: 700;
+    padding: 6px 8px;
+}
+
+.tutor-profile-slot {
+    width: 100%;
+    min-width: 54px;
+    min-height: 24px;
+    border: 0;
+    border-radius: 999px;
+    background: #ceced2;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.tutor-profile-slot:hover {
+    background: #bdbdc3;
+}
+
+.tutor-profile-slot.is-active {
+    background: #7d7f84;
+}
+
+.tutor-profile-help {
+    margin: 8px 0 0;
+    color: #6f6a78;
+    font-size: 11px;
+}
+
+.tutor-profile-legend {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+}
+
+.tutor-profile-legend-item {
+    min-height: 24px;
+    padding: 0 12px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.tutor-profile-legend-item.is-available {
+    background: #57a45e;
+}
+
+.tutor-profile-legend-item.is-unavailable {
+    background: #a85353;
+}
+
+@media (max-width: 980px) {
+    .tutor-profile-name-row input {
+        font-size: 24px;
+    }
+}
+
+@media (max-width: 700px) {
+    .tutor-profile-name-row {
+        grid-template-columns: 1fr;
+    }
+
+    .tutor-profile-icon {
+        width: 62px;
+        height: 62px;
+        font-size: 24px;
+    }
+
+    .tutor-profile-name-row input {
+        font-size: 17px;
+    }
+}

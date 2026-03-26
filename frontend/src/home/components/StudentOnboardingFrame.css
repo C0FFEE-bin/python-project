@@ -1,0 +1,155 @@
+.student-flow-view {
+    position: relative;
+    min-height: 100vh;
+    overflow: hidden;
+    background: #f5f2f8;
+    padding: 22px;
+    color: #1a1a22;
+    font-family: "Aptos", "Segoe UI", sans-serif;
+}
+
+.student-flow-shape {
+    position: absolute;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.student-flow-shape--top {
+    top: -210px;
+    right: -110px;
+    width: min(74vw, 980px);
+    height: min(58vw, 730px);
+    border-radius: 0 0 0 54%;
+    background: linear-gradient(145deg, #d8b4e7 0%, #c295d8 100%);
+}
+
+.student-flow-shape--bottom {
+    right: -180px;
+    bottom: -260px;
+    width: min(42vw, 620px);
+    height: min(42vw, 620px);
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #f8f0fc 0%, #d7b3e6 100%);
+}
+
+.student-flow-shell {
+    position: relative;
+    z-index: 1;
+    max-width: 1180px;
+    margin: 0 auto;
+}
+
+.student-flow-logo {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 6px;
+    color: #111118;
+    font-weight: 900;
+}
+
+.student-flow-logo span {
+    line-height: 0.95;
+    font-size: 20px;
+}
+
+.student-flow-logo strong {
+    font-size: 46px;
+    line-height: 0.86;
+}
+
+.student-flow-panel {
+    margin-top: 14px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.55);
+    padding: 18px;
+}
+
+.student-flow-stepper {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.student-flow-stepper__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.student-flow-stepper__label {
+    font-size: 16px;
+    color: #7f7987;
+    font-weight: 700;
+}
+
+.student-flow-stepper__label.is-current {
+    color: #32303a;
+    font-weight: 800;
+}
+
+.student-flow-stepper__arrow {
+    color: #9791a1;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.student-flow-card {
+    border: 1px solid #e1dde7;
+    border-radius: 18px;
+    background: rgba(246, 246, 249, 0.95);
+    box-shadow: 0 14px 28px rgba(77, 67, 90, 0.08);
+    padding: 22px;
+}
+
+.student-flow-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.student-flow-button {
+    min-height: 46px;
+    border-radius: 999px;
+    border: 0;
+    padding: 0 22px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.student-flow-button.is-secondary {
+    border: 1px solid #c9c4d2;
+    background: #ffffff;
+    color: #4f4957;
+}
+
+.student-flow-button.is-primary {
+    background: linear-gradient(145deg, #c887de 0%, #b364d2 100%);
+    color: #fff;
+}
+
+.student-flow-button.is-primary:disabled {
+    cursor: not-allowed;
+    background: #d8d4df;
+    color: #7f7a89;
+}
+
+@media (max-width: 800px) {
+    .student-flow-view {
+        padding: 16px;
+    }
+
+    .student-flow-logo span {
+        font-size: 16px;
+    }
+
+    .student-flow-logo strong {
+        font-size: 34px;
+    }
+
+    .student-flow-stepper__label {
+        font-size: 14px;
+    }
+}
