@@ -1,0 +1,14 @@
+{% extends 'main/layouts/base_public.html' %}
+
+{% block title %}Cars{% endblock %}
+
+{% block content %}
+<main>
+    <h1>Cars</h1>
+    <ul>
+        {% for item in cars %}
+        <li>{{ item.car }} ({{ item.year }}) - {{ item.price }}</li>
+        {% endfor %}
+    </ul>
+</main>
+{% endblock %}

@@ -1,6 +1,12 @@
 # Plik do definiowania widoków, które są renderowane za pomocą szablonizatora Jinja oraz wyświetlane w przeglądarce
 
-from django.contrib.auth import login, logout, authenticate
+from urllib.parse import urlencode
+
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from django.db import IntegrityError, transaction
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages #to show message back for errors
@@ -15,6 +21,7 @@ SUPPORTED_PREVIEW_COMPONENTS = {
     'subject-select': 'subject-select',
     'school-level-select': 'school-level-select',
 }
+validate_username = UnicodeUsernameValidator()
 
 # Create your views here.
 def _get_safe_next_target(request):
@@ -51,6 +58,7 @@ def _get_home_props(request):
             'home': reverse('home'),
             'login': reverse('login_user'),
             'logout': reverse('logout_user'),
+            'onboarding': reverse('onboarding_account_type'),
             'register': reverse('register_user'),
             'schoolLevelSelectPreview': reverse(
                 'component_preview',
@@ -61,6 +69,8 @@ def _get_home_props(request):
                 kwargs={'component_slug': 'subject-select'},
             ),
         },
+        'onboardingMode': None,
+        'onboardingNextTarget': '',
         'previewComponent': None,
     }
 
@@ -83,6 +93,19 @@ def component_preview(request, component_slug):
         'home_props': {
             **_get_home_props(request),
             'previewComponent': preview_component,
+        },
+    }
+
+    return render(request, 'main/pages/home/index.html', values)
+
+@login_required
+def onboarding_account_type(request):
+    next_target = _get_safe_next_target(request)
+    values = {
+        'home_props': {
+            **_get_home_props(request),
+            'onboardingMode': 'account-type',
+            'onboardingNextTarget': next_target,
         },
     }
 
@@ -172,6 +195,7 @@ def register(request):
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         email = request.POST.get('email', '').strip()
+        normalized_email = User.objects.normalize_email(email).strip().lower()
         password = request.POST.get('password', '')
         password_confirm = request.POST.get('password_confirm', '')
         form_values = {
@@ -193,23 +217,57 @@ def register(request):
                 'next_target': next_target,
             })
 
-        if User.objects.filter(username=username).exists():
+        try:
+            validate_username(username)
+        except ValidationError:
+            messages.error(
+                request,
+                'Nazwa uzytkownika moze zawierac tylko litery, cyfry i znaki @/./+/-/_.',
+            )
+            return render(request, 'main/auth/register.html', {
+                'form_values': form_values,
+                'next_target': next_target,
+            })
+
+        try:
+            validate_email(normalized_email)
+        except ValidationError:
+            messages.error(request, 'Podaj poprawny adres e-mail.')
+            return render(request, 'main/auth/register.html', {
+                'form_values': form_values,
+                'next_target': next_target,
+            })
+
+        if User.objects.filter(username__iexact=username).exists():
             messages.error(request, 'Ta nazwa uzytkownika jest juz zajeta.')
             return render(request, 'main/auth/register.html', {
                 'form_values': form_values,
                 'next_target': next_target,
             })
 
-        if User.objects.filter(email__iexact=email).exists():
+        if User.objects.filter(email__iexact=normalized_email).exists():
             messages.error(request, 'Konto z tym adresem e-mail juz istnieje.')
             return render(request, 'main/auth/register.html', {
                 'form_values': form_values,
                 'next_target': next_target,
             })
 
-        user = User.objects.create_user(username, email, password)
+        try:
+            with transaction.atomic():
+                user = User.objects.create_user(username, normalized_email, password)
+        except IntegrityError:
+            messages.error(request, 'Ta nazwa uzytkownika jest juz zajeta.')
+            return render(request, 'main/auth/register.html', {
+                'form_values': form_values,
+                'next_target': next_target,
+            })
+
         login(request, user)
-        return redirect(next_target or 'home')
+        onboarding_url = reverse('onboarding_account_type')
+        if next_target:
+            onboarding_url = f'{onboarding_url}?{urlencode({"next": next_target})}'
+
+        return redirect(onboarding_url)
 
     return render(request, 'main/auth/register.html', {
         'form_values': form_values,

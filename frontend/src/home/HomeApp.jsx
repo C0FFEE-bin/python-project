@@ -11,6 +11,7 @@ import HeroSection from "./components/HeroSection.jsx";
 import MentorSection from "./components/MentorSection.jsx";
 import OnboardingPreviewPage from "./components/OnboardingPreviewPage.jsx";
 import PortalSection from "./components/PortalSection.jsx";
+import RegistrationOnboardingPage from "./components/RegistrationOnboardingPage.jsx";
 import SearchResultsPage from "./components/SearchResultsPage.jsx";
 import SearchSection from "./components/SearchSection.jsx";
 import TutorProfile from "./components/TutorProfile.jsx";
@@ -65,10 +66,14 @@ export default function HomeApp({
     currentUser = null,
     images = {},
     isAuthenticated = false,
+    onboardingMode = "",
+    onboardingNextTarget = "",
     previewComponent = "",
     urls = {},
 }) {
     const isPreview = Boolean(previewComponent);
+    const isOnboarding = onboardingMode === "account-type";
+    const isStandaloneView = isPreview || isOnboarding;
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const [activeSection, setActiveSection] = useState("home");
@@ -80,7 +85,7 @@ export default function HomeApp({
     );
 
     useEffect(() => {
-        if (isPreview) {
+        if (isStandaloneView) {
             return undefined;
         }
 
@@ -92,10 +97,10 @@ export default function HomeApp({
         window.addEventListener("scroll", updateHeaderState, { passive: true });
 
         return () => window.removeEventListener("scroll", updateHeaderState);
-    }, [isPreview]);
+    }, [isStandaloneView]);
 
     useEffect(() => {
-        if (isPreview) {
+        if (isStandaloneView) {
             return undefined;
         }
 
@@ -105,10 +110,10 @@ export default function HomeApp({
 
         window.addEventListener("popstate", handlePopState);
         return () => window.removeEventListener("popstate", handlePopState);
-    }, [isPreview]);
+    }, [isStandaloneView]);
 
     useEffect(() => {
-        if (isPreview) {
+        if (isStandaloneView) {
             return undefined;
         }
 
@@ -140,10 +145,14 @@ export default function HomeApp({
         sections.forEach((section) => observer.observe(section));
 
         return () => observer.disconnect();
-    }, [isPreview, pageState.mode, selectedTutor]);
+    }, [isStandaloneView, pageState.mode, selectedTutor]);
 
     if (isPreview) {
         return <OnboardingPreviewPage previewComponent={previewComponent} urls={urls} />;
+    }
+
+    if (isOnboarding) {
+        return <RegistrationOnboardingPage nextTarget={onboardingNextTarget} urls={urls} />;
     }
 
     const handleNavClick = (sectionId) => {
