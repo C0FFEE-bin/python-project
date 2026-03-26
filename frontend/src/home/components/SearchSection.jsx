@@ -4,7 +4,6 @@ import {
     defaultSearchDate,
     defaultSearchSelections,
     searchFilterDefinitions,
-    searchResultsSidebarDefinitions,
 } from "../content.js";
 import { formatDateLabelFromIso } from "../utils/dateHelpers.js";
 import joinClasses from "../utils/joinClasses.js";
@@ -19,13 +18,14 @@ const emptySearchResults = {
 };
 
 export default function SearchSection({
+    initialDate = defaultSearchDate,
+    initialFilters = defaultSearchSelections,
     isAuthenticated = false,
+    onSearchSubmit,
     urls = {},
 }) {
-    const [selectedFilters, setSelectedFilters] = useState(() => ({ ...defaultSearchSelections }));
-    const [selectedDate, setSelectedDate] = useState(defaultSearchDate);
-    const [appliedFilters, setAppliedFilters] = useState(() => ({ ...defaultSearchSelections }));
-    const [appliedDate, setAppliedDate] = useState(defaultSearchDate);
+    const [selectedFilters, setSelectedFilters] = useState(() => ({ ...initialFilters }));
+    const [selectedDate, setSelectedDate] = useState(initialDate);
     const [openFilterKey, setOpenFilterKey] = useState(null);
     const [isShowingResults, setIsShowingResults] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
@@ -48,8 +48,8 @@ export default function SearchSection({
     const selectedDateLabel = useMemo(() => formatDateLabelFromIso(selectedDate), [selectedDate]);
     const appliedDateLabel = useMemo(() => formatDateLabelFromIso(appliedDate), [appliedDate]);
 
+    const selectedDateLabel = useMemo(() => formatDateLabelFromIso(selectedDate), [selectedDate]);
     const selectionSummary = `${selectedFilters.subject}, ${selectedFilters.level}, ${selectedDateLabel}, ${selectedFilters.hour}`;
-    const appliedSelectionSummary = `${appliedFilters.subject}, ${appliedFilters.level}, ${appliedDateLabel}, ${appliedFilters.hour}`;
 
     const handleFilterSelect = (filterKey, option) => {
         setSelectedFilters((currentValue) => ({
@@ -125,16 +125,10 @@ export default function SearchSection({
     };
 
     return (
-        <section className={joinClasses("search-section", isShowingResults && "is-results-view")} id="wyszukiwarka">
-            {isShowingResults ? (
-                <>
-                    <Reveal as="div" className="search-results__intro">
-                        <div>
-                            <p className="eyebrow">Wyniki wyszukiwania</p>
-                            <h2>Korepetytorzy dopasowani do Twojego terminu.</h2>
-                        </div>
-                        <p className="search-results__intro-copy">{appliedSelectionSummary}</p>
-                    </Reveal>
+        <section className="search-section" id="wyszukiwarka">
+            <Reveal as="div" className="search-section__copy">
+                <h2>Uzyj filtrow, aby znalezc korepetytora idealnie dopasowanego pod Ciebie.</h2>
+            </Reveal>
 
                     <Reveal as="div" className="search-results__layout">
                         <SearchResultsView
@@ -179,10 +173,12 @@ export default function SearchSection({
                                         ))}
                                     />
                                 ))}
-                            </div>
+                            />
+                        ))}
+                    </div>
 
-                            <SearchCalendar selectedDate={selectedDate} onSelectDate={setSelectedDate} />
-                        </div>
+                    <SearchCalendar selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+                </div>
 
                         <aside className="search-section__actions">
                             <p className="search-section__selection">{selectionSummary}</p>

@@ -1,14 +1,25 @@
 import json
 from datetime import datetime
 
+<<<<<<< HEAD
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
+=======
+from urllib.parse import urlencode
+
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from django.db import IntegrityError, transaction
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.validators import UnicodeUsernameValidator
+>>>>>>> mod
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
 from django.templatetags.static import static
+from django.http import Http404
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt
@@ -30,6 +41,16 @@ AVATAR_TONES = (
 )
 
 
+<<<<<<< HEAD
+=======
+SUPPORTED_PREVIEW_COMPONENTS = {
+    'subject-select': 'subject-select',
+    'school-level-select': 'school-level-select',
+}
+validate_username = UnicodeUsernameValidator()
+
+# Create your views here.
+>>>>>>> mod
 def _get_safe_next_target(request):
     candidate = request.POST.get("next") or request.GET.get("next") or ""
     if candidate and url_has_allowed_host_and_scheme(
@@ -58,6 +79,7 @@ def _get_home_props(request):
             "logo": static("main/img/rent_nerd_logo.png"),
             "mentor": static("main/img/mentor_scene.png"),
         },
+<<<<<<< HEAD
         "isAuthenticated": request.user.is_authenticated,
         "urls": {
             "about": reverse("about"),
@@ -66,7 +88,28 @@ def _get_home_props(request):
             "logout": reverse("logout_user"),
             "register": reverse("register_user"),
             "tutorSearch": reverse("tutor_search"),
+=======
+        'isAuthenticated': request.user.is_authenticated,
+        'urls': {
+            'about': reverse('about'),
+            'home': reverse('home'),
+            'login': reverse('login_user'),
+            'logout': reverse('logout_user'),
+            'onboarding': reverse('onboarding_account_type'),
+            'register': reverse('register_user'),
+            'schoolLevelSelectPreview': reverse(
+                'component_preview',
+                kwargs={'component_slug': 'school-level-select'},
+            ),
+            'subjectSelectPreview': reverse(
+                'component_preview',
+                kwargs={'component_slug': 'subject-select'},
+            ),
+>>>>>>> mod
         },
+        'onboardingMode': None,
+        'onboardingNextTarget': '',
+        'previewComponent': None,
     }
 
 
@@ -184,6 +227,35 @@ def _sort_results_key(item):
 def index(request):
     return render(request, "main/pages/home/index.html", {"home_props": _get_home_props(request)})
 
+
+
+def component_preview(request, component_slug):
+    preview_component = SUPPORTED_PREVIEW_COMPONENTS.get(component_slug)
+
+    if preview_component is None:
+        raise Http404('Unsupported preview component.')
+
+    values = {
+        'home_props': {
+            **_get_home_props(request),
+            'previewComponent': preview_component,
+        },
+    }
+
+    return render(request, 'main/pages/home/index.html', values)
+
+@login_required
+def onboarding_account_type(request):
+    next_target = _get_safe_next_target(request)
+    values = {
+        'home_props': {
+            **_get_home_props(request),
+            'onboardingMode': 'account-type',
+            'onboardingNextTarget': next_target,
+        },
+    }
+
+    return render(request, 'main/pages/home/index.html', values)
 
 @login_required
 def cars(request):
@@ -335,11 +407,20 @@ def register(request):
     if request.user.is_authenticated:
         return redirect(next_target or "home")
 
+<<<<<<< HEAD
     if request.method == "POST":
         username = request.POST.get("username", "").strip()
         email = request.POST.get("email", "").strip()
         password = request.POST.get("password", "")
         password_confirm = request.POST.get("password_confirm", "")
+=======
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        email = request.POST.get('email', '').strip()
+        normalized_email = User.objects.normalize_email(email).strip().lower()
+        password = request.POST.get('password', '')
+        password_confirm = request.POST.get('password_confirm', '')
+>>>>>>> mod
         form_values = {
             "email": email,
             "username": username,
@@ -367,6 +448,7 @@ def register(request):
                 },
             )
 
+<<<<<<< HEAD
         if User.objects.filter(username=username).exists():
             messages.error(request, "Ta nazwa uzytkownika jest juz zajeta.")
             return render(
@@ -391,6 +473,59 @@ def register(request):
 
         # 1. Tworzenie usera systemowego (do logowania)
         user = User.objects.create_user(username, email, password)
+=======
+        try:
+            validate_username(username)
+        except ValidationError:
+            messages.error(
+                request,
+                'Nazwa uzytkownika moze zawierac tylko litery, cyfry i znaki @/./+/-/_.',
+            )
+            return render(request, 'main/auth/register.html', {
+                'form_values': form_values,
+                'next_target': next_target,
+            })
+
+        try:
+            validate_email(normalized_email)
+        except ValidationError:
+            messages.error(request, 'Podaj poprawny adres e-mail.')
+            return render(request, 'main/auth/register.html', {
+                'form_values': form_values,
+                'next_target': next_target,
+            })
+
+        if User.objects.filter(username__iexact=username).exists():
+            messages.error(request, 'Ta nazwa uzytkownika jest juz zajeta.')
+            return render(request, 'main/auth/register.html', {
+                'form_values': form_values,
+                'next_target': next_target,
+            })
+
+        if User.objects.filter(email__iexact=normalized_email).exists():
+            messages.error(request, 'Konto z tym adresem e-mail juz istnieje.')
+            return render(request, 'main/auth/register.html', {
+                'form_values': form_values,
+                'next_target': next_target,
+            })
+
+        try:
+            with transaction.atomic():
+                user = User.objects.create_user(username, normalized_email, password)
+        except IntegrityError:
+            messages.error(request, 'Ta nazwa uzytkownika jest juz zajeta.')
+            return render(request, 'main/auth/register.html', {
+                'form_values': form_values,
+                'next_target': next_target,
+            })
+
+        login(request, user)
+        onboarding_url = reverse('onboarding_account_type')
+        if next_target:
+            onboarding_url = f'{onboarding_url}?{urlencode({"next": next_target})}'
+
+        return redirect(onboarding_url)
+>>>>>>> mod
 
         # 2. Tworzenie usera w Twojej customowej tabeli
         CustomUser.objects.create(

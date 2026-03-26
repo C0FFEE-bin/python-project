@@ -1,0 +1,62 @@
+.student-subject-step h1 {
+    margin: 0;
+    font-size: 40px;
+    font-weight: 800;
+    color: #43414a;
+}
+
+.student-subject-step h2 {
+    margin: 26px 0 0;
+    font-size: 40px;
+    font-weight: 800;
+    color: #43414a;
+}
+
+.student-subject-step__selected,
+.student-subject-step__available {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.student-chip {
+    border: 1px solid #ddd8e4;
+    background: #ffffff;
+    color: #7a7483;
+    min-height: 38px;
+    border-radius: 999px;
+    padding: 0 16px;
+    font-size: 14px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(102, 95, 114, 0.08);
+}
+
+.student-chip.is-selected {
+    border-color: #bf83d3;
+    background: linear-gradient(145deg, #c887de 0%, #b364d2 100%);
+    color: #fff;
+}
+
+.student-chip span {
+    font-weight: 900;
+    opacity: 0.9;
+}
+
+@media (max-width: 980px) {
+    .student-subject-step h1,
+    .student-subject-step h2 {
+        font-size: 30px;
+    }
+}
+
+@media (max-width: 700px) {
+    .student-subject-step h1,
+    .student-subject-step h2 {
+        font-size: 24px;
+    }
+}

@@ -1,11 +1,19 @@
 {
   "src/home/main.jsx": {
+<<<<<<< HEAD
     "file": "assets/home-dG1cx69k.js",
+=======
+    "file": "assets/home-B6kTnqai.js",
+>>>>>>> mod
     "name": "home",
     "src": "src/home/main.jsx",
     "isEntry": true,
     "css": [
+<<<<<<< HEAD
       "assets/home-CIc3ctXd.css"
+=======
+      "assets/home-h12zXqLY.css"
+>>>>>>> mod
     ]
   }
 }

@@ -1,0 +1,96 @@
+.interest-step h1,
+.interest-step h2,
+.interest-step h3 {
+    margin: 0;
+    color: #43414a;
+    font-weight: 800;
+}
+
+.interest-step h1 {
+    font-size: 40px;
+}
+
+.interest-step h2,
+.interest-step h3 {
+    margin-top: 18px;
+    font-size: 40px;
+}
+
+.interest-step__intro {
+    margin: 14px 0 0;
+    display: grid;
+    gap: 3px;
+    color: #4d4a55;
+    font-size: 22px;
+    line-height: 1.2;
+    white-space: pre-line;
+}
+
+.interest-step__intro span {
+    display: block;
+}
+
+.interest-step__selected,
+.interest-step__available {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.interest-chip {
+    border: 1px solid #ddd8e4;
+    background: #ffffff;
+    color: #7a7483;
+    min-height: 38px;
+    border-radius: 999px;
+    padding: 0 16px;
+    font-size: 14px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(102, 95, 114, 0.08);
+}
+
+.interest-chip.is-selected {
+    border-color: #bf83d3;
+    background: linear-gradient(145deg, #c887de 0%, #b364d2 100%);
+    color: #fff;
+}
+
+.interest-chip span {
+    font-weight: 900;
+    opacity: 0.9;
+}
+
+@media (max-width: 980px) {
+    .interest-step h1 {
+        font-size: 32px;
+    }
+
+    .interest-step h2,
+    .interest-step h3 {
+        font-size: 28px;
+    }
+
+    .interest-step__intro {
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 700px) {
+    .interest-step h1 {
+        font-size: 24px;
+    }
+
+    .interest-step h2,
+    .interest-step h3 {
+        font-size: 22px;
+    }
+
+    .interest-step__intro {
+        font-size: 16px;
+    }
+}
