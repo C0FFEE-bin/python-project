@@ -1,10 +1,7 @@
 import json
 import re
-<<<<<<< HEAD
 from datetime import time
-=======
 from urllib.parse import urlencode
->>>>>>> mod
 
 from django.contrib.auth.models import User
 from django.core.management import call_command

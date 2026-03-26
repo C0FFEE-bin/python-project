@@ -6,17 +6,13 @@ const metaIcons = {
     status: "fa-solid fa-circle-check",
 };
 
-<<<<<<< HEAD
-export default function TutorResultCard({ tutor }) {
+export default function TutorResultCard({ onOpenProfile, tutor }) {
     const hasRating = typeof tutor.rating === "number" && tutor.rating > 0;
     const statusBadges = Array.isArray(tutor.statusBadges) ? tutor.statusBadges : [];
     const tags = Array.isArray(tutor.tags) ? tutor.tags : [];
     const avatarTone = tutor.avatarTone || "slate";
-=======
-export default function TutorResultCard({ onOpenProfile, tutor }) {
-    const ratingLabel = typeof tutor.rating === "number" ? `${tutor.rating.toFixed(1)}/5` : "Brak opinii";
+    const opinions = typeof tutor.opinions === "number" ? tutor.opinions : 0;
     const ageLabel = typeof tutor.age === "number" ? `${tutor.age} lat` : "Profil aktywny";
->>>>>>> mod
 
     return (
         <article className="tutor-card">
@@ -27,23 +23,13 @@ export default function TutorResultCard({ onOpenProfile, tutor }) {
             <div className="tutor-card__body">
                 <div className="tutor-card__heading">
                     <h4 className="tutor-card__name">{tutor.name}</h4>
-<<<<<<< HEAD
-                    {typeof tutor.age === "number" ? (
-                        <span className="tutor-card__age">{tutor.age} lat</span>
-                    ) : null}
-=======
                     <span className="tutor-card__age">{ageLabel}</span>
->>>>>>> mod
                 </div>
 
                 <div className="tutor-card__meta">
                     <span className="tutor-card__pill">
                         <i className={metaIcons.rating} aria-hidden="true"></i>
-<<<<<<< HEAD
-                        {hasRating ? `${tutor.rating.toFixed(1)}/5 (${tutor.opinions ?? 0} opinii)` : "Brak opinii"}
-=======
-                        {ratingLabel} ({tutor.opinions} opinii)
->>>>>>> mod
+                        {hasRating ? `${tutor.rating.toFixed(1)}/5 (${opinions} opinii)` : "Brak opinii"}
                     </span>
                     <span className="tutor-card__pill">
                         <i className={metaIcons.experience} aria-hidden="true"></i>
@@ -59,7 +45,9 @@ export default function TutorResultCard({ onOpenProfile, tutor }) {
 
                 <div className="tutor-card__tags">
                     {tags.map((tag) => (
-                        <span key={tag} className="tutor-card__tag">{tag}</span>
+                        <span key={tag} className="tutor-card__tag">
+                            {tag}
+                        </span>
                     ))}
                 </div>
 
