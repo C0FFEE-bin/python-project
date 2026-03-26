@@ -37,7 +37,10 @@ export default function HomeHeader({
                             key={link.id}
                             className={joinClasses("top-nav__link", activeSection === link.id && "is-active")}
                             href={`#${link.id}`}
-                            onClick={() => onNavClick(link.id)}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                onNavClick(link.id);
+                            }}
                         >
                             {link.label}
                         </a>

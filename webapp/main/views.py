@@ -39,6 +39,48 @@ SUPPORTED_PREVIEW_COMPONENTS = {
     "school-level-select": "school-level-select",
 }
 validate_username = UnicodeUsernameValidator()
+
+
+def _validate_registration_data(username, normalized_email, password, password_confirm=None):
+    if not username or not normalized_email or not password:
+        return "Uzupelnij wszystkie pola formularza."
+
+    if password_confirm is not None and password != password_confirm:
+        return "Hasla musza byc takie same."
+
+    try:
+        validate_username(username)
+    except ValidationError:
+        return "Nazwa uzytkownika moze zawierac tylko litery, cyfry i znaki @/./+/-/_."
+
+    try:
+        validate_email(normalized_email)
+    except ValidationError:
+        return "Podaj poprawny adres e-mail."
+
+    if User.objects.filter(username__iexact=username).exists():
+        return "Ta nazwa uzytkownika jest juz zajeta."
+
+    if (
+            User.objects.filter(email__iexact=normalized_email).exists()
+            or CustomUser.objects.filter(email__iexact=normalized_email).exists()
+    ):
+        return "Konto z tym adresem e-mail juz istnieje."
+
+    return None
+
+
+def _create_auth_and_custom_user(username, normalized_email, password):
+    with transaction.atomic():
+        user = User.objects.create_user(username, normalized_email, password)
+        CustomUser.objects.create(
+            imie=username,
+            nazwisko="",
+            email=normalized_email,
+            haslo=password,
+        )
+
+    return user
 def _get_safe_next_target(request):
     candidate = request.POST.get("next") or request.GET.get("next") or ""
     if candidate and url_has_allowed_host_and_scheme(
@@ -396,35 +438,14 @@ def register(request):
             "username": username,
         }
 
-        if not username or not email or not password or not password_confirm:
-            messages.error(request, "Uzupelnij wszystkie pola formularza.")
-            return render(
-                request,
-                "main/auth/register.html",
-                {
-                    "form_values": form_values,
-                    "next_target": next_target,
-                },
-            )
-
-        if password != password_confirm:
-            messages.error(request, "Hasla musza byc takie same.")
-            return render(
-                request,
-                "main/auth/register.html",
-                {
-                    "form_values": form_values,
-                    "next_target": next_target,
-                },
-            )
-
-        try:
-            validate_username(username)
-        except ValidationError:
-            messages.error(
-                request,
-                "Nazwa uzytkownika moze zawierac tylko litery, cyfry i znaki @/./+/-/_.",
-            )
+        validation_error = _validate_registration_data(
+            username=username,
+            normalized_email=normalized_email,
+            password=password,
+            password_confirm=password_confirm,
+        )
+        if validation_error:
+            messages.error(request, validation_error)
             return render(
                 request,
                 "main/auth/register.html",
@@ -435,54 +456,13 @@ def register(request):
             )
 
         try:
-            validate_email(normalized_email)
-        except ValidationError:
-            messages.error(request, "Podaj poprawny adres e-mail.")
-            return render(
-                request,
-                "main/auth/register.html",
-                {
-                    "form_values": form_values,
-                    "next_target": next_target,
-                },
+            user = _create_auth_and_custom_user(
+                username=username,
+                normalized_email=normalized_email,
+                password=password,
             )
-
-        if User.objects.filter(username__iexact=username).exists():
-            messages.error(request, "Ta nazwa uzytkownika jest juz zajeta.")
-            return render(
-                request,
-                "main/auth/register.html",
-                {
-                    "form_values": form_values,
-                    "next_target": next_target,
-                },
-            )
-
-        if (
-                User.objects.filter(email__iexact=normalized_email).exists()
-                or CustomUser.objects.filter(email__iexact=normalized_email).exists()
-        ):
-            messages.error(request, "Konto z tym adresem e-mail juz istnieje.")
-            return render(
-                request,
-                "main/auth/register.html",
-                {
-                    "form_values": form_values,
-                    "next_target": next_target,
-                },
-            )
-
-        try:
-            with transaction.atomic():
-                user = User.objects.create_user(username, normalized_email, password)
-                CustomUser.objects.create(
-                    imie=username,
-                    nazwisko="",
-                    email=normalized_email,
-                    haslo=password,
-                )
         except IntegrityError:
-            messages.error(request, "Ta nazwa uzytkownika jest juz zajeta.")
+            messages.error(request, "Nie udalo sie utworzyc konta. Sprobuj ponownie.")
             return render(
                 request,
                 "main/auth/register.html",
@@ -517,44 +497,42 @@ def logout_user(request):
 # === ENDPOINTY DO REACTA ===
 @csrf_exempt
 def api_register(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             data = json.loads(request.body)
-            username = data.get('username')
-            password = data.get('password')
-            email = data.get('email')
+            username = (data.get("username") or "").strip()
+            password = data.get("password") or ""
+            email = (data.get("email") or "").strip()
+            normalized_email = User.objects.normalize_email(email).strip().lower()
 
-            if not username or not password or not email:
-                return JsonResponse({'error': 'Wypełnij wszystkie pola'}, status=400)
+            validation_error = _validate_registration_data(
+                username=username,
+                normalized_email=normalized_email,
+                password=password,
+            )
+            if validation_error:
+                return JsonResponse({"error": validation_error}, status=400)
 
-            if User.objects.filter(username=username).exists():
-                return JsonResponse({'error': 'Taki użytkownik już istnieje'}, status=400)
-
-            if CustomUser.objects.filter(email__iexact=email).exists():
-                return JsonResponse({'error': 'Adres e-mail jest już zajęty'}, status=400)
-
-            # 1. Tworzenie usera systemowego
-            user = User.objects.create_user(username=username, email=email, password=password)
-
-            # 2. Tworzenie usera w Twojej customowej tabeli
-            CustomUser.objects.create(
-                imie=username,
-                nazwisko="",
-                email=email,
-                haslo=password
+            user = _create_auth_and_custom_user(
+                username=username,
+                normalized_email=normalized_email,
+                password=password,
             )
 
             login(request, user)
 
             return JsonResponse({
-                'message': 'Zarejestrowano pomyślnie',
-                'user': {'username': user.username, 'email': user.email}
+                "message": "Zarejestrowano pomyslnie",
+                "user": {"username": user.username, "email": user.email},
             })
+        except IntegrityError:
+            return JsonResponse({"error": "Nie udalo sie utworzyc konta. Sprobuj ponownie."}, status=400)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Niepoprawne dane JSON."}, status=400)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+            return JsonResponse({"error": str(e)}, status=400)
 
-    return JsonResponse({'error': 'Zła metoda'}, status=405)
-
+    return JsonResponse({"error": "Zla metoda"}, status=405)
 
 def api_current_user(request):
     if request.user.is_authenticated:
@@ -564,3 +542,4 @@ def api_current_user(request):
             'email': request.user.email,
         })
     return JsonResponse({'is_logged_in': False}, status=401)
+

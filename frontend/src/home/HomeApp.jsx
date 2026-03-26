@@ -18,6 +18,7 @@ import TutorProfile from "./components/TutorProfile.jsx";
 
 function getSearchParamsState() {
     const searchParams = new URLSearchParams(window.location.search);
+    const viewMode = searchParams.get("view");
 
     return {
         date: searchParams.get("date") || defaultSearchDate,
@@ -27,7 +28,7 @@ function getSearchParamsState() {
             level: searchParams.get("level") || defaultSearchSelections.level,
             hour: searchParams.get("hour") || defaultSearchSelections.hour,
         },
-        mode: searchParams.get("view") === "results" ? "results" : "landing",
+        mode: viewMode === "results" ? "results" : viewMode === "portal" ? "portal" : "landing",
         tutorId: searchParams.get("tutor") || "",
     };
 }
@@ -52,11 +53,21 @@ function updateLocationState({ date, filters, mode, tutorId = "" }) {
         nextUrl.searchParams.set("date", date);
     }
 
+    if (mode === "portal" && !tutorId) {
+        nextUrl.searchParams.set("view", "portal");
+    }
+
     if (tutorId) {
         nextUrl.searchParams.set("tutor", tutorId);
     }
 
-    const hash = tutorId ? "#tutor-profile" : mode === "results" ? "#search-results-page" : "";
+    const hash = tutorId
+        ? "#tutor-profile"
+        : mode === "results"
+            ? "#search-results-page"
+            : mode === "portal"
+                ? "#portal"
+                : "";
 
     window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${hash}`);
 }
@@ -117,6 +128,11 @@ export default function HomeApp({
             return undefined;
         }
 
+        if (pageState.mode === "portal") {
+            setActiveSection("portal");
+            return undefined;
+        }
+
         if (pageState.mode === "results" || selectedTutor) {
             setActiveSection("wyszukiwarka");
             return undefined;
@@ -156,22 +172,37 @@ export default function HomeApp({
     }
 
     const handleNavClick = (sectionId) => {
+        if (sectionId === "portal") {
+            const nextState = {
+                date: pageState.date,
+                filters: { ...pageState.filters },
+                mode: "portal",
+                tutorId: "",
+            };
+
+            updateLocationState(nextState);
+            setPageState(nextState);
+            setActiveSection("portal");
+            setIsMenuOpen(false);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            return;
+        }
+
         if (pageState.mode !== "landing" || pageState.tutorId) {
-            updateLocationState({
-                date: defaultSearchDate,
-                filters: defaultSearchSelections,
+            const nextState = {
+                date: pageState.date,
+                filters: { ...pageState.filters },
                 mode: "landing",
                 tutorId: "",
-            });
-            setPageState({
-                date: defaultSearchDate,
-                filters: { ...defaultSearchSelections },
-                mode: "landing",
-                tutorId: "",
-            });
+            };
+
+            updateLocationState(nextState);
+            setPageState(nextState);
             requestAnimationFrame(() => {
                 document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
             });
+        } else {
+            document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
         }
 
         setActiveSection(sectionId);
@@ -276,7 +307,6 @@ export default function HomeApp({
                 {!selectedTutor && pageState.mode === "landing" ? (
                     <>
                         <HeroSection aboutUrl={urls.about} heroImageSrc={images.hero} />
-                        <PortalSection />
                         <SearchSection
                             initialDate={pageState.date}
                             initialFilters={pageState.filters}
@@ -287,6 +317,8 @@ export default function HomeApp({
                         <MentorSection mentorImageSrc={images.mentor} registerUrl={urls.register} />
                     </>
                 ) : null}
+
+                {!selectedTutor && pageState.mode === "portal" ? <PortalSection /> : null}
             </main>
         </div>
     );
