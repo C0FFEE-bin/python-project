@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import SchoolLevelSelect from "./SchoolLevelSelect.jsx";
-import SubjectSelect from "./SubjectSelect.jsx";
+import SchoolLevelSelect from "../components/SchoolLevelSelect.jsx";
+import SubjectSelect from "../components/SubjectSelect.jsx";
 
 const PREVIEW_LABELS = {
     "school-level-select": "SchoolLevelSelect.jsx",

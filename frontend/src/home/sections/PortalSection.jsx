@@ -1,4 +1,4 @@
-import Reveal from "./Reveal.jsx";
+import Reveal from "../components/Reveal.jsx";
 
 const SIDEBAR_SECTIONS = [
     {

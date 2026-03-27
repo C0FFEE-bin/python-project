@@ -1,6 +1,6 @@
 import { navLinks } from "../content.js";
 import joinClasses from "../utils/joinClasses.js";
-import AuthAction from "./AuthAction.jsx";
+import AuthAction from "../components/AuthAction.jsx";
 
 export default function HomeHeader({
     activeSection,

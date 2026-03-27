@@ -6,9 +6,9 @@ import {
     searchFilterDefinitions,
 } from "../content.js";
 import { formatDateLabelFromIso } from "../utils/dateHelpers.js";
-import Reveal from "./Reveal.jsx";
-import SearchCalendar from "./SearchCalendar.jsx";
-import SearchFilterSelect from "./SearchFilterSelect.jsx";
+import Reveal from "../components/Reveal.jsx";
+import SearchCalendar from "../components/SearchCalendar.jsx";
+import SearchFilterSelect from "../components/SearchFilterSelect.jsx";
 
 export default function SearchSection({
     initialDate = defaultSearchDate,

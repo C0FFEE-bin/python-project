@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 
 import { saveTutorOnboardingProfile } from "../api.js";
-import AccountTypeSelect from "./AccountTypeSelect.jsx";
-import InterestSelect from "./InterestSelect.jsx";
-import SchoolLevelSelect from "./SchoolLevelSelect.jsx";
-import StudentProfileIntroStep from "./StudentProfileIntroStep.jsx";
-import SubjectSelect from "./SubjectSelect.jsx";
-import TutorProfileSetup from "./TutorProfileSetup.jsx";
+import AccountTypeSelect from "../components/AccountTypeSelect.jsx";
+import InterestSelect from "../components/InterestSelect.jsx";
+import SchoolLevelSelect from "../components/SchoolLevelSelect.jsx";
+import StudentProfileIntroStep from "../components/StudentProfileIntroStep.jsx";
+import SubjectSelect from "../components/SubjectSelect.jsx";
+import TutorProfileSetup from "../components/TutorProfileSetup.jsx";
 
 function redirectToTarget(url) {
     if (url) {

@@ -6,7 +6,7 @@ import {
     searchResultsSidebarDefinitions,
 } from "../content.js";
 import { fetchTutorSearchResults } from "../api.js";
-import SearchResultsView from "./SearchResultsView.jsx";
+import SearchResultsView from "../components/SearchResultsView.jsx";
 import { formatDateLabelFromIso } from "../utils/dateHelpers.js";
 
 export default function SearchResultsPage({

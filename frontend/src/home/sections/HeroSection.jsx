@@ -1,5 +1,5 @@
 import { metrics } from "../content.js";
-import Reveal from "./Reveal.jsx";
+import Reveal from "../components/Reveal.jsx";
 
 export default function HeroSection({ aboutUrl, heroImageSrc }) {
     return (

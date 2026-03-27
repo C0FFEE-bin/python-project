@@ -6,15 +6,15 @@ import {
     navLinks,
 } from "./content.js";
 import { fetchTutorProfile } from "./api.js";
-import HomeHeader from "./components/HomeHeader.jsx";
-import HeroSection from "./components/HeroSection.jsx";
-import MentorSection from "./components/MentorSection.jsx";
-import OnboardingPreviewPage from "./components/OnboardingPreviewPage.jsx";
-import PortalSection from "./components/PortalSection.jsx";
-import RegistrationOnboardingPage from "./components/RegistrationOnboardingPage.jsx";
-import SearchResultsPage from "./components/SearchResultsPage.jsx";
-import SearchSection from "./components/SearchSection.jsx";
-import TutorProfile from "./components/TutorProfile.jsx";
+import HomeHeader from "./sections/HomeHeader.jsx";
+import HeroSection from "./sections/HeroSection.jsx";
+import MentorSection from "./sections/MentorSection.jsx";
+import OnboardingPreviewPage from "./sections/OnboardingPreviewPage.jsx";
+import PortalSection from "./sections/PortalSection.jsx";
+import RegistrationOnboardingPage from "./sections/RegistrationOnboardingPage.jsx";
+import SearchResultsPage from "./sections/SearchResultsPage.jsx";
+import SearchSection from "./sections/SearchSection.jsx";
+import TutorProfile from "./sections/TutorProfile.jsx";
 
 function getSearchParamsState() {
     const searchParams = new URLSearchParams(window.location.search);

@@ -1,4 +1,4 @@
-import Reveal from "./Reveal.jsx";
+import Reveal from "../components/Reveal.jsx";
 
 export default function MentorSection({ mentorImageSrc, registerUrl }) {
     return (
