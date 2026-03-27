@@ -39,6 +39,12 @@ class Tutor(models.Model):
     stawka_godzinowa = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     przedmioty = models.ManyToManyField(Przedmiot, related_name="tutorzy", db_table="tutor_przedmiot")
     rating = models.FloatField(blank=True, null=True, default=0)
+    slug = models.SlugField(max_length=120, unique=True, blank=True, null=True)
+    avatar_tone = models.CharField(max_length=30, blank=True, null=True, default="slate")
+    wiek = models.PositiveIntegerField(blank=True, null=True)
+    followers_count = models.PositiveIntegerField(default=0)
+    experience_label = models.CharField(max_length=120, blank=True, null=True)
+    status_badges = models.JSONField(blank=True, default=list)
 
     class Meta:
         db_table = "tutor"
@@ -51,6 +57,7 @@ class Dostepnosc(models.Model):
     dzien_tygodnia = models.IntegerField()
     godzina_od = models.TimeField()
     godzina_do = models.TimeField()
+    data = models.DateField(blank=True, null=True)
 
     class Meta:
         db_table = "dostepnosc"

@@ -4,11 +4,24 @@ import StudentOnboardingFrame from "./StudentOnboardingFrame.jsx";
 import "./TutorProfileSetup.css";
 
 const STEPS = ["Wybierz typ konta", "Twoj profil", "Poznaj RENT A NERD"];
-const DAYS = ["02.03", "03.03", "04.03", "05.03", "06.03", "07.03", "08.03"];
+const DAYS = [
+    { label: "02.03", weekday: 0 },
+    { label: "03.03", weekday: 1 },
+    { label: "04.03", weekday: 2 },
+    { label: "05.03", weekday: 3 },
+    { label: "06.03", weekday: 4 },
+    { label: "07.03", weekday: 5 },
+    { label: "08.03", weekday: 6 },
+];
 const TIME_SLOTS = ["16:00", "18:00"];
+const SLOT_STATUSES = {
+    neutral: "neutral",
+    available: "available",
+    unavailable: "unavailable",
+};
 
 function buildInitialSchedule() {
-    return TIME_SLOTS.map(() => DAYS.map(() => false));
+    return TIME_SLOTS.map(() => DAYS.map(() => SLOT_STATUSES.neutral));
 }
 
 function useObjectUrl(file) {
@@ -51,6 +64,9 @@ export default function TutorProfileSetup({
     const [interests, setInterests] = useState(() => [...initialInterests]);
     const [subjects, setSubjects] = useState(() => [...initialSubjects]);
     const [schedule, setSchedule] = useState(() => buildInitialSchedule());
+    const [selectedAvailability, setSelectedAvailability] = useState(SLOT_STATUSES.available);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState("");
 
     useEffect(() => {
         if (!Array.isArray(initialSubjects)) {
@@ -68,33 +84,66 @@ export default function TutorProfileSetup({
         setInterests([...initialInterests]);
     }, [initialInterests]);
 
-    const canSubmit = useMemo(() => fullName.trim().length > 2, [fullName]);
+    const hasAvailableSlot = useMemo(
+        () => schedule.some((row) => row.some((slot) => slot === SLOT_STATUSES.available)),
+        [schedule],
+    );
+    const canSubmit = useMemo(
+        () => fullName.trim().length > 2 && hasAvailableSlot,
+        [fullName, hasAvailableSlot],
+    );
 
-    const toggleSlot = (rowIndex, dayIndex) => {
+    const paintSlot = (rowIndex, dayIndex) => {
         setSchedule((prev) =>
             prev.map((row, currentRow) =>
                 currentRow === rowIndex
-                    ? row.map((value, currentDay) => (currentDay === dayIndex ? !value : value))
+                    ? row.map((value, currentDay) => {
+                        if (currentDay !== dayIndex) {
+                            return value;
+                        }
+
+                        return value === selectedAvailability
+                            ? SLOT_STATUSES.neutral
+                            : selectedAvailability;
+                    })
                     : row,
             ),
         );
     };
 
-    const handleComplete = () => {
+    const handleComplete = async () => {
         if (!canSubmit) {
             return;
         }
 
-        onComplete?.({
-            about,
-            avatarFile,
-            bannerFile,
-            fullName,
-            interests,
-            schedule,
-            schoolLevel: initialLevel,
-            subjects,
-        });
+        setIsSubmitting(true);
+        setSubmitError("");
+
+        try {
+            await onComplete?.({
+                about,
+                avatarFile,
+                bannerFile,
+                fullName,
+                interests,
+                schedule: {
+                    days: DAYS.map((day) => ({
+                        label: day.label,
+                        weekday: day.weekday,
+                    })),
+                    rows: TIME_SLOTS.map((slot, rowIndex) => ({
+                        timeLabel: slot,
+                        slots: [...schedule[rowIndex]],
+                    })),
+                },
+                schoolLevel: initialLevel,
+                subjects,
+            });
+        } catch (error) {
+            setSubmitError(error?.message || "Nie udalo sie zapisac profilu tutora.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleBannerFileChange = (event) => {
@@ -218,33 +267,33 @@ export default function TutorProfileSetup({
                 <section className="tutor-profile-card">
                     <p className="tutor-profile-label">Harmonogram</p>
 
-                    <div className="tutor-profile-schedule-wrap">
-                        <table>
+                    <div className="tutor-profile-schedule-grid-wrap">
+                        <table className="tutor-profile-schedule-grid">
                             <thead>
                                 <tr>
-                                    <th>Godz./Data</th>
+                                    <th className="tutor-profile-schedule-grid__axis">Godz./Data</th>
                                     {DAYS.map((day) => (
-                                        <th key={day}>{day}</th>
+                                        <th key={day.label} className="tutor-profile-schedule-grid__day">{day.label}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 {TIME_SLOTS.map((slot, rowIndex) => (
                                     <tr key={slot}>
-                                        <td>{slot}</td>
+                                        <td className="tutor-profile-schedule-grid__time">{slot}</td>
                                         {DAYS.map((day, dayIndex) => {
-                                            const isActive = schedule[rowIndex][dayIndex];
+                                            const slotStatus = schedule[rowIndex][dayIndex];
 
                                             return (
-                                                <td key={`${slot}-${day}`}>
+                                                <td key={`${slot}-${day.label}`}>
                                                     <button
                                                         type="button"
-                                                        onClick={() => toggleSlot(rowIndex, dayIndex)}
+                                                        onClick={() => paintSlot(rowIndex, dayIndex)}
                                                         className={[
-                                                            "tutor-profile-slot",
-                                                            isActive ? "is-active" : "",
+                                                            "tutor-profile-schedule-grid__slot",
+                                                            `is-${slotStatus}`,
                                                         ].join(" ")}
-                                                        aria-label={`Zmien dostepnosc ${slot} ${day}`}
+                                                        aria-label={`Zmien dostepnosc ${slot} ${day.label}`}
                                                     />
                                                 </td>
                                             );
@@ -257,9 +306,29 @@ export default function TutorProfileSetup({
 
                     <p className="tutor-profile-help">Zaznacz slot kliknij w kafelek i wybierz opcje.</p>
 
-                    <div className="tutor-profile-legend">
-                        <span className="tutor-profile-legend-item is-available">Dostepny</span>
-                        <span className="tutor-profile-legend-item is-unavailable">Niedostepny</span>
+                    <div className="tutor-profile-paint-tools">
+                        <button
+                            type="button"
+                            onClick={() => setSelectedAvailability(SLOT_STATUSES.available)}
+                            className={[
+                                "tutor-profile-paint-button",
+                                "is-available",
+                                selectedAvailability === SLOT_STATUSES.available ? "is-selected" : "",
+                            ].join(" ")}
+                        >
+                            Dostepny
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedAvailability(SLOT_STATUSES.unavailable)}
+                            className={[
+                                "tutor-profile-paint-button",
+                                "is-unavailable",
+                                selectedAvailability === SLOT_STATUSES.unavailable ? "is-selected" : "",
+                            ].join(" ")}
+                        >
+                            Niedostepny
+                        </button>
                     </div>
                 </section>
 
@@ -274,12 +343,16 @@ export default function TutorProfileSetup({
                     <button
                         type="button"
                         onClick={handleComplete}
-                        disabled={!canSubmit}
+                        disabled={!canSubmit || isSubmitting}
                         className="student-flow-button is-primary"
                     >
-                        Zakoncz
+                        {isSubmitting ? "Zapisywanie..." : "Zakoncz"}
                     </button>
                 </div>
+
+                {submitError ? (
+                    <p className="tutor-profile-submit-error" role="alert">{submitError}</p>
+                ) : null}
             </div>
         </StudentOnboardingFrame>
     );

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import { saveTutorOnboardingProfile } from "../api.js";
 import AccountTypeSelect from "./AccountTypeSelect.jsx";
 import InterestSelect from "./InterestSelect.jsx";
 import SchoolLevelSelect from "./SchoolLevelSelect.jsx";
@@ -53,7 +54,7 @@ function createInitialTutorData() {
     };
 }
 
-export default function RegistrationOnboardingPage({ nextTarget = "", urls = {} }) {
+export default function RegistrationOnboardingPage({ csrfToken = "", nextTarget = "", urls = {} }) {
     const [accountType, setAccountType] = useState("");
     const [studentStep, setStudentStep] = useState(STUDENT_STEPS.profileIntro);
     const [studentData, setStudentData] = useState(() => createInitialStudentData());
@@ -61,6 +62,8 @@ export default function RegistrationOnboardingPage({ nextTarget = "", urls = {} 
     const [tutorData, setTutorData] = useState(() => createInitialTutorData());
 
     const completionTarget = useMemo(() => nextTarget || urls.home || "/", [nextTarget, urls.home]);
+    const tutorOnboardingSaveUrl = urls.tutorOnboardingSave ?? "/api/tutor-onboarding/profile";
+    const databaseErrorUrl = urls.databaseError ?? "/database-error";
 
     const resetStudentFlow = () => {
         setStudentStep(STUDENT_STEPS.profileIntro);
@@ -281,7 +284,16 @@ export default function RegistrationOnboardingPage({ nextTarget = "", urls = {} 
                     bannerFile: file,
                 }));
             }}
-            onComplete={() => redirectToTarget(completionTarget)}
+            onComplete={async (payload) => {
+                const { avatarFile, bannerFile, ...persistedPayload } = payload;
+                await saveTutorOnboardingProfile({
+                    payload: persistedPayload,
+                    saveUrl: tutorOnboardingSaveUrl,
+                    csrfToken,
+                    databaseErrorUrl,
+                });
+                redirectToTarget(completionTarget);
+            }}
         />
     );
 }

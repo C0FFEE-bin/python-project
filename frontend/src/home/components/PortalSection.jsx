@@ -25,7 +25,7 @@ const SIDEBAR_SECTIONS = [
 const PORTAL_POSTS = [
     {
         author: "Tomasz Kowalski",
-        avatarSrc: "/static/main/img/hero_tutor.png",
+        avatarSrc: "/static/main/img/profile1.png",
         dateLabel: "01.09.2024 o 15:13",
         followers: "1,021",
         lines: [
@@ -42,7 +42,7 @@ const PORTAL_POSTS = [
     },
     {
         author: "Sebastian Enrique Alvarez",
-        avatarSrc: "/static/main/img/mentor_scene.png",
+        avatarSrc: "/static/main/img/profile2.png",
         dateLabel: "01.09.2024 o 19:15",
         followers: "311",
         lines: [

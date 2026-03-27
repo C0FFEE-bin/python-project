@@ -157,58 +157,73 @@
     outline: none;
 }
 
-.tutor-profile-schedule-wrap {
+.tutor-profile-schedule-grid-wrap {
     margin-top: 8px;
     overflow-x: auto;
 }
 
-.tutor-profile-schedule-wrap table {
+.tutor-profile-schedule-grid {
     width: 100%;
-    min-width: 620px;
+    min-width: 820px;
     border-collapse: separate;
-    border-spacing: 6px;
+    border-spacing: 8px 8px;
 }
 
-.tutor-profile-schedule-wrap th,
-.tutor-profile-schedule-wrap td {
+.tutor-profile-schedule-grid th,
+.tutor-profile-schedule-grid td {
     text-align: center;
     font-size: 12px;
 }
 
-.tutor-profile-schedule-wrap th {
-    min-width: 54px;
-    border-radius: 6px;
-    background: #5a5a61;
-    color: #fff;
-    font-weight: 700;
-    padding: 6px 8px;
+.tutor-profile-schedule-grid__axis,
+.tutor-profile-schedule-grid__day {
+    border-radius: 8px;
+    background: #64656f;
+    color: #f6f6fa;
+    font-weight: 800;
+    min-width: 74px;
+    padding: 8px 10px;
 }
 
-.tutor-profile-schedule-wrap td:first-child {
-    border-radius: 6px;
-    background: #6a6a72;
-    color: #fff;
-    font-weight: 700;
-    padding: 6px 8px;
+.tutor-profile-schedule-grid__axis {
+    min-width: 138px;
 }
 
-.tutor-profile-slot {
+.tutor-profile-schedule-grid__time {
+    border-radius: 8px;
+    background: #73747e;
+    color: #f6f6fa;
+    font-weight: 800;
+    padding: 8px 10px;
+}
+
+.tutor-profile-schedule-grid__slot {
     width: 100%;
-    min-width: 54px;
-    min-height: 24px;
-    border: 0;
+    min-width: 72px;
+    min-height: 34px;
+    border: 2px solid transparent;
     border-radius: 999px;
-    background: #ceced2;
-    cursor: pointer;
-    transition: background 0.15s ease;
-}
-
-.tutor-profile-slot:hover {
     background: #bdbdc3;
+    cursor: pointer;
+    transition: transform 0.14s ease, filter 0.14s ease, background-color 0.14s ease, border-color 0.14s ease;
 }
 
-.tutor-profile-slot.is-active {
-    background: #7d7f84;
+.tutor-profile-schedule-grid__slot:hover {
+    transform: translateY(-1px);
+}
+
+.tutor-profile-schedule-grid__slot.is-neutral {
+    background: #b9b9bf;
+}
+
+.tutor-profile-schedule-grid__slot.is-available {
+    background: #57a45e;
+    border-color: #4f9556;
+}
+
+.tutor-profile-schedule-grid__slot.is-unavailable {
+    background: #a85353;
+    border-color: #954848;
 }
 
 .tutor-profile-help {
@@ -217,29 +232,47 @@
     font-size: 11px;
 }
 
-.tutor-profile-legend {
+.tutor-profile-paint-tools {
     margin-top: 8px;
     display: flex;
     gap: 8px;
 }
 
-.tutor-profile-legend-item {
-    min-height: 24px;
-    padding: 0 12px;
+.tutor-profile-paint-button {
+    border: 0;
+    min-height: 34px;
+    padding: 0 16px;
     border-radius: 999px;
     display: inline-flex;
     align-items: center;
     color: #fff;
     font-size: 11px;
     font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.tutor-profile-legend-item.is-available {
+.tutor-profile-paint-button:hover {
+    transform: translateY(-1px);
+}
+
+.tutor-profile-paint-button.is-available {
     background: #57a45e;
 }
 
-.tutor-profile-legend-item.is-unavailable {
+.tutor-profile-paint-button.is-unavailable {
     background: #a85353;
+}
+
+.tutor-profile-paint-button.is-selected {
+    box-shadow: 0 0 0 2px rgba(39, 39, 46, 0.28);
+}
+
+.tutor-profile-submit-error {
+    margin: 0;
+    color: #a85353;
+    font-size: 13px;
+    font-weight: 700;
 }
 
 @media (max-width: 980px) {
@@ -261,5 +294,9 @@
 
     .tutor-profile-name-row input {
         font-size: 17px;
+    }
+
+    .tutor-profile-schedule-grid {
+        min-width: 720px;
     }
 }

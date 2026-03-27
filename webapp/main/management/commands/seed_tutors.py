@@ -1,177 +1,174 @@
 from datetime import datetime
 from decimal import Decimal
 
+from django.contrib.auth.models import User as AuthUser
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from main.models import Dostepnosc, Przedmiot, Tutor, User
+from main.models import Dostepnosc, Opinia, Przedmiot, Tutor, User
 
-SECONDARY_SCHOOL_LEVEL = "Szkola srednia"
+DEFAULT_PASSWORD = "Tutor123!"
+DEFAULT_RATE = Decimal("95.00")
 
 SEED_TUTORS = [
     {
-        "imie": "Lukasz",
-        "nazwisko": "Gamon",
-        "email": "lukasz.gamon@example.com",
-        "opis": "Prowadzi zajecia z matematyki i fizyki dla liceum oraz technikum.",
-        "stawka_godzinowa": "110.00",
+        "id": "lukasz-gamon",
+        "avatarTone": "violet",
+        "name": "Lukasz Gamon",
+        "age": 21,
         "rating": 4.5,
-        "subjects": [
-            ("Matematyka", "Algebra", SECONDARY_SCHOOL_LEVEL),
-            ("Fizyka", "Mechanika", SECONDARY_SCHOOL_LEVEL),
-            ("Matematyka", "Matura", SECONDARY_SCHOOL_LEVEL),
-        ],
-        "availability": [
-            (2, "18:00", "19:00"),
-            (2, "19:00", "20:00"),
-            (4, "19:00", "20:00"),
-        ],
+        "opinions": 56,
+        "experience": "2 lata doswiadczenia",
+        "statusBadges": ["sprawny kontakt", "wolne terminy"],
+        "subjects": ["Matematyka", "Fizyka", "Informatyka"],
+        "topics": ["Algebra", "Mechanika", "Matura"],
+        "levels": ["Szkola srednia"],
+        "hours": ["18:00-19:00", "19:00-20:00"],
+        "availableDates": ["2026-03-11", "2026-03-13"],
     },
     {
-        "imie": "Aleksandra",
-        "nazwisko": "Gawron",
-        "email": "aleksandra.gawron@example.com",
-        "opis": "Pomaga w matematyce i fizyce, szczegolnie przy powtorkach przed sprawdzianami.",
-        "stawka_godzinowa": "125.00",
+        "id": "aleksandra-gawron",
+        "avatarTone": "stone",
+        "name": "Aleksandra Gawron",
+        "age": 38,
         "rating": 5.0,
-        "subjects": [
-            ("Matematyka", "Algebra", SECONDARY_SCHOOL_LEVEL),
-            ("Fizyka", "Powtorka", "Podstawowka"),
-        ],
-        "availability": [
-            (2, "19:00", "20:00"),
-            (3, "19:00", "20:00"),
-        ],
+        "opinions": 6,
+        "experience": "pol roku doswiadczenia",
+        "statusBadges": ["sprawny kontakt", "wolne terminy"],
+        "subjects": ["Matematyka", "Fizyka"],
+        "topics": ["Algebra", "Powtorka"],
+        "levels": ["Szkola srednia", "Podstawowka"],
+        "hours": ["19:00-20:00"],
+        "availableDates": ["2026-03-11", "2026-03-12"],
     },
     {
-        "imie": "Sebastian",
-        "nazwisko": "Kowalski",
-        "email": "sebastian.kowalski@example.com",
-        "opis": "Przygotowuje do matury z matematyki i prowadzi konsultacje dla uczniow liceum.",
-        "stawka_godzinowa": "135.00",
+        "id": "sebastian-kowalski",
+        "avatarTone": "gold",
+        "name": "Sebastian Kowalski",
+        "age": 31,
         "rating": 4.8,
-        "subjects": [
-            ("Matematyka", "Algebra", SECONDARY_SCHOOL_LEVEL),
-            ("Matematyka", "Matura", "Studia"),
-        ],
-        "availability": [
-            (2, "19:00", "20:00"),
-            (2, "20:00", "21:00"),
-        ],
+        "opinions": 32,
+        "experience": "6 lat doswiadczenia",
+        "statusBadges": ["sprawny kontakt", "wolne terminy", "nauczyciel"],
+        "subjects": ["Matematyka", "Fizyka"],
+        "topics": ["Algebra", "Matura"],
+        "levels": ["Szkola srednia", "Studia"],
+        "hours": ["19:00-20:00", "20:00-21:00"],
+        "availableDates": ["2026-03-11", "2026-03-14"],
     },
     {
-        "imie": "Tomasz",
-        "nazwisko": "Swiety",
-        "email": "tomasz.swiety@example.com",
-        "opis": "Prowadzi spokojne lekcje dla mlodszych uczniow i przygotowuje do matury podstawowej.",
-        "stawka_godzinowa": "90.00",
+        "id": "tomasz-swiety",
+        "avatarTone": "slate",
+        "name": "Tomasz Swiety",
+        "age": 51,
         "rating": 4.7,
-        "subjects": [
-            ("Matematyka", "Powtorka", "Podstawowka"),
-            ("Matematyka", "Matura", SECONDARY_SCHOOL_LEVEL),
-        ],
-        "availability": [
-            (2, "17:00", "18:00"),
-            (2, "18:00", "19:00"),
-            (3, "18:00", "19:00"),
-        ],
+        "opinions": 103,
+        "experience": "2 lata doswiadczenia",
+        "statusBadges": ["sprawny kontakt", "nauczyciel"],
+        "subjects": ["Matematyka"],
+        "topics": ["Matura", "Powtorka"],
+        "levels": ["Podstawowka", "Szkola srednia"],
+        "hours": ["17:00-18:00", "18:00-19:00"],
+        "availableDates": ["2026-03-11", "2026-03-12"],
     },
     {
-        "imie": "Julia",
-        "nazwisko": "Serwan",
-        "email": "julia.serwan@example.com",
-        "opis": "Lacze matematyke z fizyka i dobrze odnajduje sie w pracy z uczniami technikum.",
-        "stawka_godzinowa": "85.00",
+        "id": "julia-serwan",
+        "avatarTone": "rose",
+        "name": "Julia Serwan",
+        "age": 22,
         "rating": 5.0,
-        "subjects": [
-            ("Matematyka", "Algebra", SECONDARY_SCHOOL_LEVEL),
-            ("Fizyka", "Powtorka", SECONDARY_SCHOOL_LEVEL),
-        ],
-        "availability": [
-            (2, "18:00", "19:00"),
-            (6, "20:00", "21:00"),
-        ],
+        "opinions": 5,
+        "experience": "nowy korepetytor",
+        "statusBadges": ["sprawny kontakt", "wolne terminy"],
+        "subjects": ["Matematyka", "Fizyka"],
+        "topics": ["Algebra", "Powtorka"],
+        "levels": ["Szkola srednia"],
+        "hours": ["18:00-19:00", "20:00-21:00"],
+        "availableDates": ["2026-03-11", "2026-03-15"],
     },
     {
-        "imie": "Natalia",
-        "nazwisko": "Pawlak",
-        "email": "natalia.pawlak@example.com",
-        "opis": "Prowadzi zajecia z matematyki dla studentow oraz przygotowanie do matury z chemii.",
-        "stawka_godzinowa": "115.00",
+        "id": "natalia-pawlak",
+        "avatarTone": "mint",
+        "name": "Natalia Pawlak",
+        "age": 29,
         "rating": 4.9,
-        "subjects": [
-            ("Matematyka", "Algebra", "Studia"),
-            ("Chemia", "Matura", SECONDARY_SCHOOL_LEVEL),
-        ],
-        "availability": [
-            (5, "19:00", "20:00"),
-            (6, "19:00", "20:00"),
-        ],
+        "opinions": 18,
+        "experience": "4 lata doswiadczenia",
+        "statusBadges": ["sprawny kontakt", "wolne terminy"],
+        "subjects": ["Matematyka", "Chemia"],
+        "topics": ["Algebra", "Matura"],
+        "levels": ["Szkola srednia", "Studia"],
+        "hours": ["19:00-20:00"],
+        "availableDates": ["2026-03-14", "2026-03-15"],
     },
     {
-        "imie": "Jakub",
-        "nazwisko": "Morek",
-        "email": "jakub.morek@example.com",
-        "opis": "Pracuje glownie z technikum, pomagajac uporzadkowac algebraiczne podstawy i zadania praktyczne.",
-        "stawka_godzinowa": "105.00",
+        "id": "jakub-morek",
+        "avatarTone": "ocean",
+        "name": "Jakub Morek",
+        "age": 26,
         "rating": 4.7,
-        "subjects": [
-            ("Matematyka", "Algebra", SECONDARY_SCHOOL_LEVEL),
-            ("Matematyka", "Powtorka", SECONDARY_SCHOOL_LEVEL),
-        ],
-        "availability": [
-            (2, "20:00", "21:00"),
-            (0, "20:00", "21:00"),
-        ],
+        "opinions": 41,
+        "experience": "3 lata doswiadczenia",
+        "statusBadges": ["sprawny kontakt", "wolne terminy"],
+        "subjects": ["Matematyka", "Informatyka"],
+        "topics": ["Algebra", "Powtorka"],
+        "levels": ["Szkola srednia"],
+        "hours": ["20:00-21:00"],
+        "availableDates": ["2026-03-11", "2026-03-16"],
     },
     {
-        "imie": "Klaudia",
-        "nazwisko": "Nowak",
-        "email": "klaudia.nowak@example.com",
-        "opis": "Pomaga w chemii i biologii, szczegolnie przy maturze i zajeciach na poziomie studenckim.",
-        "stawka_godzinowa": "130.00",
+        "id": "klaudia-nowak",
+        "avatarTone": "coral",
+        "name": "Klaudia Nowak",
+        "age": 33,
         "rating": 4.9,
-        "subjects": [
-            ("Chemia", "Matura", SECONDARY_SCHOOL_LEVEL),
-            ("Biologia", "Powtorka", "Studia"),
-        ],
-        "availability": [
-            (2, "19:00", "20:00"),
-            (4, "19:00", "20:00"),
-        ],
+        "opinions": 24,
+        "experience": "5 lat doswiadczenia",
+        "statusBadges": ["sprawny kontakt", "wolne terminy"],
+        "subjects": ["Chemia", "Biologia"],
+        "topics": ["Matura", "Powtorka"],
+        "levels": ["Szkola srednia", "Studia"],
+        "hours": ["19:00-20:00"],
+        "availableDates": ["2026-03-11", "2026-03-13"],
     },
     {
-        "imie": "Oskar",
-        "nazwisko": "Madej",
-        "email": "oskar.madej@example.com",
-        "opis": "Specjalizuje sie w fizyce, od mechaniki po zajecia rozszerzone dla studentow.",
-        "stawka_godzinowa": "120.00",
+        "id": "oskar-madej",
+        "avatarTone": "indigo",
+        "name": "Oskar Madej",
+        "age": 27,
         "rating": 4.8,
-        "subjects": [
-            ("Fizyka", "Mechanika", SECONDARY_SCHOOL_LEVEL),
-            ("Fizyka", "Algebra", "Studia"),
-        ],
-        "availability": [
-            (2, "19:00", "20:00"),
-            (3, "20:00", "21:00"),
-        ],
+        "opinions": 27,
+        "experience": "4 lata doswiadczenia",
+        "statusBadges": ["sprawny kontakt", "wolne terminy", "nauczyciel"],
+        "subjects": ["Fizyka", "Informatyka"],
+        "topics": ["Mechanika", "Algebra"],
+        "levels": ["Szkola srednia", "Studia"],
+        "hours": ["19:00-20:00", "20:00-21:00"],
+        "availableDates": ["2026-03-11", "2026-03-12"],
     },
     {
-        "imie": "Monika",
-        "nazwisko": "Zielinska",
-        "email": "monika.zielinska@example.com",
-        "opis": "Prowadzi biologiczne i chemiczne powtorki przed kartkowkami, egzaminami i kolokwiami.",
-        "stawka_godzinowa": "140.00",
+        "id": "monika-zielinska",
+        "avatarTone": "forest",
+        "name": "Monika Zielinska",
+        "age": 35,
         "rating": 4.9,
-        "subjects": [
-            ("Biologia", "Matura", SECONDARY_SCHOOL_LEVEL),
-            ("Chemia", "Powtorka", "Studia"),
-        ],
-        "availability": [
-            (2, "18:00", "19:00"),
-            (3, "19:00", "20:00"),
-        ],
+        "opinions": 42,
+        "experience": "7 lat doswiadczenia",
+        "statusBadges": ["sprawny kontakt", "wolne terminy"],
+        "subjects": ["Biologia", "Chemia"],
+        "topics": ["Matura", "Powtorka"],
+        "levels": ["Szkola srednia", "Studia"],
+        "hours": ["18:00-19:00", "19:00-20:00"],
+        "availableDates": ["2026-03-11", "2026-03-14"],
     },
+]
+
+REVIEW_MESSAGES = [
+    "Zajecia byly bardzo konkretne i dobrze przygotowane.",
+    "Duza cierpliwosc i dobry kontakt, polecam.",
+    "Tempo bylo dopasowane do mnie, widac efekty.",
+    "Swietne tlumaczenie krok po kroku.",
+    "Bardzo pomocne spotkania przed sprawdzianem.",
 ]
 
 
@@ -179,87 +176,174 @@ def _parse_time(value):
     return datetime.strptime(value, "%H:%M").time()
 
 
-def _get_subject(subject_name, topic_name, level_name):
-    subject = Przedmiot.objects.filter(
-        nazwa=subject_name,
-        temat=topic_name,
-        poziom=level_name,
-    ).first()
+def _parse_date(value):
+    return datetime.strptime(value, "%Y-%m-%d").date()
 
-    if subject is None:
-        subject = Przedmiot.objects.create(
-            nazwa=subject_name,
-            temat=topic_name,
-            poziom=level_name,
+
+def _split_name(full_name):
+    parts = full_name.split(" ", 1)
+    first_name = parts[0]
+    last_name = parts[1] if len(parts) > 1 else ""
+    return first_name, last_name
+
+
+def _tutor_email(seed_id):
+    return f"{seed_id}@rentnerd.local"
+
+
+def _rate_for_index(index):
+    return DEFAULT_RATE + Decimal(index * 4)
+
+
+def _build_opis(tutor_data):
+    subjects_label = ", ".join(tutor_data["subjects"]).lower()
+    levels_label = ", ".join(tutor_data["levels"]).lower()
+    return (
+        f"Prowadzi zajecia z {subjects_label}. "
+        f"Wspiera uczniow na poziomie {levels_label} i stawia na praktyczne tlumaczenie."
+    )
+
+
+def _subject_combinations(tutor_data):
+    combinations = set()
+    for subject in tutor_data["subjects"]:
+        for topic in tutor_data["topics"]:
+            for level in tutor_data["levels"]:
+                combinations.add((subject, topic, level))
+    return sorted(combinations)
+
+
+def _ensure_auth_user(seed_id, first_name, last_name, email):
+    auth_user, created = AuthUser.objects.get_or_create(
+        username=seed_id,
+        defaults={
+            "email": email,
+            "first_name": first_name,
+            "last_name": last_name,
+        },
+    )
+
+    auth_user.email = email
+    auth_user.first_name = first_name
+    auth_user.last_name = last_name
+    auth_user.set_password(DEFAULT_PASSWORD)
+    auth_user.save()
+    return created
+
+
+def _ensure_reviewer_users():
+    reviewers = []
+    for index in range(1, 6):
+        email = f"reviewer{index}@rentnerd.local"
+        reviewer, _ = User.objects.update_or_create(
+            email=email,
+            defaults={
+                "imie": f"Recenzent{index}",
+                "nazwisko": "Seed",
+                "haslo": "reviewer-seed-password",
+                "typ": "uczen",
+            },
         )
-
-    return subject
+        reviewers.append(reviewer)
+    return reviewers
 
 
 class Command(BaseCommand):
-    help = "Uzupelnia lokalna baze przykladowymi tutorami zgodnymi z wyszukiwarka."
+    help = "Dodaje tutorow seedowych z kontami, profilami i grafikami pobieranymi z bazy."
 
     @transaction.atomic
     def handle(self, *args, **options):
-        Przedmiot.objects.filter(poziom__in=["Liceum", "Technikum"]).update(
-            poziom=SECONDARY_SCHOOL_LEVEL
-        )
-
-        created_users = 0
+        reviewers = _ensure_reviewer_users()
+        created_auth_users = 0
+        created_custom_users = 0
         created_tutors = 0
-        created_subjects = 0
-        availability_slots = 0
+        created_subject_links = 0
+        created_slots = 0
+        created_opinions = 0
 
-        for tutor_data in SEED_TUTORS:
-            user, user_created = User.objects.update_or_create(
-                email=tutor_data["email"],
+        for index, tutor_data in enumerate(SEED_TUTORS, start=1):
+            first_name, last_name = _split_name(tutor_data["name"])
+            email = _tutor_email(tutor_data["id"])
+
+            if _ensure_auth_user(tutor_data["id"], first_name, last_name, email):
+                created_auth_users += 1
+
+            custom_user, custom_user_created = User.objects.update_or_create(
+                email=email,
                 defaults={
-                    "imie": tutor_data["imie"],
-                    "nazwisko": tutor_data["nazwisko"],
-                    "haslo": "seed-demo-password",
+                    "imie": first_name,
+                    "nazwisko": last_name,
+                    "haslo": DEFAULT_PASSWORD,
                     "typ": "tutor",
                 },
             )
-            if user_created:
-                created_users += 1
+            if custom_user_created:
+                created_custom_users += 1
 
             tutor, tutor_created = Tutor.objects.update_or_create(
-                uzytkownik=user,
+                uzytkownik=custom_user,
                 defaults={
-                    "opis": tutor_data["opis"],
-                    "stawka_godzinowa": Decimal(tutor_data["stawka_godzinowa"]),
+                    "slug": tutor_data["id"],
+                    "opis": _build_opis(tutor_data),
+                    "stawka_godzinowa": _rate_for_index(index),
                     "rating": tutor_data["rating"],
+                    "avatar_tone": tutor_data["avatarTone"],
+                    "wiek": tutor_data["age"],
+                    "followers_count": max(120, tutor_data["opinions"] * 18 + 95),
+                    "experience_label": tutor_data["experience"],
+                    "status_badges": tutor_data["statusBadges"],
                 },
             )
             if tutor_created:
                 created_tutors += 1
 
             subject_objects = []
-            for subject_name, topic_name, level_name in tutor_data["subjects"]:
-                subject = _get_subject(subject_name, topic_name, level_name)
-                if subject.tutorzy.count() == 0:
-                    created_subjects += 1
+            for subject_name, topic_name, level_name in _subject_combinations(tutor_data):
+                subject, _ = Przedmiot.objects.get_or_create(
+                    nazwa=subject_name,
+                    temat=topic_name,
+                    poziom=level_name,
+                )
                 subject_objects.append(subject)
 
             tutor.przedmioty.set(subject_objects)
+            created_subject_links += len(subject_objects)
 
             tutor.dostepnosci.all().delete()
-            for weekday, hour_from, hour_to in tutor_data["availability"]:
-                Dostepnosc.objects.create(
+            for date_label in tutor_data["availableDates"]:
+                date_value = _parse_date(date_label)
+                weekday = date_value.weekday()
+                for hour_range in tutor_data["hours"]:
+                    hour_from, hour_to = hour_range.split("-", 1)
+                    Dostepnosc.objects.create(
+                        tutor=tutor,
+                        dzien_tygodnia=weekday,
+                        godzina_od=_parse_time(hour_from),
+                        godzina_do=_parse_time(hour_to),
+                        data=date_value,
+                    )
+                    created_slots += 1
+
+            tutor.opinie_dla.all().delete()
+            for opinion_index in range(tutor_data["opinions"]):
+                reviewer = reviewers[opinion_index % len(reviewers)]
+                Opinia.objects.create(
+                    autor=reviewer,
                     tutor=tutor,
-                    dzien_tygodnia=weekday,
-                    godzina_od=_parse_time(hour_from),
-                    godzina_do=_parse_time(hour_to),
+                    rating=tutor_data["rating"],
+                    tresc=REVIEW_MESSAGES[opinion_index % len(REVIEW_MESSAGES)],
                 )
-                availability_slots += 1
+                created_opinions += 1
 
         self.stdout.write(
             self.style.SUCCESS(
-                "Zaseedowano tutorow: "
+                "Zaseedowano tutorow z bazy: "
                 f"{len(SEED_TUTORS)} profil(i), "
-                f"{created_users} nowych uzytkownikow, "
-                f"{created_tutors} nowych tutorow, "
-                f"{created_subjects} nowych przedmiotow, "
-                f"{availability_slots} slotow dostepnosci."
+                f"{created_auth_users} nowych kont auth, "
+                f"{created_custom_users} nowych kont custom, "
+                f"{created_tutors} nowych profilow tutorow, "
+                f"{created_subject_links} podpiecia przedmiotow, "
+                f"{created_slots} slotow dostepnosci i "
+                f"{created_opinions} opinii."
             )
         )

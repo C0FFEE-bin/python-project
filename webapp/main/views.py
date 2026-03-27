@@ -1,5 +1,6 @@
 import json
-from datetime import datetime
+import logging
+from datetime import date, datetime, timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -10,6 +11,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
+from django.db.models import Count
 from django.http import Http404, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
@@ -19,7 +21,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt
 
 # Importujemy Twój customowy model User pod aliasem, żeby nie nadpisał domyślnego User z Django
-from .models import Tutor, User as CustomUser
+from .models import Dostepnosc, Przedmiot, Tutor, User as CustomUser
 
 AVATAR_TONES = (
     "violet",
@@ -38,7 +40,17 @@ SUPPORTED_PREVIEW_COMPONENTS = {
     "subject-select": "subject-select",
     "school-level-select": "school-level-select",
 }
+SCHEDULE_TIME_RANGES = (
+    ("18:00", "19:00"),
+    ("19:00", "20:00"),
+    ("20:00", "21:00"),
+    ("21:00", "22:00"),
+    ("22:00", "23:00"),
+)
+DEFAULT_REVIEW_TEXT = "Profil zostal dodany do bazy i jest gotowy na pierwsze opinie."
+DEFAULT_REVIEW_AUTHOR = "Rent Nerd"
 validate_username = UnicodeUsernameValidator()
+logger = logging.getLogger(__name__)
 
 
 def _validate_registration_data(username, normalized_email, password, password_confirm=None):
@@ -117,6 +129,7 @@ def _get_home_props(request):
             "logout": reverse("logout_user"),
             "onboarding": reverse("onboarding_account_type"),
             "register": reverse("register_user"),
+            "databaseError": reverse("database_error_page"),
             "schoolLevelSelectPreview": reverse(
                 "component_preview",
                 kwargs={"component_slug": "school-level-select"},
@@ -125,6 +138,8 @@ def _get_home_props(request):
                 "component_preview",
                 kwargs={"component_slug": "subject-select"},
             ),
+            "tutorOnboardingSave": reverse("tutor_onboarding_save"),
+            "tutorProfileBase": reverse("tutor_profile_base"),
             "tutorSearch": reverse("tutor_search"),
         },
         "onboardingMode": None,
@@ -155,9 +170,31 @@ def _parse_hour_range(value):
     return (start_time, end_time)
 
 
+def _split_full_name(full_name, fallback_username):
+    cleaned_name = (full_name or "").strip()
+    if not cleaned_name:
+        return (fallback_username or "", "")
+
+    parts = cleaned_name.split(" ", 1)
+    first_name = parts[0].strip()
+    last_name = parts[1].strip() if len(parts) > 1 else ""
+    return (first_name, last_name)
+
+
+def _parse_time_label(value):
+    try:
+        start_time = datetime.strptime(value, "%H:%M").time()
+    except ValueError:
+        return (None, None)
+
+    end_time = (
+        datetime.combine(date.today(), start_time) + timedelta(hours=1)
+    ).time()
+    return (start_time, end_time)
+
+
 def _get_weekday_candidates(selected_date):
-    weekday = selected_date.weekday()
-    return {weekday, weekday + 1}
+    return {selected_date.weekday()}
 
 
 def _build_initials(first_name, last_name):
@@ -182,13 +219,10 @@ def _serialize_tutor_result(tutor, filters, selected_date, start_time, end_time)
     if not subject_matches:
         return None
 
-    has_topic = any((przedmiot.temat or "") == filters["topic"] for przedmiot in subject_matches)
-    has_level = any((przedmiot.poziom or "") == filters["level"] for przedmiot in subject_matches)
+    has_topic = any((przedmiot.temat or "") == filters["topic"] for przedmiot in przedmioty)
+    has_level = any((przedmiot.poziom or "") == filters["level"] for przedmiot in przedmioty)
 
-    weekday_candidates = _get_weekday_candidates(selected_date)
-    matching_day_slots = [
-        slot for slot in tutor.dostepnosci.all() if slot.dzien_tygodnia in weekday_candidates
-    ]
+    matching_day_slots = _get_matching_slots_for_date(tutor, selected_date)
     has_date = bool(matching_day_slots)
     has_hour = any(
         slot.godzina_od == start_time and slot.godzina_do == end_time
@@ -207,35 +241,235 @@ def _serialize_tutor_result(tutor, filters, selected_date, start_time, end_time)
     if matching_day_slots:
         score += 1
 
-    first_name = (tutor.uzytkownik.imie or "").strip()
-    last_name = (tutor.uzytkownik.nazwisko or "").strip()
-    display_name = " ".join(part for part in (first_name, last_name) if part) or tutor.uzytkownik.email
-    hourly_rate = (
-        f"Stawka {tutor.stawka_godzinowa:.2f} zl/h"
-        if tutor.stawka_godzinowa is not None
-        else "Profil gotowy do kontaktu"
-    )
-    status_badges = []
-    if has_hour:
-        status_badges.append("wolne terminy")
-    elif has_date:
-        status_badges.append("dostepny tego dnia")
-
-    rating = float(tutor.rating) if tutor.rating is not None else None
+    display_name = _build_display_name(tutor)
+    experience_label = _build_experience_label(tutor)
+    status_badges = _build_status_badges(tutor, has_date=has_date, has_hour=has_hour)
+    rating = float(tutor.rating) if tutor.rating is not None else 0.0
+    opinions_count = getattr(tutor, "opinions_count", None)
+    if opinions_count is None:
+        opinions_count = tutor.opinie_dla.count()
 
     return {
         "id": tutor.pk,
         "name": display_name,
-        "initials": _build_initials(first_name, last_name),
-        "avatarTone": AVATAR_TONES[tutor.pk % len(AVATAR_TONES)],
-        "age": None,
+        "initials": _build_initials(tutor.uzytkownik.imie, tutor.uzytkownik.nazwisko),
+        "avatarTone": tutor.avatar_tone or AVATAR_TONES[tutor.pk % len(AVATAR_TONES)],
+        "age": tutor.wiek,
         "rating": rating,
-        "opinions": 0,
-        "experience": hourly_rate,
+        "opinions": opinions_count,
+        "experience": experience_label,
         "statusBadges": status_badges,
         "tags": _build_tags(przedmioty),
         "score": score,
         "isExactMatch": has_level and has_hour and has_date,
+    }
+
+
+def _get_matching_slots_for_date(tutor, selected_date):
+    weekday_candidates = _get_weekday_candidates(selected_date)
+    matching_slots = []
+
+    for slot in tutor.dostepnosci.all():
+        if slot.data is not None:
+            if slot.data == selected_date:
+                matching_slots.append(slot)
+            continue
+
+        if slot.dzien_tygodnia in weekday_candidates:
+            matching_slots.append(slot)
+
+    return matching_slots
+
+
+def _build_display_name(tutor):
+    first_name = (tutor.uzytkownik.imie or "").strip()
+    last_name = (tutor.uzytkownik.nazwisko or "").strip()
+    return " ".join(part for part in (first_name, last_name) if part) or tutor.uzytkownik.email
+
+
+def _build_experience_label(tutor):
+    if tutor.experience_label:
+        return tutor.experience_label
+
+    if tutor.stawka_godzinowa is not None:
+        return f"Stawka {tutor.stawka_godzinowa:.2f} zl/h"
+
+    return "Profil gotowy do kontaktu"
+
+
+def _build_status_badges(tutor, has_date=False, has_hour=False):
+    status_badges = list(tutor.status_badges or [])
+    if status_badges:
+        return status_badges[:4]
+
+    if has_hour:
+        return ["wolne terminy"]
+
+    if has_date:
+        return ["dostepny tego dnia"]
+
+    return ["sprawny kontakt"]
+
+
+def _build_about_paragraphs(tutor, przedmioty):
+    subjects = []
+    levels = []
+
+    for przedmiot in przedmioty:
+        if przedmiot.nazwa and przedmiot.nazwa not in subjects:
+            subjects.append(przedmiot.nazwa)
+        if przedmiot.poziom and przedmiot.poziom not in levels:
+            levels.append(przedmiot.poziom)
+
+    first_name = (tutor.uzytkownik.imie or "Tutor").strip()
+    subjects_label = ", ".join(subjects).lower() if subjects else "wybranych przedmiotow"
+    levels_label = ", ".join(levels).lower() if levels else "roznych poziomach"
+    lead_subject = subjects[0].lower() if subjects else "materialu szkolnego"
+
+    return [
+        f"{first_name} prowadzi zajecia z {subjects_label} i wspiera uczniow na poziomie {levels_label}.",
+        "Podczas spotkan stawia na spokojne tlumaczenie krok po kroku, jasne przyklady i tempo dopasowane do ucznia.",
+        f"Jesli potrzebujesz wsparcia z {lead_subject}, profil jest przygotowany pod szybki kontakt i regularna wspolprace.",
+    ]
+
+
+def _build_schedule_days(slots, selected_date):
+    explicit_dates = sorted({slot.data for slot in slots if slot.data is not None})
+    if explicit_dates:
+        days = explicit_dates[:7]
+        base_date = explicit_dates[0]
+        day_offset = 0
+
+        while len(days) < 7:
+            next_date = base_date + timedelta(days=day_offset)
+            if next_date not in days:
+                days.append(next_date)
+            day_offset += 1
+
+        return days
+
+    base_date = selected_date or date.today()
+    return [base_date + timedelta(days=offset) for offset in range(7)]
+
+
+def _build_tutor_schedule(tutor, selected_date):
+    slots = list(tutor.dostepnosci.all())
+    days = _build_schedule_days(slots, selected_date)
+    highlighted_day = days[1] if len(days) > 1 else (days[0] if days else None)
+    time_ranges = [
+        (
+            datetime.strptime(start_label, "%H:%M").time(),
+            datetime.strptime(end_label, "%H:%M").time(),
+            start_label,
+        )
+        for start_label, end_label in SCHEDULE_TIME_RANGES
+    ]
+
+    day_has_any_slot = {}
+    for day in days:
+        has_any_slot = False
+        for slot in slots:
+            slot_matches_day = (
+                slot.data == day
+                if slot.data is not None
+                else slot.dzien_tygodnia == day.weekday()
+            )
+            if slot_matches_day:
+                has_any_slot = True
+                break
+        day_has_any_slot[day] = has_any_slot
+
+    rows = []
+    for start_time, end_time, start_label in time_ranges:
+        row_slots = []
+
+        for day in days:
+            has_slot = any(
+                (
+                    slot.data == day
+                    if slot.data is not None
+                    else slot.dzien_tygodnia == day.weekday()
+                )
+                and slot.godzina_od == start_time
+                and slot.godzina_do == end_time
+                for slot in slots
+            )
+
+            if has_slot:
+                slot_status = "highlighted" if day == highlighted_day else "available"
+            elif not day_has_any_slot.get(day, False):
+                slot_status = "blocked"
+            else:
+                slot_status = "unavailable"
+
+            row_slots.append(slot_status)
+
+        rows.append(
+            {
+                "timeLabel": start_label,
+                "slots": row_slots,
+            }
+        )
+
+    return {
+        "days": [
+            {
+                "iso": day.isoformat(),
+                "label": day.strftime("%d.%m"),
+            }
+            for day in days
+        ],
+        "rows": rows,
+    }
+
+
+def _build_review_payload(tutor, rating):
+    latest_review = tutor.opinie_dla.order_by("-data_dodania").first()
+
+    if latest_review is None:
+        return {
+            "author": DEFAULT_REVIEW_AUTHOR,
+            "dateLabel": date.today().strftime("%d.%m.%Y"),
+            "rating": rating,
+            "content": DEFAULT_REVIEW_TEXT,
+        }
+
+    author_name = " ".join(
+        part for part in ((latest_review.autor.imie or "").strip(), (latest_review.autor.nazwisko or "").strip()) if part
+    ) or DEFAULT_REVIEW_AUTHOR
+
+    return {
+        "author": author_name,
+        "dateLabel": latest_review.data_dodania.strftime("%d.%m.%Y"),
+        "rating": float(latest_review.rating) if latest_review.rating is not None else rating,
+        "content": latest_review.tresc or DEFAULT_REVIEW_TEXT,
+    }
+
+
+def _serialize_tutor_profile(tutor, selected_date):
+    przedmioty = list(tutor.przedmioty.all())
+    rating = float(tutor.rating) if tutor.rating is not None else 0.0
+    opinions_count = getattr(tutor, "opinions_count", None)
+    if opinions_count is None:
+        opinions_count = tutor.opinie_dla.count()
+
+    followers_count = tutor.followers_count or max(120, opinions_count * 18 + 95)
+
+    return {
+        "id": tutor.pk,
+        "name": _build_display_name(tutor),
+        "initials": _build_initials(tutor.uzytkownik.imie, tutor.uzytkownik.nazwisko),
+        "avatarTone": tutor.avatar_tone or AVATAR_TONES[tutor.pk % len(AVATAR_TONES)],
+        "age": tutor.wiek,
+        "rating": rating,
+        "opinions": opinions_count,
+        "experience": _build_experience_label(tutor),
+        "followersCount": followers_count,
+        "statusBadges": _build_status_badges(tutor),
+        "tags": _build_tags(przedmioty),
+        "aboutParagraphs": _build_about_paragraphs(tutor, przedmioty),
+        "review": _build_review_payload(tutor, rating),
+        "schedule": _build_tutor_schedule(tutor, selected_date),
     }
 
 
@@ -319,6 +553,10 @@ def about(request):
     return render(request, "main/pages/about/index.html")
 
 
+def database_error_page(request):
+    return render(request, "main/errors/database_error.html", status=500)
+
+
 def tutor_search(request):
     filters = {
         "subject": request.GET.get("subject", "").strip(),
@@ -352,6 +590,7 @@ def tutor_search(request):
         Tutor.objects.filter(przedmioty__nazwa=filters["subject"])
         .select_related("uzytkownik")
         .prefetch_related("przedmioty", "dostepnosci")
+        .annotate(opinions_count=Count("opinie_dla", distinct=True))
         .distinct()
     )
 
@@ -381,6 +620,31 @@ def tutor_search(request):
             "suggestedTutors": suggested_tutors,
         }
     )
+
+
+def tutor_profile_base(request):
+    return JsonResponse(
+        {
+            "detail": "Uzyj endpointu /api/tutor-profile/<id> aby pobrac dane tutora.",
+        }
+    )
+
+
+def tutor_profile(request, tutor_id):
+    selected_date = _parse_iso_date((request.GET.get("date") or "").strip()) or date.today()
+
+    tutor = (
+        Tutor.objects.filter(pk=tutor_id)
+        .select_related("uzytkownik")
+        .prefetch_related("przedmioty", "dostepnosci", "opinie_dla__autor")
+        .annotate(opinions_count=Count("opinie_dla", distinct=True))
+        .first()
+    )
+
+    if tutor is None:
+        return JsonResponse({"detail": "Nie znaleziono tutora."}, status=404)
+
+    return JsonResponse(_serialize_tutor_profile(tutor, selected_date))
 
 
 def login_user(request):
@@ -461,16 +725,9 @@ def register(request):
                 normalized_email=normalized_email,
                 password=password,
             )
-        except IntegrityError:
-            messages.error(request, "Nie udalo sie utworzyc konta. Sprobuj ponownie.")
-            return render(
-                request,
-                "main/auth/register.html",
-                {
-                    "form_values": form_values,
-                    "next_target": next_target,
-                },
-            )
+        except IntegrityError as exc:
+            logger.exception("Database integrity error during register view: %s", exc)
+            raise
 
         login(request, user)
         onboarding_url = reverse("onboarding_account_type")
@@ -495,6 +752,133 @@ def logout_user(request):
 
 
 # === ENDPOINTY DO REACTA ===
+@login_required
+def tutor_onboarding_save(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Zla metoda"}, status=405)
+
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Niepoprawne dane JSON."}, status=400)
+
+    full_name = (payload.get("fullName") or "").strip()
+    about = (payload.get("about") or "").strip()
+    subjects = payload.get("subjects")
+    school_level = (payload.get("schoolLevel") or "").strip() or None
+    schedule_payload = payload.get("schedule") or {}
+    schedule_days = schedule_payload.get("days") or []
+    schedule_rows = schedule_payload.get("rows") or []
+
+    if len(full_name) < 3:
+        return JsonResponse({"error": "Podaj imie i nazwisko."}, status=400)
+
+    if not isinstance(subjects, list) or not subjects:
+        return JsonResponse({"error": "Wybierz przynajmniej jeden przedmiot."}, status=400)
+
+    if not isinstance(schedule_days, list) or not isinstance(schedule_rows, list):
+        return JsonResponse({"error": "Niepoprawny format harmonogramu."}, status=400)
+
+    normalized_subjects = [
+        str(subject).strip()
+        for subject in subjects
+        if str(subject).strip()
+    ]
+    if not normalized_subjects:
+        return JsonResponse({"error": "Wybierz przynajmniej jeden przedmiot."}, status=400)
+
+    first_name, last_name = _split_full_name(full_name, request.user.get_username())
+
+    try:
+        with transaction.atomic():
+            auth_user = request.user
+            auth_user.first_name = first_name
+            auth_user.last_name = last_name
+            auth_user.save(update_fields=["first_name", "last_name"])
+
+            custom_user, _ = CustomUser.objects.get_or_create(
+                email=auth_user.email,
+                defaults={
+                    "imie": first_name or auth_user.get_username(),
+                    "nazwisko": last_name,
+                    "haslo": "",
+                    "typ": "tutor",
+                },
+            )
+            custom_user.imie = first_name or auth_user.get_username()
+            custom_user.nazwisko = last_name
+            custom_user.typ = "tutor"
+            custom_user.save(update_fields=["imie", "nazwisko", "typ"])
+
+            tutor, _ = Tutor.objects.get_or_create(uzytkownik=custom_user)
+            tutor.opis = about
+            if not tutor.status_badges:
+                tutor.status_badges = ["sprawny kontakt"]
+            if not tutor.experience_label:
+                tutor.experience_label = "Nowy korepetytor"
+            tutor.save(update_fields=["opis", "status_badges", "experience_label"])
+
+            tutor_subjects = []
+            for subject_name in normalized_subjects:
+                subject_obj, _ = Przedmiot.objects.get_or_create(
+                    nazwa=subject_name,
+                    temat="Powtorka",
+                    poziom=school_level,
+                )
+                tutor_subjects.append(subject_obj)
+            tutor.przedmioty.set(tutor_subjects)
+
+            tutor.dostepnosci.all().delete()
+            available_slots = 0
+            for row in schedule_rows:
+                time_label = (row.get("timeLabel") or "").strip()
+                row_slots = row.get("slots") or []
+                if not isinstance(row_slots, list):
+                    continue
+
+                start_time, end_time = _parse_time_label(time_label)
+                if start_time is None or end_time is None:
+                    continue
+
+                for day_index, slot_status in enumerate(row_slots):
+                    if day_index >= len(schedule_days):
+                        continue
+
+                    if slot_status != "available":
+                        continue
+
+                    day_data = schedule_days[day_index] or {}
+                    weekday = day_data.get("weekday")
+                    try:
+                        weekday_index = int(weekday)
+                    except (TypeError, ValueError):
+                        weekday_index = day_index
+
+                    if weekday_index < 0 or weekday_index > 6:
+                        weekday_index = day_index % 7
+
+                    Dostepnosc.objects.create(
+                        tutor=tutor,
+                        dzien_tygodnia=weekday_index,
+                        godzina_od=start_time,
+                        godzina_do=end_time,
+                        data=None,
+                    )
+                    available_slots += 1
+
+    except IntegrityError as exc:
+        logger.exception("Database integrity error during tutor onboarding save: %s", exc)
+        raise
+
+    return JsonResponse(
+        {
+            "message": "Profil tutora zapisany.",
+            "availableSlots": available_slots,
+            "tutorId": tutor.pk,
+        }
+    )
+
+
 @csrf_exempt
 def api_register(request):
     if request.method == "POST":
@@ -525,8 +909,9 @@ def api_register(request):
                 "message": "Zarejestrowano pomyslnie",
                 "user": {"username": user.username, "email": user.email},
             })
-        except IntegrityError:
-            return JsonResponse({"error": "Nie udalo sie utworzyc konta. Sprobuj ponownie."}, status=400)
+        except IntegrityError as exc:
+            logger.exception("Database integrity error during api_register: %s", exc)
+            raise
         except json.JSONDecodeError:
             return JsonResponse({"error": "Niepoprawne dane JSON."}, status=400)
         except Exception as e:

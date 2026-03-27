@@ -2,8 +2,9 @@ import { useState } from "react";
 
 const slotClassNames = {
     available: "tutor-profile__slot tutor-profile__slot--available",
-    limited: "tutor-profile__slot tutor-profile__slot--limited",
+    highlighted: "tutor-profile__slot tutor-profile__slot--highlighted",
     unavailable: "tutor-profile__slot tutor-profile__slot--unavailable",
+    blocked: "tutor-profile__slot tutor-profile__slot--blocked",
 };
 
 function StarIcon({ isFilled = true }) {
@@ -235,8 +236,7 @@ export default function TutorProfile({ onBack, tutor }) {
                 }
 
                 .tutor-profile__meta-pill,
-                .tutor-profile__subject,
-                .tutor-profile__legend-pill {
+                .tutor-profile__subject {
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
@@ -276,8 +276,7 @@ export default function TutorProfile({ onBack, tutor }) {
                 }
 
                 .tutor-profile__subjects,
-                .tutor-profile__facts,
-                .tutor-profile__legend {
+                .tutor-profile__facts {
                     display: flex;
                     flex-wrap: wrap;
                     gap: 10px;
@@ -383,74 +382,201 @@ export default function TutorProfile({ onBack, tutor }) {
                     font-weight: 700;
                 }
 
+                .tutor-profile__schedule-panel {
+                    background: linear-gradient(180deg, rgba(252, 251, 255, 0.95), rgba(244, 241, 248, 0.95));
+                }
+
+                .tutor-profile__schedule-header {
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                    gap: 18px;
+                    flex-wrap: wrap;
+                }
+
+                .tutor-profile__schedule-copy {
+                    display: grid;
+                    gap: 8px;
+                    max-width: 620px;
+                }
+
+                .tutor-profile__schedule-subtitle {
+                    margin: 0;
+                    color: #777083;
+                    font-size: 1.03rem;
+                    line-height: 1.4;
+                }
+
+                .tutor-profile__schedule-legend {
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(146px, 1fr));
+                    gap: 8px 12px;
+                    padding: 12px;
+                    border: 1px solid rgba(160, 153, 169, 0.2);
+                    border-radius: 22px;
+                    background: rgba(255, 255, 255, 0.82);
+                    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+                }
+
+                .tutor-profile__schedule-legend-item {
+                    --legend-color: #99939f;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 10px;
+                    min-height: 38px;
+                    padding: 0 8px;
+                    border-radius: 999px;
+                    color: #5d5664;
+                    font-size: 0.95rem;
+                    font-weight: 700;
+                }
+
+                .tutor-profile__schedule-legend-item::before {
+                    content: "";
+                    width: 14px;
+                    aspect-ratio: 1;
+                    border-radius: 50%;
+                    background: var(--legend-color);
+                    box-shadow: 0 2px 8px rgba(73, 69, 78, 0.18);
+                }
+
+                .tutor-profile__schedule-legend-item--available {
+                    --legend-color: #ea98af;
+                }
+
+                .tutor-profile__schedule-legend-item--unavailable {
+                    --legend-color: #cfd0d9;
+                }
+
+                .tutor-profile__schedule-legend-item--highlighted {
+                    --legend-color: #b777eb;
+                }
+
+                .tutor-profile__schedule-legend-item--blocked {
+                    --legend-color: #767b89;
+                }
+
                 .tutor-profile__schedule {
+                    margin-top: 20px;
+                    border: 1px solid rgba(159, 152, 168, 0.2);
+                    border-radius: 24px;
+                    background: rgba(255, 255, 255, 0.78);
+                    box-shadow:
+                        inset 0 1px 0 rgba(255, 255, 255, 0.72),
+                        0 14px 24px rgba(99, 94, 108, 0.1);
                     overflow-x: auto;
                 }
 
                 .tutor-profile__schedule-table {
                     width: 100%;
+                    min-width: 980px;
                     border-collapse: separate;
-                    border-spacing: 8px;
+                    border-spacing: 0;
                 }
 
                 .tutor-profile__schedule-table th,
                 .tutor-profile__schedule-table td {
                     text-align: center;
+                    padding: 9px 8px;
                 }
 
-                .tutor-profile__schedule-table th {
-                    color: #867a84;
-                    font-size: 0.86rem;
+                .tutor-profile__schedule-head-axis {
+                    min-width: 122px;
+                    background: rgba(239, 237, 243, 0.96);
+                    color: #4d4856;
+                    font-size: 1.05rem;
                     font-weight: 800;
-                    letter-spacing: 0.04em;
+                    border-right: 1px solid rgba(169, 164, 178, 0.3);
+                }
+
+                .tutor-profile__schedule-head-day {
+                    min-width: 116px;
+                    background: linear-gradient(180deg, #afb0bd 0%, #9b9dac 100%);
+                    color: #f3f3f8;
+                    font-size: 1.05rem;
+                    font-weight: 700;
+                    letter-spacing: 0.01em;
+                }
+
+                .tutor-profile__schedule-table thead th:first-child {
+                    border-top-left-radius: 22px;
+                }
+
+                .tutor-profile__schedule-table thead th:last-child {
+                    border-top-right-radius: 22px;
                 }
 
                 .tutor-profile__schedule-time {
-                    color: #514953;
-                    font-size: 0.9rem;
-                    font-weight: 800;
-                    white-space: nowrap;
+                    width: 122px;
+                    border-right: 1px solid rgba(169, 164, 178, 0.28);
+                }
+
+                .tutor-profile__schedule-time-pill {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: min(106px, 100%);
+                    min-height: 54px;
+                    border-radius: 999px;
+                    background: linear-gradient(135deg, #a3a6b3 0%, #9194a1 100%);
+                    color: #f6f7fb;
+                    font-size: 1.04rem;
+                    font-weight: 700;
+                    letter-spacing: 0.01em;
+                    text-shadow: 0 1px 3px rgba(57, 58, 66, 0.34);
+                }
+
+                .tutor-profile__schedule-cell {
+                    min-width: 116px;
                 }
 
                 .tutor-profile__slot {
-                    min-width: 72px;
-                    height: 30px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 100%;
+                    min-width: 102px;
+                    min-height: 54px;
+                    border: 1px solid transparent;
                     border-radius: 999px;
+                    color: #fcf8ff;
+                    font-size: 1.04rem;
+                    font-weight: 700;
+                    letter-spacing: 0.01em;
+                    transition: transform 0.16s ease, filter 0.16s ease;
+                }
+
+                .tutor-profile__slot-label {
+                    line-height: 1;
+                    text-shadow: 0 1px 3px rgba(70, 65, 76, 0.24);
                 }
 
                 .tutor-profile__slot--available {
-                    background: #ef9aa8;
+                    background: linear-gradient(135deg, #f0a1b5 0%, #e68ca6 100%);
+                    border-color: rgba(220, 127, 154, 0.42);
                 }
 
-                .tutor-profile__slot--limited {
-                    background: #dad7df;
+                .tutor-profile__slot--highlighted {
+                    background: linear-gradient(135deg, #ca87f2 0%, #9064e8 100%);
+                    border-color: rgba(134, 82, 212, 0.46);
                 }
 
                 .tutor-profile__slot--unavailable {
-                    background: #8b8a96;
+                    background: linear-gradient(135deg, #d8d9e2 0%, #cfd0db 100%);
+                    border-color: rgba(175, 177, 190, 0.4);
+                    color: transparent;
                 }
 
-                .tutor-profile__legend-pill::before {
-                    content: "";
-                    width: 12px;
-                    height: 12px;
-                    border-radius: 50%;
-                    background: currentColor;
+                .tutor-profile__slot--blocked {
+                    background: linear-gradient(135deg, #9498a6 0%, #7d8393 100%);
+                    border-color: rgba(108, 114, 130, 0.38);
+                    color: transparent;
                 }
 
-                .tutor-profile__legend-pill--available {
-                    background: rgba(239, 154, 168, 0.16);
-                    color: #d8798b;
-                }
-
-                .tutor-profile__legend-pill--limited {
-                    background: rgba(218, 215, 223, 0.42);
-                    color: #847a86;
-                }
-
-                .tutor-profile__legend-pill--unavailable {
-                    background: rgba(139, 138, 150, 0.14);
-                    color: #666473;
+                .tutor-profile__slot--available:hover,
+                .tutor-profile__slot--highlighted:hover {
+                    transform: translateY(-1px);
+                    filter: brightness(1.02);
                 }
 
                 @media (max-width: 900px) {
@@ -466,6 +592,20 @@ export default function TutorProfile({ onBack, tutor }) {
 
                     .tutor-profile__identity-copy {
                         padding-top: 0;
+                    }
+
+                    .tutor-profile__schedule-header {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+
+                    .tutor-profile__schedule-legend {
+                        width: 100%;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                    }
+
+                    .tutor-profile__schedule-table {
+                        min-width: 860px;
                     }
                 }
 
@@ -498,12 +638,33 @@ export default function TutorProfile({ onBack, tutor }) {
                         font-size: 1.7rem;
                     }
 
+                    .tutor-profile__schedule-subtitle {
+                        font-size: 0.95rem;
+                    }
+
+                    .tutor-profile__schedule-legend {
+                        grid-template-columns: 1fr;
+                    }
+
                     .tutor-profile__schedule-table {
-                        border-spacing: 6px;
+                        min-width: 760px;
+                    }
+
+                    .tutor-profile__schedule-head-axis,
+                    .tutor-profile__schedule-time {
+                        width: 98px;
+                        min-width: 98px;
                     }
 
                     .tutor-profile__slot {
-                        min-width: 60px;
+                        min-width: 84px;
+                        min-height: 46px;
+                        font-size: 0.94rem;
+                    }
+
+                    .tutor-profile__schedule-time-pill {
+                        min-height: 46px;
+                        font-size: 0.95rem;
                     }
 
                     .tutor-profile__hero-body {
@@ -635,38 +796,68 @@ export default function TutorProfile({ onBack, tutor }) {
                     </div>
                 </section>
 
-                <section className="tutor-profile__panel">
-                    <h2 className="tutor-profile__section-title">Harmonogram</h2>
+                <section className="tutor-profile__panel tutor-profile__schedule-panel">
+                    <div className="tutor-profile__schedule-header">
+                        <div className="tutor-profile__schedule-copy">
+                            <h2 className="tutor-profile__section-title">Harmonogram</h2>
+                            <p className="tutor-profile__schedule-subtitle">
+                                Wybierz dostepne godziny i ustaw swoja dostepnosc.
+                            </p>
+                        </div>
+
+                        <div className="tutor-profile__schedule-legend" aria-label="Legenda harmonogramu">
+                            <span className="tutor-profile__schedule-legend-item tutor-profile__schedule-legend-item--available">
+                                Dostepny
+                            </span>
+                            <span className="tutor-profile__schedule-legend-item tutor-profile__schedule-legend-item--unavailable">
+                                Niedostepny
+                            </span>
+                            <span className="tutor-profile__schedule-legend-item tutor-profile__schedule-legend-item--highlighted">
+                                Wyrozniony
+                            </span>
+                            <span className="tutor-profile__schedule-legend-item tutor-profile__schedule-legend-item--blocked">
+                                Zablokowany
+                            </span>
+                        </div>
+                    </div>
 
                     <div className="tutor-profile__schedule">
                         <table className="tutor-profile__schedule-table">
                             <thead>
                                 <tr>
-                                    <th>Godz./Data</th>
+                                    <th className="tutor-profile__schedule-head-axis">Godz/Data</th>
                                     {tutor.schedule.days.map((day) => (
-                                        <th key={day.iso}>{day.label}</th>
+                                        <th key={day.iso} className="tutor-profile__schedule-head-day">{day.label}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 {tutor.schedule.rows.map((row) => (
                                     <tr key={row.timeLabel}>
-                                        <td className="tutor-profile__schedule-time">{row.timeLabel}</td>
-                                        {row.slots.map((slot, index) => (
-                                            <td key={`${row.timeLabel}-${tutor.schedule.days[index].iso}`}>
-                                                <div className={slotClassNames[slot]}></div>
-                                            </td>
-                                        ))}
+                                        <td className="tutor-profile__schedule-time">
+                                            <span className="tutor-profile__schedule-time-pill">{row.timeLabel}</span>
+                                        </td>
+                                        {row.slots.map((slot, index) => {
+                                            const slotClassName = slotClassNames[slot] ?? slotClassNames.blocked;
+                                            const shouldShowLabel = slot === "available" || slot === "highlighted";
+
+                                            return (
+                                                <td
+                                                    key={`${row.timeLabel}-${tutor.schedule.days[index].iso}`}
+                                                    className="tutor-profile__schedule-cell"
+                                                >
+                                                    <div className={slotClassName}>
+                                                        <span className="tutor-profile__slot-label">
+                                                            {shouldShowLabel ? row.timeLabel : ""}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                    </div>
-
-                    <div className="tutor-profile__legend">
-                        <span className="tutor-profile__legend-pill tutor-profile__legend-pill--available">Dostepny</span>
-                        <span className="tutor-profile__legend-pill tutor-profile__legend-pill--limited">Inna godzina</span>
-                        <span className="tutor-profile__legend-pill tutor-profile__legend-pill--unavailable">Poza grafikiem</span>
                     </div>
                 </section>
             </div>

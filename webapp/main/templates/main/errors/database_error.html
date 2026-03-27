@@ -10,20 +10,21 @@
 {% block content %}
 <div class="db-error-shell">
     <main class="db-error-panel">
-        <img class="db-error-panel__image" src="{% static 'main/img/error.png' %}" alt="Blad bazy danych">
+        <section class="db-error-scene" aria-label="Blad 404">
+            <img class="db-error-scene__art" src="{% static 'main/img/error.png' %}" alt="Ilustracja 404">
+            <img class="db-error-scene__logo" src="{% static 'main/img/rent_nerd_logo.png' %}" alt="Rent Nerd">
+        </section>
 
-        <div class="db-error-panel__copy">
-            <p class="db-error-panel__eyebrow">Chwilowy problem</p>
-            <h1 class="db-error-panel__title">Blad bazy danych</h1>
-            <p class="db-error-panel__text">
-                Nie udalo sie pobrac danych dla tej strony. Sprobuj ponownie za chwile albo wroc na strone glowna.
+        <section class="db-error-copy">
+            <h1 class="db-error-copy__title">Blad bazy danych</h1>
+            <p class="db-error-copy__text">
+                Wystapil problem po stronie bazy danych. Odswiez strone albo wroc na strone glowna.
             </p>
-
-            <div class="db-error-panel__actions">
-                <a class="db-error-button db-error-button--primary" href="{% url 'home' %}">Wroc na glowna</a>
-                <a class="db-error-button db-error-button--ghost" href=".">Sprobuj ponownie</a>
+            <div class="db-error-copy__actions">
+                <a class="db-error-button db-error-button--primary" href=".">Sprobuj ponownie</a>
+                <a class="db-error-button db-error-button--ghost" href="{% url 'home' %}">Wroc na glowna</a>
             </div>
-        </div>
+        </section>
     </main>
 </div>
 {% endblock %}

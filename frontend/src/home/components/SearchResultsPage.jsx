@@ -3,9 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import {
     defaultSearchDate,
     defaultSearchSelections,
-    getTutorSearchResults,
     searchResultsSidebarDefinitions,
 } from "../content.js";
+import { fetchTutorSearchResults } from "../api.js";
 import SearchResultsView from "./SearchResultsView.jsx";
 import { formatDateLabelFromIso } from "../utils/dateHelpers.js";
 
@@ -15,12 +15,20 @@ export default function SearchResultsPage({
     onBackToSearch,
     onOpenTutorProfile,
     onSearchSubmit,
+    urls = {},
 }) {
     const [selectedFilters, setSelectedFilters] = useState(() => ({ ...initialFilters }));
     const [selectedDate, setSelectedDate] = useState(initialDate);
     const [appliedFilters, setAppliedFilters] = useState(() => ({ ...initialFilters }));
     const [appliedDate, setAppliedDate] = useState(initialDate);
     const [openFilterKey, setOpenFilterKey] = useState(null);
+    const [searchResults, setSearchResults] = useState(() => ({
+        exactMatches: [],
+        suggestedTutors: [],
+    }));
+    const [isLoading, setIsLoading] = useState(false);
+    const [searchError, setSearchError] = useState("");
+    const searchUrl = urls.tutorSearch ?? "/api/tutor-search";
 
     useEffect(() => {
         setSelectedFilters({ ...initialFilters });
@@ -28,6 +36,7 @@ export default function SearchResultsPage({
         setAppliedFilters({ ...initialFilters });
         setAppliedDate(initialDate);
         setOpenFilterKey(null);
+        setSearchError("");
     }, [initialDate, initialFilters]);
 
     useEffect(() => {
@@ -43,11 +52,47 @@ export default function SearchResultsPage({
         return () => document.removeEventListener("pointerdown", handlePointerDown);
     }, []);
 
+    useEffect(() => {
+        let ignoreResponse = false;
+
+        async function loadResults() {
+            setIsLoading(true);
+            setSearchError("");
+
+            try {
+                const nextResults = await fetchTutorSearchResults({
+                    filters: appliedFilters,
+                    date: appliedDate,
+                    searchUrl,
+                    databaseErrorUrl: urls.databaseError ?? "/database-error",
+                });
+
+                if (!ignoreResponse) {
+                    setSearchResults(nextResults);
+                }
+            } catch (error) {
+                if (!ignoreResponse) {
+                    setSearchResults({
+                        exactMatches: [],
+                        suggestedTutors: [],
+                    });
+                    setSearchError(error?.message || "Nie udalo sie pobrac wynikow.");
+                }
+            } finally {
+                if (!ignoreResponse) {
+                    setIsLoading(false);
+                }
+            }
+        }
+
+        loadResults();
+
+        return () => {
+            ignoreResponse = true;
+        };
+    }, [appliedDate, appliedFilters, searchUrl]);
+
     const appliedDateLabel = useMemo(() => formatDateLabelFromIso(appliedDate), [appliedDate]);
-    const searchResults = useMemo(
-        () => getTutorSearchResults(appliedFilters, appliedDate),
-        [appliedDate, appliedFilters],
-    );
     const appliedSelectionSummary = `${appliedFilters.subject}, ${appliedFilters.level}, ${appliedDateLabel}, ${appliedFilters.hour}`;
 
     const handleFilterSelect = (filterKey, option) => {
@@ -64,6 +109,7 @@ export default function SearchResultsPage({
         setAppliedFilters(nextFilters);
         setAppliedDate(selectedDate);
         setOpenFilterKey(null);
+        setSearchError("");
         onSearchSubmit?.(nextFilters, selectedDate);
     };
 
@@ -108,6 +154,8 @@ export default function SearchResultsPage({
                         currentValue === filterKey ? null : filterKey
                     ))}
                     openFilterKey={openFilterKey}
+                    isLoading={isLoading}
+                    searchError={searchError}
                     selectedDate={selectedDate}
                     selectedFilters={selectedFilters}
                     suggestedTutors={searchResults.suggestedTutors}

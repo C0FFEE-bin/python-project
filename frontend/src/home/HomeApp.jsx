@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
     defaultSearchDate,
     defaultSearchSelections,
-    getTutorProfileById,
     navLinks,
 } from "./content.js";
+import { fetchTutorProfile } from "./api.js";
 import HomeHeader from "./components/HomeHeader.jsx";
 import HeroSection from "./components/HeroSection.jsx";
 import MentorSection from "./components/MentorSection.jsx";
@@ -89,11 +89,55 @@ export default function HomeApp({
     const [isScrolled, setIsScrolled] = useState(false);
     const [activeSection, setActiveSection] = useState("home");
     const [pageState, setPageState] = useState(() => getSearchParamsState());
+    const [selectedTutor, setSelectedTutor] = useState(null);
+    const [isTutorLoading, setIsTutorLoading] = useState(false);
+    const [tutorError, setTutorError] = useState("");
+    const hasTutorView = Boolean(pageState.tutorId);
 
-    const selectedTutor = useMemo(
-        () => getTutorProfileById(pageState.tutorId),
-        [pageState.tutorId],
-    );
+    useEffect(() => {
+        if (!pageState.tutorId) {
+            setSelectedTutor(null);
+            setTutorError("");
+            setIsTutorLoading(false);
+            return undefined;
+        }
+
+        let ignoreResponse = false;
+
+        async function loadTutorProfile() {
+            setIsTutorLoading(true);
+            setTutorError("");
+
+            try {
+                const tutorProfileBaseUrl = urls.tutorProfileBase ?? "/api/tutor-profile";
+                const tutorProfile = await fetchTutorProfile({
+                    tutorId: pageState.tutorId,
+                    tutorProfileBaseUrl,
+                    date: pageState.date,
+                    databaseErrorUrl: urls.databaseError ?? "/database-error",
+                });
+
+                if (!ignoreResponse) {
+                    setSelectedTutor(tutorProfile);
+                }
+            } catch (error) {
+                if (!ignoreResponse) {
+                    setSelectedTutor(null);
+                    setTutorError(error?.message || "Nie udalo sie pobrac profilu tutora.");
+                }
+            } finally {
+                if (!ignoreResponse) {
+                    setIsTutorLoading(false);
+                }
+            }
+        }
+
+        loadTutorProfile();
+
+        return () => {
+            ignoreResponse = true;
+        };
+    }, [pageState.date, pageState.tutorId, urls.tutorProfileBase]);
 
     useEffect(() => {
         if (isStandaloneView) {
@@ -133,7 +177,7 @@ export default function HomeApp({
             return undefined;
         }
 
-        if (pageState.mode === "results" || selectedTutor) {
+        if (pageState.mode === "results" || hasTutorView) {
             setActiveSection("wyszukiwarka");
             return undefined;
         }
@@ -161,14 +205,20 @@ export default function HomeApp({
         sections.forEach((section) => observer.observe(section));
 
         return () => observer.disconnect();
-    }, [isStandaloneView, pageState.mode, selectedTutor]);
+    }, [hasTutorView, isStandaloneView, pageState.mode]);
 
     if (isPreview) {
         return <OnboardingPreviewPage previewComponent={previewComponent} urls={urls} />;
     }
 
     if (isOnboarding) {
-        return <RegistrationOnboardingPage nextTarget={onboardingNextTarget} urls={urls} />;
+        return (
+            <RegistrationOnboardingPage
+                csrfToken={csrfToken}
+                nextTarget={onboardingNextTarget}
+                urls={urls}
+            />
+        );
     }
 
     const handleNavClick = (sectionId) => {
@@ -288,23 +338,32 @@ export default function HomeApp({
             />
 
             <main className="landing-main">
-                {selectedTutor ? (
+                {hasTutorView ? (
                     <section className="tutor-profile-page landing-section" id="tutor-profile">
-                        <TutorProfile tutor={selectedTutor} onBack={handleCloseTutorProfile} />
+                        {isTutorLoading ? (
+                            <div className="search-results__empty">Ladowanie profilu tutora...</div>
+                        ) : null}
+                        {!isTutorLoading && tutorError ? (
+                            <div className="search-results__empty">{tutorError}</div>
+                        ) : null}
+                        {!isTutorLoading && !tutorError && selectedTutor ? (
+                            <TutorProfile tutor={selectedTutor} onBack={handleCloseTutorProfile} />
+                        ) : null}
                     </section>
                 ) : null}
 
-                {!selectedTutor && pageState.mode === "results" ? (
+                {!hasTutorView && pageState.mode === "results" ? (
                     <SearchResultsPage
                         initialDate={pageState.date}
                         initialFilters={pageState.filters}
                         onBackToSearch={handleBackToSearch}
                         onOpenTutorProfile={handleOpenTutorProfile}
                         onSearchSubmit={handleOpenResultsPage}
+                        urls={urls}
                     />
                 ) : null}
 
-                {!selectedTutor && pageState.mode === "landing" ? (
+                {!hasTutorView && pageState.mode === "landing" ? (
                     <>
                         <HeroSection aboutUrl={urls.about} heroImageSrc={images.hero} />
                         <SearchSection
@@ -318,7 +377,7 @@ export default function HomeApp({
                     </>
                 ) : null}
 
-                {!selectedTutor && pageState.mode === "portal" ? <PortalSection /> : null}
+                {!hasTutorView && pageState.mode === "portal" ? <PortalSection /> : null}
             </main>
         </div>
     );

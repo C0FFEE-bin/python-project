@@ -1,70 +1,81 @@
 body.db-error-body {
     min-height: 100vh;
+    margin: 0;
     background:
-        radial-gradient(circle at top right, rgba(218, 178, 231, 0.5), transparent 28%),
-        linear-gradient(180deg, #faf7fb 0%, #f4eef8 100%);
-    color: #534f57;
+        radial-gradient(circle at 12% 8%, rgba(255, 255, 255, 0.62), transparent 32%),
+        radial-gradient(circle at 88% 90%, rgba(219, 183, 235, 0.5), transparent 34%),
+        linear-gradient(135deg, #f7f4fb 0%, #ede2f6 100%);
+    color: #3a3243;
     font-family: "Aptos", "Segoe UI", sans-serif;
 }
 
 .db-error-shell {
     min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 32px 24px;
+    display: grid;
+    place-items: center;
+    padding: 26px 20px;
 }
 
 .db-error-panel {
     width: min(100%, 1180px);
     display: grid;
-    gap: 26px;
+    gap: 24px;
     justify-items: center;
 }
 
-.db-error-panel__image {
-    display: block;
-    width: min(100%, 860px);
-    height: auto;
-    border-radius: 24px;
-    box-shadow: 0 24px 54px rgba(125, 96, 139, 0.18);
+.db-error-scene {
+    position: relative;
+    width: min(100%, 1040px);
+    border-radius: 28px;
+    padding: 18px;
+    background: rgba(255, 255, 255, 0.58);
+    border: 1px solid rgba(183, 148, 203, 0.24);
+    box-shadow:
+        0 24px 60px rgba(98, 75, 114, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
-.db-error-panel__copy {
-    max-width: 700px;
+.db-error-scene__art {
+    width: 100%;
+    display: block;
+    border-radius: 22px;
+}
+
+.db-error-scene__logo {
+    position: absolute;
+    top: 26px;
+    right: 34px;
+    width: min(32vw, 240px);
+    opacity: 0.22;
+    pointer-events: none;
+}
+
+.db-error-copy {
+    max-width: 760px;
     text-align: center;
 }
 
-.db-error-panel__eyebrow {
-    margin: 0 0 10px;
-    color: #b061c7;
-    font-size: 0.92rem;
-    font-weight: 800;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-}
-
-.db-error-panel__title {
+.db-error-copy__title {
     margin: 0;
-    color: #34353a;
-    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-size: clamp(2rem, 4vw, 3.1rem);
+    line-height: 1.06;
+    color: #403649;
     font-weight: 800;
-    line-height: 1.05;
 }
 
-.db-error-panel__text {
+.db-error-copy__text {
     margin: 14px 0 0;
-    color: #726d76;
-    font-size: clamp(1rem, 1.5vw, 1.16rem);
-    line-height: 1.55;
+    color: #6c6174;
+    font-size: clamp(1rem, 1.7vw, 1.2rem);
+    line-height: 1.5;
 }
 
-.db-error-panel__actions {
+.db-error-copy__actions {
+    margin-top: 22px;
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
     gap: 14px;
-    margin-top: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 .db-error-button {
@@ -72,14 +83,13 @@ body.db-error-body {
     align-items: center;
     justify-content: center;
     min-height: 56px;
-    padding: 0 28px;
+    padding: 0 30px;
     border-radius: 999px;
-    border: 0;
+    text-decoration: none;
     font-size: 1rem;
     font-weight: 700;
-    text-align: center;
-    text-decoration: none;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+    border: 0;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .db-error-button:hover {
@@ -87,29 +97,36 @@ body.db-error-body {
 }
 
 .db-error-button--primary {
-    background: linear-gradient(135deg, #c56fd8 0%, #ac5fc8 100%);
-    color: #ffffff;
-    box-shadow: 0 16px 28px rgba(181, 102, 207, 0.28);
+    color: #fff;
+    background: linear-gradient(135deg, #c06ed9 0%, #a759c4 100%);
+    box-shadow: 0 14px 26px rgba(165, 89, 196, 0.3);
 }
 
 .db-error-button--ghost {
-    border: 2px solid #bd6fd4;
-    background: rgba(255, 255, 255, 0.68);
-    color: #b15fc8;
-    box-shadow: 0 12px 24px rgba(173, 121, 193, 0.12);
+    color: #ad5fca;
+    background: rgba(255, 255, 255, 0.82);
+    border: 2px solid rgba(178, 104, 207, 0.6);
+    box-shadow: 0 10px 20px rgba(169, 116, 190, 0.17);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
     .db-error-shell {
-        padding: 18px 12px 28px;
+        padding: 14px 10px 22px;
     }
 
-    .db-error-panel {
-        gap: 20px;
-    }
-
-    .db-error-panel__image {
+    .db-error-scene {
+        padding: 10px;
         border-radius: 18px;
+    }
+
+    .db-error-scene__art {
+        border-radius: 14px;
+    }
+
+    .db-error-scene__logo {
+        top: 14px;
+        right: 14px;
+        width: min(44vw, 180px);
     }
 
     .db-error-button {
