@@ -120,29 +120,89 @@ def sync_user_email(sender, instance, created, **kwargs):
     if not created and instance.email:
         User.objects.filter(imie=instance.username).update(email=instance.email)
 
+"""
+import logging
+from datetime import time
+from django.db.models import Q, Avg, Count
+from django.core.exceptions import ValidationError
 
-# Przykładowa funkcja do łączenia korepetytorów z uczniami na bazie dostępności
-# Funkcja będzie dopracowywana na późniejszym etapie projektu
-"""
-def match_tutors_to_student(student_availability):
-    from django.db.models import Q
+# Inicjalizacja loggera dla śledzenia procesów dopasowania
+logger = logging.getLogger(__name__)
+
+def match_tutors_to_student_advanced(student_data, criteria=None):
+
+    #Analizuje dostępność, kompetencje przedmiotowe oraz rankingi korepetytorów.
     
-    # student_availability: lista słowników, np. [{'dzien': 1, 'godzina_od': '10:00', 'godzina_do': '12:00'}, ...]
+    #Args:
+    #    student_data (dict): Zawiera 'availability' oraz 'subjects'.
+    #    criteria (dict): Opcjonalne filtry (min_rating, max_price, level).
     
-    query = Q()
-    for avail in student_availability:
-        dzien = avail['dzien']
-        godz_od = avail['godzina_od']
-        godz_do = avail['godzina_do']
+    if not student_data or 'availability' not in student_data:
+        logger.warning("Próba dopasowania bez danych o dostępności.")
+        return Tutor.objects.none()
+
+    queryset = Tutor.objects.filter(is_active=True, profile_completed=True)
+
+    time_query = Q()
+    try:
+        for slot in student_data.get('availability', []):
+            # Walidacja poprawności formatu godzin
+            dzien = slot.get('dzien')
+            od = slot.get('godzina_od')
+            do = slot.get('godzina_do')
+
+            if all([dzien, od, do]):
+                time_query |= Q(
+                    dostepnosci__dzien_tygodnia=dzien,
+                    dostepnosci__godzina_od__lte=od,
+                    dostepnosci__godzina_do__gte=do,
+                    dostepnosci__is_booked=False  # Uwzględniamy tylko wolne sloty
+                )
         
-        query |= Q(
-            dostepnosci__dzien_tygodnia=dzien,
-            dostepnosci__godzina_od__lte=godz_od,
-            dostepnosci__godzina_do__gte=godz_do
-        )
+        queryset = queryset.filter(time_query)
+    except Exception as e:
+        logger.error(f"Błąd podczas parsowania grafiku: {e}")
+        return Tutor.objects.none()
+
+    subjects = student_data.get('subjects', [])
+    if subjects:
+        queryset = queryset.filter(specializations__subject__name__in=subjects)
+
+    if criteria:
+        if 'min_rating' in criteria:
+            # Agregacja ocen w locie
+            queryset = queryset.annotate(avg_rating=Avg('reviews__rating')) \
+                               .filter(avg_rating__gte=criteria['min_rating'])
+        
+        if 'max_price' in criteria:
+            queryset = queryset.filter(hourly_rate__lte=criteria['max_price'])
+
+        if 'level' in criteria:
+            # Filtrowanie po poziomie nauczania (np. 'Liceum', 'Studia')
+            queryset = queryset.filter(levels__name=criteria['level'])
+
+    queryset = queryset.select_related('user').prefetch_related(
+        'dostepnosci', 
+        'specializations',
+        'reviews'
+    ).distinct()
+
+    queryset = queryset.order_by('-is_promoted', '-avg_rating')
+
+    logger.info(f"Znaleziono {queryset.count()} pasujących korepetytorów.")
+    return queryset
+
+
+def calculate_match_score(tutor, student_requirements):
+
+    #Funkcja pomocnicza do wyliczania % dopasowania (Scoring Algorithm).
+    #Może być użyta do sortowania wyników na froncie.
+
+    score = 0
     
-    return Tutor.objects.filter(query).distinct()
+    return min(score, 100)
 """
+
 
 
 
