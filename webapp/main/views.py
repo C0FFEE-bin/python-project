@@ -181,6 +181,19 @@ def _split_full_name(full_name, fallback_username):
     return (first_name, last_name)
 
 
+def _normalize_string_list(values):
+    if not isinstance(values, list):
+        return []
+
+    normalized_values = []
+    for value in values:
+        normalized_value = str(value).strip()
+        if normalized_value and normalized_value not in normalized_values:
+            normalized_values.append(normalized_value)
+
+    return normalized_values
+
+
 def _parse_time_label(value):
     try:
         start_time = datetime.strptime(value, "%H:%M").time()
@@ -765,7 +778,7 @@ def tutor_onboarding_save(request):
     full_name = (payload.get("fullName") or "").strip()
     about = (payload.get("about") or "").strip()
     subjects = payload.get("subjects")
-    school_level = (payload.get("schoolLevel") or "").strip() or None
+    school_levels = payload.get("schoolLevels")
     schedule_payload = payload.get("schedule") or {}
     schedule_days = schedule_payload.get("days") or []
     schedule_rows = schedule_payload.get("rows") or []
@@ -779,13 +792,18 @@ def tutor_onboarding_save(request):
     if not isinstance(schedule_days, list) or not isinstance(schedule_rows, list):
         return JsonResponse({"error": "Niepoprawny format harmonogramu."}, status=400)
 
-    normalized_subjects = [
-        str(subject).strip()
-        for subject in subjects
-        if str(subject).strip()
-    ]
+    normalized_subjects = _normalize_string_list(subjects)
     if not normalized_subjects:
         return JsonResponse({"error": "Wybierz przynajmniej jeden przedmiot."}, status=400)
+
+    normalized_school_levels = _normalize_string_list(school_levels)
+    if not normalized_school_levels:
+        single_school_level = str(payload.get("schoolLevel") or "").strip()
+        if single_school_level:
+            normalized_school_levels = [single_school_level]
+
+    if not normalized_school_levels:
+        return JsonResponse({"error": "Wybierz przynajmniej jeden poziom."}, status=400)
 
     first_name, last_name = _split_full_name(full_name, request.user.get_username())
 
@@ -820,12 +838,13 @@ def tutor_onboarding_save(request):
 
             tutor_subjects = []
             for subject_name in normalized_subjects:
-                subject_obj, _ = Przedmiot.objects.get_or_create(
-                    nazwa=subject_name,
-                    temat="Powtorka",
-                    poziom=school_level,
-                )
-                tutor_subjects.append(subject_obj)
+                for school_level in normalized_school_levels:
+                    subject_obj, _ = Przedmiot.objects.get_or_create(
+                        nazwa=subject_name,
+                        temat="Powtorka",
+                        poziom=school_level,
+                    )
+                    tutor_subjects.append(subject_obj)
             tutor.przedmioty.set(tutor_subjects)
 
             tutor.dostepnosci.all().delete()

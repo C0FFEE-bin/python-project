@@ -241,6 +241,60 @@ class MainViewsTests(TestCase):
         self.assertRedirects(response, expected_redirect)
         self.assertTrue(User.objects.filter(username='newuser').exists())
 
+    def test_tutor_onboarding_save_accepts_multiple_levels_for_tutor(self):
+        user = User.objects.create_user(
+            username='tutor-login',
+            email='tutor@example.com',
+            password='secret123',
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse('tutor_onboarding_save'),
+            data=json.dumps(
+                {
+                    'fullName': 'Jan Kowalski',
+                    'about': 'Ucze spokojnie i konkretnie.',
+                    'subjects': ['Matematyka', 'Fizyka'],
+                    'schoolLevels': ['Podstawowka', 'Szkola srednia'],
+                    'schedule': {
+                        'days': [
+                            {'label': '02.03', 'weekday': 0},
+                            {'label': '03.03', 'weekday': 1},
+                        ],
+                        'rows': [
+                            {
+                                'timeLabel': '16:00',
+                                'slots': ['available', 'neutral'],
+                            },
+                            {
+                                'timeLabel': '18:00',
+                                'slots': ['neutral', 'neutral'],
+                            },
+                        ],
+                    },
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        tutor = Tutor.objects.get(pk=payload['tutorId'])
+        subject_levels = sorted(tutor.przedmioty.values_list('nazwa', 'poziom'))
+
+        self.assertEqual(
+            subject_levels,
+            [
+                ('Fizyka', 'Podstawowka'),
+                ('Fizyka', 'Szkola srednia'),
+                ('Matematyka', 'Podstawowka'),
+                ('Matematyka', 'Szkola srednia'),
+            ],
+        )
+        self.assertEqual(payload['availableSlots'], 1)
+
     def test_tutor_search_returns_exact_and_suggested_results(self):
         exact_user = TutorUser.objects.create(
             imie='Jan',

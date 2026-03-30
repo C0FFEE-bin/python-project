@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import StudentOnboardingFrame from "./StudentOnboardingFrame.jsx";
 import "./TutorProfileSetup.css";
 
+const EMPTY_VALUES = [];
 const STEPS = ["Wybierz typ konta", "Twoj profil", "Poznaj RENT A NERD"];
 const DAYS = [
     { label: "02.03", weekday: 0 },
@@ -48,8 +49,9 @@ export default function TutorProfileSetup({
     avatarFile = null,
     bannerFile = null,
     initialLevel = "",
-    initialInterests = [],
-    initialSubjects = [],
+    initialLevels = EMPTY_VALUES,
+    initialInterests = EMPTY_VALUES,
+    initialSubjects = EMPTY_VALUES,
     onAvatarChange,
     onBack,
     onBannerChange,
@@ -62,6 +64,11 @@ export default function TutorProfileSetup({
     const [fullName, setFullName] = useState("");
     const [about, setAbout] = useState("");
     const [interests, setInterests] = useState(() => [...initialInterests]);
+    const [levels, setLevels] = useState(() => (
+        Array.isArray(initialLevels) && initialLevels.length
+            ? [...initialLevels]
+            : (initialLevel ? [initialLevel] : [])
+    ));
     const [subjects, setSubjects] = useState(() => [...initialSubjects]);
     const [schedule, setSchedule] = useState(() => buildInitialSchedule());
     const [selectedAvailability, setSelectedAvailability] = useState(SLOT_STATUSES.available);
@@ -83,6 +90,20 @@ export default function TutorProfileSetup({
 
         setInterests([...initialInterests]);
     }, [initialInterests]);
+
+    useEffect(() => {
+        if (Array.isArray(initialLevels) && initialLevels.length) {
+            setLevels([...initialLevels]);
+            return;
+        }
+
+        if (initialLevel) {
+            setLevels([initialLevel]);
+            return;
+        }
+
+        setLevels([]);
+    }, [initialLevel, initialLevels]);
 
     const hasAvailableSlot = useMemo(
         () => schedule.some((row) => row.some((slot) => slot === SLOT_STATUSES.available)),
@@ -136,7 +157,8 @@ export default function TutorProfileSetup({
                         slots: [...schedule[rowIndex]],
                     })),
                 },
-                schoolLevel: initialLevel,
+                schoolLevel: initialLevel || levels[0] || "",
+                schoolLevels: levels,
                 subjects,
             });
         } catch (error) {
@@ -233,11 +255,11 @@ export default function TutorProfileSetup({
                             <span className="tutor-profile-placeholder">Brak wybranych przedmiotow.</span>
                         )}
 
-                        {initialLevel ? (
-                            <span className="tutor-profile-chip tutor-profile-chip--level">
-                                {initialLevel}
+                        {levels.map((level) => (
+                            <span key={level} className="tutor-profile-chip tutor-profile-chip--level">
+                                {level}
                             </span>
-                        ) : null}
+                        ))}
                     </div>
 
                     <label className="tutor-profile-label" htmlFor="tutor-about">

@@ -3,19 +3,23 @@ import { useEffect, useState } from "react";
 import StudentOnboardingFrame from "./StudentOnboardingFrame.jsx";
 import "./SchoolLevelSelect.css";
 
+const EMPTY_LEVELS = [];
 const LEVELS = [
     {
         id: "podstawowa",
-        title: "Podstawowa",
+        value: "Podstawowka",
+        title: "Podstawowka",
         imageSrc: "/static/main/img/primary.png",
     },
     {
         id: "srednia",
-        title: "Srednia",
+        value: "Szkola srednia",
+        title: "Szkola srednia",
         imageSrc: "/static/main/img/high.png",
     },
     {
         id: "studia",
+        value: "Studia",
         title: "Studia",
         imageSrc: "/static/main/img/university.png",
     },
@@ -27,6 +31,7 @@ function LevelCard({ isSelected, level, onClick }) {
             type="button"
             className={["student-level-card", isSelected ? "is-selected" : ""].join(" ")}
             onClick={onClick}
+            aria-pressed={isSelected}
         >
             <header>
                 <h2>{level.title}</h2>
@@ -34,15 +39,40 @@ function LevelCard({ isSelected, level, onClick }) {
 
             <div className="student-level-card__body">
                 <img src={level.imageSrc} alt={level.title} />
-                <span>Wybierz</span>
+                <span>{isSelected ? "Wybrane" : "Wybierz"}</span>
             </div>
         </button>
     );
 }
 
+function normalizeLevels(levels) {
+    if (!Array.isArray(levels)) {
+        return [];
+    }
+
+    const normalizedLevels = [];
+
+    levels.forEach((level) => {
+        if (typeof level !== "string") {
+            return;
+        }
+
+        const trimmedLevel = level.trim();
+        if (!trimmedLevel || normalizedLevels.includes(trimmedLevel)) {
+            return;
+        }
+
+        normalizedLevels.push(trimmedLevel);
+    });
+
+    return normalizedLevels;
+}
+
 export default function SchoolLevelSelect({
     title = "Wybierz twoj poziom edukacji",
+    allowMultiple = false,
     initialLevel = "",
+    initialLevels = EMPTY_LEVELS,
     nextLabel = "Dalej",
     currentStep = 1,
     steps,
@@ -51,15 +81,35 @@ export default function SchoolLevelSelect({
     onSelect,
 }) {
     const [selectedLevel, setSelectedLevel] = useState(initialLevel);
+    const [selectedLevels, setSelectedLevels] = useState(() => normalizeLevels(initialLevels));
 
     useEffect(() => {
+        if (allowMultiple) {
+            setSelectedLevels(normalizeLevels(initialLevels));
+            return;
+        }
+
         setSelectedLevel(initialLevel || "");
-    }, [initialLevel]);
+    }, [allowMultiple, initialLevel, initialLevels]);
 
     const handleSelect = (levelId) => {
+        if (allowMultiple) {
+            setSelectedLevels((currentLevels) => {
+                const nextLevels = currentLevels.includes(levelId)
+                    ? currentLevels.filter((currentLevel) => currentLevel !== levelId)
+                    : [...currentLevels, levelId];
+
+                onSelect?.(nextLevels);
+                return nextLevels;
+            });
+            return;
+        }
+
         setSelectedLevel(levelId);
         onSelect?.(levelId);
     };
+
+    const hasSelection = allowMultiple ? selectedLevels.length > 0 : Boolean(selectedLevel);
 
     return (
         <StudentOnboardingFrame currentStep={currentStep} steps={steps}>
@@ -71,8 +121,8 @@ export default function SchoolLevelSelect({
                         <LevelCard
                             key={level.id}
                             level={level}
-                            isSelected={selectedLevel === level.id}
-                            onClick={() => handleSelect(level.id)}
+                            isSelected={allowMultiple ? selectedLevels.includes(level.value) : selectedLevel === level.value}
+                            onClick={() => handleSelect(level.value)}
                         />
                     ))}
                 </div>
@@ -83,13 +133,19 @@ export default function SchoolLevelSelect({
                         className="student-flow-button is-secondary"
                         onClick={onBack}
                     >
-                        Wroć
+                        Wroc
                     </button>
                     <button
                         type="button"
                         className="student-flow-button is-primary"
-                        onClick={() => selectedLevel && onComplete?.(selectedLevel)}
-                        disabled={!selectedLevel}
+                        onClick={() => {
+                            if (!hasSelection) {
+                                return;
+                            }
+
+                            onComplete?.(allowMultiple ? selectedLevels : selectedLevel);
+                        }}
+                        disabled={!hasSelection}
                     >
                         {nextLabel}
                     </button>

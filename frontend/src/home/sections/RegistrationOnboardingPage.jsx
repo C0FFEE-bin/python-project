@@ -48,7 +48,7 @@ function createInitialTutorData() {
     return {
         avatarFile: null,
         bannerFile: null,
-        schoolLevel: "",
+        schoolLevels: [],
         subjects: [...DEFAULT_TUTOR_SUBJECTS],
         interests: [...DEFAULT_TUTOR_INTERESTS],
     };
@@ -193,22 +193,23 @@ export default function RegistrationOnboardingPage({ csrfToken = "", nextTarget 
     if (tutorStep === TUTOR_STEPS.schoolLevel) {
         return (
             <SchoolLevelSelect
-                title="Wybierz, poziom ktory nauczasz:"
-                initialLevel={tutorData.schoolLevel}
+                title="Wybierz poziomy, ktorych nauczasz:"
+                allowMultiple
+                initialLevels={tutorData.schoolLevels}
                 onBack={() => {
                     resetTutorFlow();
                     setAccountType("");
                 }}
-                onSelect={(levelId) => {
+                onSelect={(levelIds) => {
                     setTutorData((current) => ({
                         ...current,
-                        schoolLevel: levelId,
+                        schoolLevels: [...levelIds],
                     }));
                 }}
-                onComplete={(levelId) => {
+                onComplete={(levelIds) => {
                     setTutorData((current) => ({
                         ...current,
-                        schoolLevel: levelId,
+                        schoolLevels: [...levelIds],
                     }));
                     setTutorStep(TUTOR_STEPS.subjects);
                 }}
@@ -268,7 +269,7 @@ export default function RegistrationOnboardingPage({ csrfToken = "", nextTarget 
         <TutorProfileSetup
             avatarFile={tutorData.avatarFile}
             bannerFile={tutorData.bannerFile}
-            initialLevel={tutorData.schoolLevel}
+            initialLevels={tutorData.schoolLevels}
             initialSubjects={tutorData.subjects}
             initialInterests={tutorData.interests}
             onAvatarChange={(file) => {
