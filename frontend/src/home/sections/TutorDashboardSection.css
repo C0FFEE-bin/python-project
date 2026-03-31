@@ -1,0 +1,475 @@
+.tutor-dashboard {
+    --dashboard-surface: rgba(255, 255, 255, 0.94);
+    --dashboard-surface-muted: rgba(248, 246, 250, 0.95);
+    --dashboard-border: rgba(120, 112, 124, 0.12);
+    --dashboard-shadow: 0 16px 34px rgba(83, 74, 95, 0.12);
+    display: grid;
+    gap: 18px;
+}
+
+.tutor-dashboard__state,
+.tutor-dashboard__hero,
+.tutor-dashboard__panel,
+.tutor-dashboard__highlight-card {
+    border: 1px solid var(--dashboard-border);
+    border-radius: 30px;
+    background: var(--dashboard-surface);
+    box-shadow: var(--dashboard-shadow);
+}
+
+.tutor-dashboard__state {
+    padding: 34px 28px;
+}
+
+.tutor-dashboard__state h2 {
+    margin: 8px 0 0;
+    color: #27222d;
+    font-family: var(--font-display);
+    font-size: clamp(1.9rem, 3vw, 2.6rem);
+    line-height: 1.02;
+}
+
+.tutor-dashboard__hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.8fr);
+    gap: 18px;
+    padding: 24px;
+    background:
+        radial-gradient(circle at top left, rgba(248, 221, 207, 0.55), transparent 34%),
+        radial-gradient(circle at 78% 18%, rgba(222, 207, 247, 0.48), transparent 28%),
+        linear-gradient(135deg, rgba(255, 251, 247, 0.96) 0%, rgba(246, 244, 251, 0.96) 100%);
+}
+
+.tutor-dashboard__hero-copy h2 {
+    margin: 8px 0 0;
+    color: #1f1a24;
+    font-family: var(--font-display);
+    font-size: clamp(2.2rem, 4vw, 3.5rem);
+    line-height: 0.95;
+}
+
+.tutor-dashboard__hero-text {
+    max-width: 58ch;
+    margin: 16px 0 0;
+    color: #5e5460;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.tutor-dashboard__chip-row,
+.tutor-dashboard__badge-row,
+.tutor-dashboard__meta,
+.tutor-dashboard__highlights,
+.tutor-dashboard__lesson-list,
+.tutor-dashboard__stack,
+.tutor-dashboard__today-list,
+.tutor-dashboard__insights,
+.tutor-dashboard__legend {
+    display: grid;
+    gap: 12px;
+}
+
+.tutor-dashboard__chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 18px;
+}
+
+.tutor-dashboard__chip,
+.tutor-dashboard__badge,
+.tutor-dashboard__meta-pill,
+.tutor-dashboard__lesson-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.tutor-dashboard__chip {
+    color: #3d3342;
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid rgba(183, 172, 190, 0.46);
+}
+
+.tutor-dashboard__chip--level {
+    color: #fff;
+    background: linear-gradient(135deg, #c282df 0%, #9c62c7 100%);
+    border-color: transparent;
+}
+
+.tutor-dashboard__hero-side {
+    display: grid;
+    align-content: start;
+    gap: 14px;
+    padding: 18px;
+    border-radius: 26px;
+    background: rgba(255, 255, 255, 0.68);
+    border: 1px solid rgba(189, 179, 196, 0.34);
+}
+
+.tutor-dashboard__avatar {
+    display: grid;
+    place-items: center;
+    width: 108px;
+    aspect-ratio: 1;
+    border-radius: 28px;
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 2.2rem;
+    font-weight: 800;
+    box-shadow: 0 16px 28px rgba(83, 74, 95, 0.16);
+}
+
+.tutor-dashboard__avatar--violet,
+.tutor-dashboard__avatar--indigo {
+    background: linear-gradient(135deg, #8d64cf 0%, #ba84e7 100%);
+}
+
+.tutor-dashboard__avatar--stone,
+.tutor-dashboard__avatar--slate {
+    background: linear-gradient(135deg, #62728f 0%, #8f9db6 100%);
+}
+
+.tutor-dashboard__avatar--gold,
+.tutor-dashboard__avatar--coral {
+    background: linear-gradient(135deg, #d88a59 0%, #efb374 100%);
+}
+
+.tutor-dashboard__avatar--rose,
+.tutor-dashboard__avatar--mint,
+.tutor-dashboard__avatar--ocean,
+.tutor-dashboard__avatar--forest {
+    background: linear-gradient(135deg, #5f8ba5 0%, #72c3b3 100%);
+}
+
+.tutor-dashboard__meta {
+    grid-template-columns: 1fr;
+}
+
+.tutor-dashboard__meta-pill {
+    justify-content: flex-start;
+    gap: 8px;
+    color: #433a46;
+    background: rgba(244, 240, 247, 0.96);
+}
+
+.tutor-dashboard__badge-row {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.tutor-dashboard__badge {
+    color: #fff;
+    background: linear-gradient(135deg, #474553 0%, #5d6b85 100%);
+}
+
+.tutor-dashboard__highlights {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.tutor-dashboard__highlight-card {
+    display: grid;
+    gap: 10px;
+    padding: 18px 18px 20px;
+    background: var(--dashboard-surface-muted);
+}
+
+.tutor-dashboard__highlight-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 16px;
+    color: #8a4ea8;
+    background: rgba(219, 191, 232, 0.34);
+    font-size: 1rem;
+}
+
+.tutor-dashboard__highlight-card p,
+.tutor-dashboard__highlight-card span {
+    margin: 0;
+    color: #6e6470;
+}
+
+.tutor-dashboard__highlight-card p {
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.tutor-dashboard__highlight-card strong {
+    color: #201c24;
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    line-height: 0.96;
+}
+
+.tutor-dashboard__highlight-card span {
+    font-size: 0.92rem;
+    line-height: 1.4;
+}
+
+.tutor-dashboard__layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.62fr);
+    gap: 18px;
+}
+
+.tutor-dashboard__panel {
+    display: grid;
+    gap: 16px;
+    padding: 22px;
+}
+
+.tutor-dashboard__panel--schedule {
+    grid-column: 1 / -1;
+}
+
+.tutor-dashboard__panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.tutor-dashboard__panel-head h3 {
+    margin: 8px 0 0;
+    color: #241e28;
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    line-height: 1.04;
+}
+
+.tutor-dashboard__lesson-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tutor-dashboard__lesson-card,
+.tutor-dashboard__today-item {
+    border: 1px solid rgba(197, 188, 204, 0.46);
+    border-radius: 22px;
+    background: rgba(251, 250, 253, 0.98);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.tutor-dashboard__lesson-card {
+    display: grid;
+    gap: 10px;
+    padding: 16px;
+}
+
+.tutor-dashboard__lesson-topline,
+.tutor-dashboard__lesson-card footer,
+.tutor-dashboard__today-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.tutor-dashboard__lesson-status {
+    color: #8a4ea8;
+    background: rgba(222, 207, 247, 0.36);
+}
+
+.tutor-dashboard__lesson-topline strong,
+.tutor-dashboard__today-item strong {
+    color: #201c24;
+    font-size: 0.98rem;
+}
+
+.tutor-dashboard__lesson-card h3 {
+    margin: 0;
+    color: #262028;
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.tutor-dashboard__lesson-card p,
+.tutor-dashboard__lesson-card footer span,
+.tutor-dashboard__today-item span,
+.tutor-dashboard__insights p,
+.tutor-dashboard__empty {
+    margin: 0;
+    color: #6b626d;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.tutor-dashboard__today-list {
+    gap: 10px;
+}
+
+.tutor-dashboard__today-item {
+    padding: 14px 16px;
+}
+
+.tutor-dashboard__insights {
+    gap: 10px;
+}
+
+.tutor-dashboard__insights p {
+    position: relative;
+    padding-left: 18px;
+}
+
+.tutor-dashboard__insights p::before {
+    content: "";
+    position: absolute;
+    top: 10px;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #c282df 0%, #9c62c7 100%);
+}
+
+.tutor-dashboard__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+}
+
+.tutor-dashboard__legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #685f6b;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.tutor-dashboard__legend-item::before,
+.tutor-dashboard__schedule-slot {
+    border-radius: 999px;
+    width: 18px;
+    height: 18px;
+    display: inline-block;
+}
+
+.tutor-dashboard__legend-item::before {
+    content: "";
+}
+
+.tutor-dashboard__legend-item.is-available::before,
+.tutor-dashboard__schedule-slot.is-available {
+    background: #57a45e;
+}
+
+.tutor-dashboard__legend-item.is-highlighted::before,
+.tutor-dashboard__schedule-slot.is-highlighted {
+    background: linear-gradient(135deg, #d08ae7 0%, #8d64cf 100%);
+}
+
+.tutor-dashboard__legend-item.is-unavailable::before,
+.tutor-dashboard__schedule-slot.is-unavailable {
+    background: #b86a6a;
+}
+
+.tutor-dashboard__legend-item.is-blocked::before,
+.tutor-dashboard__schedule-slot.is-blocked {
+    background: #d4d1d9;
+}
+
+.tutor-dashboard__schedule-wrap {
+    overflow-x: auto;
+}
+
+.tutor-dashboard__schedule-table {
+    width: 100%;
+    min-width: 820px;
+    border-collapse: separate;
+    border-spacing: 10px;
+}
+
+.tutor-dashboard__schedule-table th,
+.tutor-dashboard__schedule-table td {
+    text-align: center;
+}
+
+.tutor-dashboard__schedule-table th,
+.tutor-dashboard__schedule-time {
+    min-width: 92px;
+    padding: 10px 12px;
+    border-radius: 16px;
+    color: #f8f6fb;
+    background: #5f6070;
+    font-size: 0.85rem;
+    font-weight: 800;
+}
+
+.tutor-dashboard__schedule-time {
+    background: #777887;
+}
+
+.tutor-dashboard__schedule-table td {
+    background: rgba(244, 241, 247, 0.96);
+    border-radius: 16px;
+    height: 52px;
+}
+
+.tutor-dashboard__schedule-slot {
+    display: inline-block;
+}
+
+.tutor-dashboard__empty {
+    padding: 18px;
+    border-radius: 20px;
+    background: rgba(247, 244, 250, 0.95);
+    border: 1px dashed rgba(190, 180, 198, 0.74);
+}
+
+@media (max-width: 1180px) {
+    .tutor-dashboard__hero,
+    .tutor-dashboard__layout {
+        grid-template-columns: 1fr;
+    }
+
+    .tutor-dashboard__highlights {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .tutor-dashboard__hero,
+    .tutor-dashboard__panel,
+    .tutor-dashboard__highlight-card,
+    .tutor-dashboard__state {
+        border-radius: 24px;
+        padding: 18px;
+    }
+
+    .tutor-dashboard__highlights,
+    .tutor-dashboard__lesson-list {
+        grid-template-columns: 1fr;
+    }
+
+    .tutor-dashboard__panel-head h3 {
+        font-size: 1.28rem;
+    }
+
+    .tutor-dashboard__hero-copy h2 {
+        font-size: 2rem;
+    }
+
+    .tutor-dashboard__avatar {
+        width: 84px;
+        border-radius: 22px;
+        font-size: 1.8rem;
+    }
+
+    .tutor-dashboard__lesson-topline,
+    .tutor-dashboard__lesson-card footer,
+    .tutor-dashboard__today-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

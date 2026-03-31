@@ -17,6 +17,7 @@ from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
 from django.templatetags.static import static
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt
 
@@ -35,6 +36,7 @@ AVATAR_TONES = (
     "indigo",
     "forest",
 )
+WEEKDAY_SHORT_LABELS = ("Pon", "Wt", "Sr", "Czw", "Pt", "Sob", "Niedz")
 
 SUPPORTED_PREVIEW_COMPONENTS = {
     "subject-select": "subject-select",
@@ -93,6 +95,33 @@ def _create_auth_and_custom_user(username, normalized_email, password):
         )
 
     return user
+
+
+def _get_custom_user_for_auth_user(auth_user):
+    if not getattr(auth_user, "is_authenticated", False):
+        return None
+
+    normalized_email = User.objects.normalize_email(auth_user.email or "").strip().lower()
+    if not normalized_email:
+        return None
+
+    return CustomUser.objects.filter(email__iexact=normalized_email).first()
+
+
+def _get_tutor_for_auth_user(auth_user):
+    custom_user = _get_custom_user_for_auth_user(auth_user)
+    if custom_user is None:
+        return None
+
+    return (
+        Tutor.objects.filter(uzytkownik=custom_user)
+        .select_related("uzytkownik")
+        .prefetch_related("przedmioty", "dostepnosci", "opinie_dla")
+        .annotate(opinions_count=Count("opinie_dla", distinct=True))
+        .first()
+    )
+
+
 def _get_safe_next_target(request):
     candidate = request.POST.get("next") or request.GET.get("next") or ""
     if candidate and url_has_allowed_host_and_scheme(
@@ -108,9 +137,17 @@ def _get_safe_next_target(request):
 def _get_home_props(request):
     current_user = None
     if request.user.is_authenticated:
+        custom_user = _get_custom_user_for_auth_user(request.user)
+        is_tutor = bool(
+            custom_user
+            and custom_user.typ == "tutor"
+            and Tutor.objects.filter(uzytkownik=custom_user).exists()
+        )
         current_user = {
             "email": request.user.email,
             "username": request.user.get_username(),
+            "accountType": custom_user.typ if custom_user and custom_user.typ else "uczen",
+            "isTutor": is_tutor,
         }
 
     return {
@@ -139,6 +176,7 @@ def _get_home_props(request):
                 kwargs={"component_slug": "subject-select"},
             ),
             "tutorOnboardingSave": reverse("tutor_onboarding_save"),
+            "tutorDashboardData": reverse("tutor_dashboard_data"),
             "tutorProfileBase": reverse("tutor_profile_base"),
             "tutorSearch": reverse("tutor_search"),
         },
@@ -308,6 +346,44 @@ def _build_experience_label(tutor):
         return f"Stawka {tutor.stawka_godzinowa:.2f} zl/h"
 
     return "Profil gotowy do kontaktu"
+
+
+def _collect_tutor_taxonomy(przedmioty):
+    subjects = []
+    levels = []
+    topics = []
+
+    for przedmiot in przedmioty:
+        if przedmiot.nazwa and przedmiot.nazwa not in subjects:
+            subjects.append(przedmiot.nazwa)
+        if przedmiot.poziom and przedmiot.poziom not in levels:
+            levels.append(przedmiot.poziom)
+        if przedmiot.temat and przedmiot.temat not in topics:
+            topics.append(przedmiot.temat)
+
+    return {
+        "subjects": subjects,
+        "levels": levels,
+        "topics": topics,
+    }
+
+
+def _summarize_values(values, fallback, max_items=2):
+    if not values:
+        return fallback
+
+    visible_values = values[:max_items]
+    remaining_values = len(values) - len(visible_values)
+    summary = ", ".join(visible_values)
+
+    if remaining_values > 0:
+        return f"{summary} +{remaining_values}"
+
+    return summary
+
+
+def _format_time_range(start_time, end_time):
+    return f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
 
 
 def _build_status_badges(tutor, has_date=False, has_hour=False):
@@ -486,6 +562,185 @@ def _serialize_tutor_profile(tutor, selected_date):
     }
 
 
+def _build_tutor_dashboard_upcoming_lessons(tutor, taxonomy, reference_dt, limit=6):
+    reference_date = reference_dt.date()
+    reference_time = reference_dt.time()
+    subject_label = _summarize_values(taxonomy["subjects"], "Profil bez przedmiotow")
+    level_label = _summarize_values(taxonomy["levels"], "Rozne poziomy")
+    lesson_candidates = []
+
+    for slot in tutor.dostepnosci.all():
+        if slot.data is not None:
+            occurrence_dates = [slot.data]
+        else:
+            day_offset = (slot.dzien_tygodnia - reference_date.weekday()) % 7
+            first_occurrence = reference_date + timedelta(days=day_offset)
+
+            if day_offset == 0 and slot.godzina_do <= reference_time:
+                first_occurrence += timedelta(days=7)
+
+            occurrence_dates = [
+                first_occurrence + timedelta(days=7 * week_offset)
+                for week_offset in range(2)
+            ]
+
+        for occurrence_date in occurrence_dates:
+            if occurrence_date < reference_date:
+                continue
+
+            if occurrence_date == reference_date and slot.godzina_do <= reference_time:
+                continue
+
+            days_away = (occurrence_date - reference_date).days
+            lesson_candidates.append(
+                {
+                    "id": f"{slot.pk}-{occurrence_date.isoformat()}",
+                    "dateIso": occurrence_date.isoformat(),
+                    "dateLabel": occurrence_date.strftime("%d.%m"),
+                    "weekdayLabel": WEEKDAY_SHORT_LABELS[occurrence_date.weekday()],
+                    "timeLabel": _format_time_range(slot.godzina_od, slot.godzina_do),
+                    "subjectLabel": subject_label,
+                    "levelLabel": level_label,
+                    "statusLabel": "Dzisiaj" if days_away == 0 else ("Jutro" if days_away == 1 else "Zaplanowane"),
+                    "isToday": days_away == 0,
+                    "_daysAway": days_away,
+                    "_sortTime": slot.godzina_od.strftime("%H:%M"),
+                }
+            )
+
+    lesson_candidates.sort(key=lambda item: (item["dateIso"], item["_sortTime"], item["id"]))
+
+    today_lessons_count = sum(1 for item in lesson_candidates if item["_daysAway"] == 0)
+    week_lessons_count = sum(1 for item in lesson_candidates if 0 <= item["_daysAway"] <= 6)
+
+    upcoming_lessons = []
+    for lesson in lesson_candidates[:limit]:
+        lesson.pop("_daysAway", None)
+        lesson.pop("_sortTime", None)
+        upcoming_lessons.append(lesson)
+
+    return {
+        "todayLessonsCount": today_lessons_count,
+        "upcomingLessons": upcoming_lessons,
+        "weekLessonsCount": week_lessons_count,
+    }
+
+
+def _build_tutor_dashboard_highlights(tutor, taxonomy, upcoming_payload):
+    next_lesson = upcoming_payload["upcomingLessons"][0] if upcoming_payload["upcomingLessons"] else None
+    rating = float(tutor.rating) if tutor.rating is not None else 0.0
+    opinions_count = getattr(tutor, "opinions_count", None)
+    if opinions_count is None:
+        opinions_count = tutor.opinie_dla.count()
+
+    next_value = next_lesson["timeLabel"] if next_lesson else "Brak"
+    next_description = (
+        f'{next_lesson["weekdayLabel"]} {next_lesson["dateLabel"]}'
+        if next_lesson
+        else "Dodaj kolejne sloty w harmonogramie"
+    )
+
+    return [
+        {
+            "id": "next",
+            "icon": "fa-regular fa-clock",
+            "label": "Najblizsze zajecia",
+            "value": next_value,
+            "description": next_description,
+        },
+        {
+            "id": "today",
+            "icon": "fa-solid fa-sun",
+            "label": "Dzisiaj",
+            "value": str(upcoming_payload["todayLessonsCount"]),
+            "description": "sloty w grafiku",
+        },
+        {
+            "id": "week",
+            "icon": "fa-solid fa-calendar-week",
+            "label": "Ten tydzien",
+            "value": str(upcoming_payload["weekLessonsCount"]),
+            "description": "zaplanowane okna",
+        },
+        {
+            "id": "profile",
+            "icon": "fa-solid fa-star",
+            "label": "Profil",
+            "value": f"{rating:.1f}/5" if opinions_count else "Nowy",
+            "description": f'{opinions_count} opinii, {len(taxonomy["subjects"])} przedmiotow',
+        },
+    ]
+
+
+def _build_tutor_dashboard_insights(tutor, taxonomy, upcoming_payload):
+    insights = []
+    next_lesson = upcoming_payload["upcomingLessons"][0] if upcoming_payload["upcomingLessons"] else None
+    opinions_count = getattr(tutor, "opinions_count", None)
+    if opinions_count is None:
+        opinions_count = tutor.opinie_dla.count()
+
+    if next_lesson:
+        insights.append(
+            f'Najblizszy blok zajec wypada {next_lesson["weekdayLabel"]} {next_lesson["dateLabel"]} o {next_lesson["timeLabel"]}.'
+        )
+    else:
+        insights.append("Na razie nie masz zadnych przyszlych slotow w harmonogramie.")
+
+    if taxonomy["levels"]:
+        insights.append(
+            f'Uczysz na poziomach: {_summarize_values(taxonomy["levels"], "Rozne poziomy", max_items=3)}.'
+        )
+
+    if taxonomy["topics"]:
+        insights.append(
+            f'Najczesciej pokrywane tematy: {_summarize_values(taxonomy["topics"], "Powtorka", max_items=3)}.'
+        )
+
+    if opinions_count:
+        insights.append(f"Masz juz {opinions_count} opinii, warto utrzymac regularnosc i szybki kontakt z uczniami.")
+    else:
+        insights.append("Profil nie ma jeszcze opinii, wiec dobrym ruchem bedzie dopracowanie opisu i regularnych terminow.")
+
+    return insights[:4]
+
+
+def _serialize_tutor_dashboard(tutor):
+    reference_dt = timezone.localtime()
+    reference_date = reference_dt.date()
+    przedmioty = list(tutor.przedmioty.all())
+    taxonomy = _collect_tutor_taxonomy(przedmioty)
+    upcoming_payload = _build_tutor_dashboard_upcoming_lessons(tutor, taxonomy, reference_dt)
+    highlights = _build_tutor_dashboard_highlights(tutor, taxonomy, upcoming_payload)
+    rating = float(tutor.rating) if tutor.rating is not None else 0.0
+    opinions_count = getattr(tutor, "opinions_count", None)
+    if opinions_count is None:
+        opinions_count = tutor.opinie_dla.count()
+
+    return {
+        "tutorId": tutor.pk,
+        "profile": {
+            "name": _build_display_name(tutor),
+            "initials": _build_initials(tutor.uzytkownik.imie, tutor.uzytkownik.nazwisko),
+            "avatarTone": tutor.avatar_tone or AVATAR_TONES[tutor.pk % len(AVATAR_TONES)],
+            "about": tutor.opis or "Uzupelnij opis, aby uczniowie szybciej rozumieli Twoj styl pracy.",
+            "experience": _build_experience_label(tutor),
+            "rating": rating,
+            "opinions": opinions_count,
+            "followersCount": tutor.followers_count or max(120, opinions_count * 18 + 95),
+            "subjects": taxonomy["subjects"],
+            "levels": taxonomy["levels"],
+            "topics": taxonomy["topics"],
+            "statusBadges": _build_status_badges(tutor),
+        },
+        "generatedAt": reference_dt.isoformat(),
+        "highlights": highlights,
+        "upcomingLessons": upcoming_payload["upcomingLessons"],
+        "todayLessons": [lesson for lesson in upcoming_payload["upcomingLessons"] if lesson["isToday"]],
+        "insights": _build_tutor_dashboard_insights(tutor, taxonomy, upcoming_payload),
+        "schedule": _build_tutor_schedule(tutor, reference_date),
+    }
+
+
 def _sort_results_key(item):
     rating = item["rating"] or 0
     return (-item["score"], -rating, item["name"].lower())
@@ -658,6 +913,19 @@ def tutor_profile(request, tutor_id):
         return JsonResponse({"detail": "Nie znaleziono tutora."}, status=404)
 
     return JsonResponse(_serialize_tutor_profile(tutor, selected_date))
+
+
+@login_required
+def tutor_dashboard_data(request):
+    tutor = _get_tutor_for_auth_user(request.user)
+
+    if tutor is None:
+        return JsonResponse(
+            {"detail": "Dashboard tutora jest dostepny tylko dla konta korepetytora."},
+            status=404,
+        )
+
+    return JsonResponse(_serialize_tutor_dashboard(tutor))
 
 
 def login_user(request):

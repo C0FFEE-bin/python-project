@@ -86,6 +86,20 @@ export async function fetchTutorProfile({ tutorId, tutorProfileBaseUrl, date, da
     return response.json();
 }
 
+export async function fetchTutorDashboard({ dashboardUrl, databaseErrorUrl = "/database-error" }) {
+    const response = await fetch(dashboardUrl);
+    if (shouldRedirectToDatabaseError(response)) {
+        window.location.assign(databaseErrorUrl);
+        throw new Error("Blad bazy danych.");
+    }
+
+    if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+    }
+
+    return response.json();
+}
+
 export async function saveTutorOnboardingProfile({
     payload,
     saveUrl,

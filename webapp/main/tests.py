@@ -54,7 +54,10 @@ class MainViewsTests(TestCase):
         self.assertTrue(home_props['isAuthenticated'])
         self.assertEqual(home_props['currentUser']['email'], 'tester@example.com')
         self.assertEqual(home_props['currentUser']['username'], 'tester')
+        self.assertFalse(home_props['currentUser']['isTutor'])
+        self.assertEqual(home_props['currentUser']['accountType'], 'uczen')
         self.assertEqual(home_props['urls']['tutorSearch'], reverse('tutor_search'))
+        self.assertEqual(home_props['urls']['tutorDashboardData'], reverse('tutor_dashboard_data'))
 
     def test_component_preview_page_exposes_requested_component(self):
         response = self.client.get(
@@ -294,6 +297,57 @@ class MainViewsTests(TestCase):
             ],
         )
         self.assertEqual(payload['availableSlots'], 1)
+
+    def test_tutor_dashboard_returns_upcoming_lessons_for_logged_tutor(self):
+        auth_user = User.objects.create_user(
+            username='dashboard-tutor',
+            email='dashboard-tutor@example.com',
+            password='secret123',
+        )
+        tutor_user = TutorUser.objects.create(
+            imie='Ela',
+            nazwisko='Maj',
+            email='dashboard-tutor@example.com',
+            haslo='sekret',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(
+            uzytkownik=tutor_user,
+            opis='Ucze spokojnie i metodycznie.',
+            rating=4.9,
+            followers_count=340,
+        )
+        tutor.przedmioty.add(
+            Przedmiot.objects.create(
+                nazwa='Matematyka',
+                temat='Algebra',
+                poziom='Szkola srednia',
+            ),
+            Przedmiot.objects.create(
+                nazwa='Fizyka',
+                temat='Mechanika',
+                poziom='Studia',
+            ),
+        )
+        Dostepnosc.objects.create(
+            tutor=tutor,
+            dzien_tygodnia=2,
+            godzina_od=time(18, 0),
+            godzina_do=time(19, 0),
+        )
+
+        self.client.force_login(auth_user)
+        response = self.client.get(reverse('tutor_dashboard_data'))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        self.assertEqual(payload['profile']['name'], 'Ela Maj')
+        self.assertTrue(payload['profile']['subjects'])
+        self.assertTrue(payload['profile']['levels'])
+        self.assertEqual(len(payload['highlights']), 4)
+        self.assertTrue(payload['schedule']['rows'])
+        self.assertIn('upcomingLessons', payload)
 
     def test_tutor_search_returns_exact_and_suggested_results(self):
         exact_user = TutorUser.objects.create(

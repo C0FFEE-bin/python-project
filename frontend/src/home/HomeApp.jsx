@@ -5,7 +5,7 @@ import {
     defaultSearchSelections,
     navLinks,
 } from "./content.js";
-import { fetchTutorProfile } from "./api.js";
+import { fetchTutorDashboard, fetchTutorProfile } from "./api.js";
 import HomeHeader from "./sections/HomeHeader.jsx";
 import HeroSection from "./sections/HeroSection.jsx";
 import MentorSection from "./sections/MentorSection.jsx";
@@ -14,6 +14,7 @@ import PortalSection from "./sections/PortalSection.jsx";
 import RegistrationOnboardingPage from "./sections/RegistrationOnboardingPage.jsx";
 import SearchResultsPage from "./sections/SearchResultsPage.jsx";
 import SearchSection from "./sections/SearchSection.jsx";
+import TutorDashboardSection from "./sections/TutorDashboardSection.jsx";
 import TutorProfile from "./sections/TutorProfile.jsx";
 
 function getSearchParamsState() {
@@ -28,7 +29,13 @@ function getSearchParamsState() {
             level: searchParams.get("level") || defaultSearchSelections.level,
             hour: searchParams.get("hour") || defaultSearchSelections.hour,
         },
-        mode: viewMode === "results" ? "results" : viewMode === "portal" ? "portal" : "landing",
+        mode: viewMode === "results"
+            ? "results"
+            : viewMode === "tutor-dashboard"
+                ? "tutor-dashboard"
+                : viewMode === "portal"
+                    ? "portal"
+                    : "landing",
         tutorId: searchParams.get("tutor") || "",
     };
 }
@@ -57,6 +64,10 @@ function updateLocationState({ date, filters, mode, tutorId = "" }) {
         nextUrl.searchParams.set("view", "portal");
     }
 
+    if (mode === "tutor-dashboard" && !tutorId) {
+        nextUrl.searchParams.set("view", "tutor-dashboard");
+    }
+
     if (tutorId) {
         nextUrl.searchParams.set("tutor", tutorId);
     }
@@ -65,9 +76,11 @@ function updateLocationState({ date, filters, mode, tutorId = "" }) {
         ? "#tutor-profile"
         : mode === "results"
             ? "#search-results-page"
-            : mode === "portal"
-                ? "#portal"
-                : "";
+            : mode === "tutor-dashboard"
+                ? "#tutor-dashboard"
+                : mode === "portal"
+                    ? "#portal"
+                    : "";
 
     window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${hash}`);
 }
@@ -85,6 +98,7 @@ export default function HomeApp({
     const isPreview = Boolean(previewComponent);
     const isOnboarding = onboardingMode === "account-type";
     const isStandaloneView = isPreview || isOnboarding;
+    const isTutorAccount = Boolean(currentUser?.isTutor);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const [activeSection, setActiveSection] = useState("home");
@@ -92,6 +106,9 @@ export default function HomeApp({
     const [selectedTutor, setSelectedTutor] = useState(null);
     const [isTutorLoading, setIsTutorLoading] = useState(false);
     const [tutorError, setTutorError] = useState("");
+    const [tutorDashboard, setTutorDashboard] = useState(null);
+    const [isTutorDashboardLoading, setIsTutorDashboardLoading] = useState(false);
+    const [tutorDashboardError, setTutorDashboardError] = useState("");
     const hasTutorView = Boolean(pageState.tutorId);
 
     useEffect(() => {
@@ -137,7 +154,50 @@ export default function HomeApp({
         return () => {
             ignoreResponse = true;
         };
-    }, [pageState.date, pageState.tutorId, urls.tutorProfileBase]);
+    }, [pageState.date, pageState.tutorId, urls.tutorProfileBase, urls.databaseError]);
+
+    useEffect(() => {
+        if (pageState.mode !== "tutor-dashboard" || !isTutorAccount || hasTutorView) {
+            setTutorDashboard(null);
+            setTutorDashboardError("");
+            setIsTutorDashboardLoading(false);
+            return undefined;
+        }
+
+        let ignoreResponse = false;
+
+        async function loadTutorDashboard() {
+            setIsTutorDashboardLoading(true);
+            setTutorDashboardError("");
+
+            try {
+                const dashboardUrl = urls.tutorDashboardData ?? "/api/tutor-dashboard";
+                const dashboardPayload = await fetchTutorDashboard({
+                    dashboardUrl,
+                    databaseErrorUrl: urls.databaseError ?? "/database-error",
+                });
+
+                if (!ignoreResponse) {
+                    setTutorDashboard(dashboardPayload);
+                }
+            } catch (error) {
+                if (!ignoreResponse) {
+                    setTutorDashboard(null);
+                    setTutorDashboardError(error?.message || "Nie udalo sie pobrac dashboardu tutora.");
+                }
+            } finally {
+                if (!ignoreResponse) {
+                    setIsTutorDashboardLoading(false);
+                }
+            }
+        }
+
+        loadTutorDashboard();
+
+        return () => {
+            ignoreResponse = true;
+        };
+    }, [hasTutorView, isTutorAccount, pageState.mode, urls.databaseError, urls.tutorDashboardData]);
 
     useEffect(() => {
         if (isStandaloneView) {
@@ -172,7 +232,7 @@ export default function HomeApp({
             return undefined;
         }
 
-        if (pageState.mode === "portal") {
+        if (pageState.mode === "portal" || pageState.mode === "tutor-dashboard") {
             setActiveSection("portal");
             return undefined;
         }
@@ -223,10 +283,11 @@ export default function HomeApp({
 
     const handleNavClick = (sectionId) => {
         if (sectionId === "portal") {
+            const nextMode = isTutorAccount ? "tutor-dashboard" : "portal";
             const nextState = {
                 date: pageState.date,
                 filters: { ...pageState.filters },
-                mode: "portal",
+                mode: nextMode,
                 tutorId: "",
             };
 
@@ -378,6 +439,22 @@ export default function HomeApp({
                 ) : null}
 
                 {!hasTutorView && pageState.mode === "portal" ? <PortalSection /> : null}
+
+                {!hasTutorView && pageState.mode === "tutor-dashboard" ? (
+                    isTutorAccount ? (
+                        <TutorDashboardSection
+                            dashboard={tutorDashboard}
+                            error={tutorDashboardError}
+                            isLoading={isTutorDashboardLoading}
+                        />
+                    ) : (
+                        <section className="search-section landing-section" id="tutor-dashboard">
+                            <div className="search-results__empty">
+                                Dashboard tutora jest dostepny tylko dla konta korepetytora.
+                            </div>
+                        </section>
+                    )
+                ) : null}
             </main>
         </div>
     );
