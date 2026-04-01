@@ -17,7 +17,7 @@ import SearchSection from "./sections/SearchSection.jsx";
 import TutorDashboardSection from "./sections/TutorDashboardSection.jsx";
 import TutorProfile from "./sections/TutorProfile.jsx";
 
-function getSearchParamsState() {
+function getSearchParamsState(isTutorAccount = false) {
     const searchParams = new URLSearchParams(window.location.search);
     const viewMode = searchParams.get("view");
 
@@ -35,7 +35,9 @@ function getSearchParamsState() {
                 ? "tutor-dashboard"
                 : viewMode === "portal"
                     ? "portal"
-                    : "landing",
+                    : isTutorAccount
+                        ? "tutor-dashboard"
+                        : "landing",
         tutorId: searchParams.get("tutor") || "",
     };
 }
@@ -102,7 +104,7 @@ export default function HomeApp({
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const [activeSection, setActiveSection] = useState("home");
-    const [pageState, setPageState] = useState(() => getSearchParamsState());
+    const [pageState, setPageState] = useState(() => getSearchParamsState(isTutorAccount));
     const [selectedTutor, setSelectedTutor] = useState(null);
     const [isTutorLoading, setIsTutorLoading] = useState(false);
     const [tutorError, setTutorError] = useState("");
@@ -220,19 +222,24 @@ export default function HomeApp({
         }
 
         const handlePopState = () => {
-            setPageState(getSearchParamsState());
+            setPageState(getSearchParamsState(isTutorAccount));
         };
 
         window.addEventListener("popstate", handlePopState);
         return () => window.removeEventListener("popstate", handlePopState);
-    }, [isStandaloneView]);
+    }, [isStandaloneView, isTutorAccount]);
 
     useEffect(() => {
         if (isStandaloneView) {
             return undefined;
         }
 
-        if (pageState.mode === "portal" || pageState.mode === "tutor-dashboard") {
+        if (pageState.mode === "tutor-dashboard") {
+            setActiveSection("home");
+            return undefined;
+        }
+
+        if (pageState.mode === "portal") {
             setActiveSection("portal");
             return undefined;
         }
@@ -282,12 +289,27 @@ export default function HomeApp({
     }
 
     const handleNavClick = (sectionId) => {
-        if (sectionId === "portal") {
-            const nextMode = isTutorAccount ? "tutor-dashboard" : "portal";
+        if (sectionId === "home" && isTutorAccount) {
             const nextState = {
                 date: pageState.date,
                 filters: { ...pageState.filters },
-                mode: nextMode,
+                mode: "tutor-dashboard",
+                tutorId: "",
+            };
+
+            updateLocationState(nextState);
+            setPageState(nextState);
+            setActiveSection("home");
+            setIsMenuOpen(false);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            return;
+        }
+
+        if (sectionId === "portal") {
+            const nextState = {
+                date: pageState.date,
+                filters: { ...pageState.filters },
+                mode: "portal",
                 tutorId: "",
             };
 

@@ -1287,39 +1287,200 @@ button {
 }
 
 .portal-sidebar__group li {
+    list-style: none;
+}
+
+.portal-sidebar__button,
+.portal-sidebar__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 52px;
+    padding: 0 14px;
+    border-radius: 18px;
+    color: #7e737a;
+    font-size: 0.97rem;
+    font-weight: 700;
+    box-sizing: border-box;
+}
+
+.portal-sidebar__button {
+    border: 0;
+    background: transparent;
+    transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+.portal-sidebar__button:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.62);
+    box-shadow: 0 8px 18px rgba(103, 95, 112, 0.08);
+}
+
+.portal-sidebar__button.is-active {
+    background: linear-gradient(135deg, rgba(191, 134, 214, 0.96), rgba(158, 94, 194, 0.94));
+    color: #ffffff;
+    box-shadow: 0 14px 24px rgba(173, 95, 202, 0.24);
+}
+
+.portal-sidebar__button.is-active i {
+    color: #ffffff;
+}
+
+.portal-sidebar__button-main {
     display: grid;
     grid-template-columns: 18px 1fr;
     align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.portal-sidebar__button-main i {
+    color: #998f95;
+    font-size: 0.88rem;
+}
+
+.portal-sidebar__button-main span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.portal-sidebar__badge,
+.portal-sidebar__note {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    box-sizing: border-box;
+}
+
+.portal-sidebar__badge {
+    background: rgba(255, 255, 255, 0.72);
+    color: #896d98;
+}
+
+.portal-sidebar__button.is-active .portal-sidebar__badge {
+    background: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+}
+
+.portal-sidebar__note {
+    background: rgba(255, 255, 255, 0.76);
+    color: #a08e98;
+}
+
+.portal-sidebar__stack {
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px;
-    color: #8f8389;
-    font-size: 1.04rem;
-    font-weight: 600;
 }
 
-.portal-sidebar__group li i {
-    color: #9e9198;
-    font-size: 0.9rem;
+.portal-sidebar__stack-item {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.78);
+    color: #7d7378;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
 }
 
-.portal-sidebar__empty {
-    margin: 0;
-    color: #8a7c83;
-    font-size: 1.02rem;
-    font-weight: 600;
-}
-
-.portal-feed {
+.portal-main {
     min-height: 860px;
     display: grid;
-    gap: 18px;
+    gap: 20px;
     align-content: start;
-    padding: 16px;
+    padding: 22px;
     border: 1px solid rgba(120, 112, 124, 0.15);
     border-radius: 30px;
     background: rgba(248, 247, 250, 0.96);
     box-shadow:
         0 4px 0 rgba(95, 93, 102, 0.12),
         0 14px 26px rgba(98, 91, 110, 0.1);
+}
+
+.portal-main__intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+    gap: 18px;
+    align-items: start;
+}
+
+.portal-main__eyebrow {
+    margin: 0 0 12px;
+    color: var(--accent-strong);
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.portal-main__intro h2 {
+    margin: 0;
+    color: #656068;
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 3.4vw, 3.3rem);
+    font-style: italic;
+    font-weight: 500;
+    line-height: 1.05;
+}
+
+.portal-main__copy {
+    max-width: 56ch;
+    margin: 14px 0 0;
+    color: #8b8085;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.55;
+}
+
+.portal-main__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.portal-main__stat {
+    padding: 18px 16px;
+    border: 1px solid rgba(130, 121, 137, 0.12);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 12px 22px rgba(107, 101, 114, 0.08);
+}
+
+.portal-main__stat strong {
+    display: block;
+    color: #514853;
+    font-family: var(--font-display);
+    font-size: 1.44rem;
+    line-height: 1;
+}
+
+.portal-main__stat span {
+    display: block;
+    margin-top: 8px;
+    color: #948890;
+    font-size: 0.84rem;
+    font-weight: 800;
+    line-height: 1.45;
+}
+
+.portal-feed__list {
+    display: grid;
+    gap: 18px;
 }
 
 .portal-post {
@@ -1358,7 +1519,7 @@ button {
     margin: 0;
     color: #211f26;
     font-family: var(--font-display);
-    font-size: 2.1rem;
+    font-size: 1.75rem;
     font-weight: 700;
     line-height: 1.05;
 }
@@ -1398,6 +1559,26 @@ button {
     color: #5f555b;
 }
 
+.portal-post__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.portal-post__tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(237, 224, 244, 0.8);
+    color: #785c86;
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+}
+
 .portal-post__body p {
     margin: 0 0 6px;
     font-size: 1rem;
@@ -1431,6 +1612,343 @@ button {
 .portal-post__footer {
     margin-top: 8px;
     font-weight: 700;
+}
+
+.portal-empty-state {
+    padding: 26px 28px;
+    border: 1px dashed rgba(143, 118, 154, 0.32);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.8);
+    color: #796f74;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.55;
+}
+
+.portal-clubs__hero,
+.portal-clubs {
+    display: grid;
+    gap: 18px;
+    align-items: start;
+}
+
+.portal-clubs__hero {
+    grid-template-columns: minmax(0, 1fr) 320px;
+}
+
+.portal-clubs {
+    grid-template-columns: minmax(0, 1fr) 300px;
+}
+
+.portal-clubs__hero-copy,
+.portal-clubs__hero-panel,
+.portal-clubs__aside-card {
+    padding: 22px;
+    border: 1px solid rgba(130, 121, 137, 0.12);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow: 0 12px 22px rgba(107, 101, 114, 0.08);
+}
+
+.portal-clubs__eyebrow,
+.portal-clubs__panel-label {
+    margin: 0 0 12px;
+    color: var(--accent-strong);
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.portal-clubs__hero-copy h3 {
+    margin: 0;
+    color: #564d58;
+    font-family: var(--font-display);
+    font-size: 1.85rem;
+    line-height: 1.08;
+}
+
+.portal-clubs__hero-copy p {
+    margin: 12px 0 0;
+    color: #7d737a;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.6;
+}
+
+.portal-clubs__hero-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.portal-clubs__hero-tags span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(232, 216, 240, 0.92), rgba(249, 244, 251, 0.92));
+    color: #735b80;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+}
+
+.portal-clubs__steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 14px;
+    counter-reset: join-step;
+}
+
+.portal-clubs__steps li {
+    position: relative;
+    min-height: 36px;
+    padding-left: 48px;
+    color: #716871;
+    font-size: 0.96rem;
+    font-weight: 700;
+    line-height: 1.5;
+    counter-increment: join-step;
+}
+
+.portal-clubs__steps li::before {
+    content: counter(join-step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #cf7ee8, #b95ed5);
+    color: #ffffff;
+    font-family: var(--font-display);
+    font-weight: 700;
+}
+
+.portal-clubs__grid,
+.portal-clubs__aside {
+    display: grid;
+    gap: 18px;
+}
+
+.portal-clubs__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.portal-club-card {
+    display: grid;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid rgba(124, 114, 131, 0.14);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow:
+        0 4px 0 rgba(95, 93, 102, 0.08),
+        0 14px 24px rgba(101, 97, 109, 0.1);
+}
+
+.portal-club-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.portal-club-card__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 56px;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    color: #ffffff;
+    font-family: var(--font-display);
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+.portal-club-card__badge--violet {
+    background: linear-gradient(135deg, #7b6cba, #bb6fd7);
+}
+
+.portal-club-card__badge--stone {
+    background: linear-gradient(135deg, #7c7c84, #b6a8b4);
+}
+
+.portal-club-card__badge--mint {
+    background: linear-gradient(135deg, #5b8c78, #7dc4a0);
+}
+
+.portal-club-card__badge--ocean {
+    background: linear-gradient(135deg, #4f79a9, #77b8da);
+}
+
+.portal-club-card__badge--forest {
+    background: linear-gradient(135deg, #5f7f4c, #8ab26e);
+}
+
+.portal-club-card__badge--gold {
+    background: linear-gradient(135deg, #a17b3a, #d7b165);
+}
+
+.portal-club-card__members {
+    color: #8d8188;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.portal-club-card__title-block {
+    display: grid;
+    gap: 4px;
+}
+
+.portal-club-card__title-block h3 {
+    margin: 0;
+    color: #4f4652;
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    line-height: 1.1;
+}
+
+.portal-club-card__title-block p,
+.portal-clubs__event p {
+    margin: 0;
+    color: #91868d;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.portal-club-card__summary,
+.portal-clubs__aside-copy {
+    margin: 0;
+    color: #6d646d;
+    font-size: 0.96rem;
+    line-height: 1.55;
+}
+
+.portal-club-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.portal-club-card__meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(246, 242, 248, 0.96);
+    color: #746972;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.portal-club-card__meta i {
+    color: #8a5ba0;
+    font-size: 0.82rem;
+}
+
+.portal-club-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.portal-club-card__tags span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(235, 224, 242, 0.82);
+    color: #765d84;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.portal-club-card__focus {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 10px;
+}
+
+.portal-club-card__focus li {
+    position: relative;
+    padding-left: 18px;
+    color: #5f555c;
+    font-size: 0.94rem;
+    line-height: 1.5;
+}
+
+.portal-club-card__focus li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.65em;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #cf7ee8, #b95ed5);
+}
+
+.portal-club-card__footer {
+    display: grid;
+    gap: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(136, 126, 143, 0.14);
+}
+
+.portal-club-card__footer strong {
+    color: #5d4b62;
+    font-size: 0.9rem;
+}
+
+.portal-club-card__footer span,
+.portal-clubs__event span {
+    color: #94888f;
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+.portal-clubs__event {
+    display: grid;
+    gap: 4px;
+    padding: 16px;
+    border: 1px solid rgba(136, 126, 143, 0.12);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.86);
+}
+
+.portal-clubs__event-date {
+    color: var(--accent-strong);
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.portal-clubs__event strong {
+    color: #514853;
+    font-size: 0.98rem;
+    line-height: 1.4;
 }
 
 .contact-card__icon {
@@ -1585,7 +2103,22 @@ button {
         grid-template-columns: 1fr;
     }
 
-    .portal-feed {
+    .portal-main,
+    .portal-clubs,
+    .portal-clubs__hero {
+        min-height: auto;
+        grid-template-columns: 1fr;
+    }
+
+    .portal-main__intro {
+        grid-template-columns: 1fr;
+    }
+
+    .portal-clubs__aside {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .portal-main {
         min-height: auto;
     }
 }
@@ -1673,6 +2206,17 @@ button {
         position: static;
     }
 
+    .portal-main {
+        padding: 18px;
+        border-radius: 24px;
+    }
+
+    .portal-main__stats,
+    .portal-clubs__grid,
+    .portal-clubs__aside {
+        grid-template-columns: 1fr;
+    }
+
     .portal-post__identity h3 {
         font-size: 1.5rem;
     }
@@ -1746,7 +2290,11 @@ button {
 
     .contact-card,
     .portal-sidebar,
-    .portal-post {
+    .portal-post,
+    .portal-club-card,
+    .portal-clubs__hero-copy,
+    .portal-clubs__hero-panel,
+    .portal-clubs__aside-card {
         padding: 20px;
     }
 
@@ -1755,7 +2303,7 @@ button {
         border-radius: 28px;
     }
 
-    .portal-feed {
+    .portal-main {
         padding: 12px;
         border-radius: 22px;
     }
@@ -1763,6 +2311,21 @@ button {
     .portal-post {
         padding: 14px;
         border-radius: 18px;
+    }
+
+    .portal-main__intro h2 {
+        font-size: 1.9rem;
+    }
+
+    .portal-clubs__hero-copy h3,
+    .portal-club-card__title-block h3 {
+        font-size: 1.28rem;
+    }
+
+    .portal-sidebar__button,
+    .portal-sidebar__item {
+        min-height: 48px;
+        padding: 0 12px;
     }
 
     .portal-post__header {
