@@ -460,7 +460,14 @@ export default function HomeApp({
                     </>
                 ) : null}
 
-                {!hasTutorView && pageState.mode === "portal" ? <PortalSection /> : null}
+                {!hasTutorView && pageState.mode === "portal" ? (
+                    <PortalSection
+                        csrfToken={csrfToken}
+                        currentUser={currentUser}
+                        isAuthenticated={isAuthenticated}
+                        urls={urls}
+                    />
+                ) : null}
 
                 {!hasTutorView && pageState.mode === "tutor-dashboard" ? (
                     isTutorAccount ? (

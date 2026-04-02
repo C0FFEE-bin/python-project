@@ -9,6 +9,18 @@ function normalizeTutorCard(tutor) {
     };
 }
 
+function normalizePortalPost(post) {
+    return {
+        ...post,
+        avatarTone: post?.avatarTone || "slate",
+        checklist: Array.isArray(post?.checklist) ? post.checklist : [],
+        initials: post?.initials || "T",
+        paragraphs: Array.isArray(post?.paragraphs) ? post.paragraphs : [],
+        tags: Array.isArray(post?.tags) ? post.tags : [],
+        title: post?.title || "",
+    };
+}
+
 function shouldRedirectToDatabaseError(response) {
     return response.status >= 500 && response.headers.get("X-Database-Error") === "1";
 }
@@ -100,6 +112,21 @@ export async function fetchTutorDashboard({ dashboardUrl, databaseErrorUrl = "/d
     return response.json();
 }
 
+export async function fetchPortalPosts({ postsUrl, databaseErrorUrl = "/database-error" }) {
+    const response = await fetch(postsUrl);
+    if (shouldRedirectToDatabaseError(response)) {
+        window.location.assign(databaseErrorUrl);
+        throw new Error("Blad bazy danych.");
+    }
+
+    if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+    }
+
+    const payload = await response.json();
+    return (payload.posts ?? []).map(normalizePortalPost);
+}
+
 export async function saveTutorOnboardingProfile({
     payload,
     saveUrl,
@@ -125,4 +152,35 @@ export async function saveTutorOnboardingProfile({
     }
 
     return response.json();
+}
+
+export async function createPortalPost({
+    payload,
+    postsUrl,
+    csrfToken,
+    databaseErrorUrl = "/database-error",
+}) {
+    const response = await fetch(postsUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (shouldRedirectToDatabaseError(response)) {
+        window.location.assign(databaseErrorUrl);
+        throw new Error("Blad bazy danych.");
+    }
+
+    if (!response.ok) {
+        throw new Error(await parseWriteErrorMessage(response));
+    }
+
+    const responsePayload = await response.json();
+    return {
+        ...responsePayload,
+        post: responsePayload?.post ? normalizePortalPost(responsePayload.post) : null,
+    };
 }

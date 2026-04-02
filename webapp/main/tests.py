@@ -12,7 +12,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from main.middleware import DatabaseErrorPageMiddleware
-from main.models import Dostepnosc, Przedmiot, Tutor, User as TutorUser
+from main.models import Dostepnosc, Post, Przedmiot, Tutor, User as TutorUser
 
 
 class MainViewsTests(TestCase):
@@ -56,6 +56,7 @@ class MainViewsTests(TestCase):
         self.assertEqual(home_props['currentUser']['username'], 'tester')
         self.assertFalse(home_props['currentUser']['isTutor'])
         self.assertEqual(home_props['currentUser']['accountType'], 'uczen')
+        self.assertEqual(home_props['urls']['portalPosts'], reverse('portal_posts'))
         self.assertEqual(home_props['urls']['tutorSearch'], reverse('tutor_search'))
         self.assertEqual(home_props['urls']['tutorDashboardData'], reverse('tutor_dashboard_data'))
 
@@ -348,6 +349,109 @@ class MainViewsTests(TestCase):
         self.assertEqual(len(payload['highlights']), 4)
         self.assertTrue(payload['schedule']['rows'])
         self.assertIn('upcomingLessons', payload)
+
+    def test_portal_posts_returns_serialized_entries(self):
+        tutor_user = TutorUser.objects.create(
+            imie='Ola',
+            nazwisko='Maj',
+            email='ola-portal@example.com',
+            haslo='sekret',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(
+            uzytkownik=tutor_user,
+            followers_count=88,
+            avatar_tone='mint',
+        )
+        tutor.przedmioty.add(
+            Przedmiot.objects.create(
+                nazwa='Matematyka',
+                temat='Matura',
+                poziom='Szkola srednia',
+            )
+        )
+        Post.objects.create(
+            tutor=tutor,
+            tytul='Nowe terminy konsultacji',
+            tresc='Mam jeszcze dwa miejsca w tym tygodniu.\n- wtorek 18:00\n- czwartek 19:00',
+        )
+
+        response = self.client.get(reverse('portal_posts'))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        self.assertEqual(len(payload['posts']), 1)
+        self.assertEqual(payload['posts'][0]['author'], 'Ola Maj')
+        self.assertEqual(payload['posts'][0]['title'], 'Nowe terminy konsultacji')
+        self.assertEqual(payload['posts'][0]['avatarTone'], 'mint')
+        self.assertEqual(payload['posts'][0]['tags'], ['Matematyka', 'Matura', 'Szkola srednia'])
+        self.assertEqual(payload['posts'][0]['checklist'], ['wtorek 18:00', 'czwartek 19:00'])
+
+    def test_portal_posts_create_persists_post_for_logged_tutor(self):
+        auth_user = User.objects.create_user(
+            username='portal-tutor',
+            email='portal-tutor@example.com',
+            password='secret123',
+        )
+        tutor_user = TutorUser.objects.create(
+            imie='Ola',
+            nazwisko='Tutor',
+            email='portal-tutor@example.com',
+            haslo='sekret',
+            typ='tutor',
+        )
+        Tutor.objects.create(uzytkownik=tutor_user, followers_count=120)
+
+        self.client.force_login(auth_user)
+        response = self.client.post(
+            reverse('portal_posts'),
+            data=json.dumps(
+                {
+                    'title': 'Wrzucilem nowy zestaw zadan',
+                    'content': 'Material jest juz gotowy do pobrania.\n- rozdzial 1\n- rozdzial 2',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Post.objects.count(), 1)
+
+        created_post = Post.objects.get()
+        self.assertEqual(created_post.tytul, 'Wrzucilem nowy zestaw zadan')
+        self.assertEqual(created_post.tutor.uzytkownik.email, 'portal-tutor@example.com')
+        self.assertEqual(response.json()['post']['checklist'], ['rozdzial 1', 'rozdzial 2'])
+
+    def test_portal_posts_create_rejects_non_tutor_account(self):
+        auth_user = User.objects.create_user(
+            username='portal-student',
+            email='portal-student@example.com',
+            password='secret123',
+        )
+        TutorUser.objects.create(
+            imie='Adam',
+            nazwisko='Uczen',
+            email='portal-student@example.com',
+            haslo='sekret',
+            typ='uczen',
+        )
+
+        self.client.force_login(auth_user)
+        response = self.client.post(
+            reverse('portal_posts'),
+            data=json.dumps(
+                {
+                    'title': 'Probny wpis',
+                    'content': 'To konto nie powinno publikowac postow.',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(Post.objects.count(), 0)
+        self.assertIn('korepetytora', response.json()['detail'])
 
     def test_tutor_search_returns_exact_and_suggested_results(self):
         exact_user = TutorUser.objects.create(

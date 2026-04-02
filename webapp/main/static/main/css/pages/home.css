@@ -1478,6 +1478,173 @@ button {
     line-height: 1.45;
 }
 
+.portal-post-tools {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 18px;
+    align-items: start;
+}
+
+.portal-post-tools--single {
+    grid-template-columns: 1fr;
+}
+
+.portal-post-editor,
+.portal-post-guide {
+    padding: 22px;
+    border: 1px solid rgba(130, 121, 137, 0.12);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 12px 22px rgba(107, 101, 114, 0.08);
+}
+
+.portal-post-guide__eyebrow {
+    margin: 0 0 12px;
+    color: var(--accent-strong);
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.portal-post-editor__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: start;
+}
+
+.portal-post-editor__header h3,
+.portal-post-guide h3 {
+    margin: 0;
+    color: #564d58;
+    font-family: var(--font-display);
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1.12;
+}
+
+.portal-post-editor__author {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(236, 226, 243, 0.9);
+    color: #755c82;
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.portal-post-editor__copy,
+.portal-post-guide__note {
+    margin: 14px 0 0;
+    color: #73696f;
+    font-size: 0.96rem;
+    font-weight: 700;
+    line-height: 1.55;
+}
+
+.portal-post-form {
+    display: grid;
+    gap: 14px;
+    margin-top: 16px;
+}
+
+.portal-post-form__field {
+    display: grid;
+    gap: 8px;
+}
+
+.portal-post-form__field span {
+    color: #6d6169;
+    font-size: 0.84rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.portal-post-form__field input,
+.portal-post-form__field textarea {
+    width: 100%;
+    border: 1px solid rgba(130, 121, 137, 0.18);
+    border-radius: 18px;
+    background: rgba(250, 248, 251, 0.98);
+    color: #413b44;
+    font-size: 0.98rem;
+    line-height: 1.5;
+    padding: 14px 16px;
+}
+
+.portal-post-form__field textarea {
+    min-height: 180px;
+    resize: vertical;
+}
+
+.portal-post-form__field input:focus,
+.portal-post-form__field textarea:focus {
+    outline: 2px solid rgba(181, 112, 209, 0.2);
+    border-color: rgba(181, 112, 209, 0.45);
+}
+
+.portal-post-editor__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.portal-post-editor__submit {
+    min-height: 56px;
+    padding: 0 28px;
+}
+
+.portal-post-editor__hint {
+    margin: 0;
+    color: #8a7f86;
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.portal-post-editor__hint code {
+    border-radius: 999px;
+    background: rgba(236, 226, 243, 0.9);
+    color: #755c82;
+    padding: 2px 8px;
+}
+
+.portal-post-editor__status {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 800;
+}
+
+.portal-post-editor__status--error {
+    color: #ad4d66;
+}
+
+.portal-post-editor__status--success {
+    color: #468068;
+}
+
+.portal-post-guide__steps {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 10px;
+    color: #60575d;
+    font-size: 0.96rem;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.portal-post-guide__link {
+    color: var(--accent-strong);
+}
+
 .portal-feed__list {
     display: grid;
     gap: 18px;
@@ -1506,28 +1673,41 @@ button {
     gap: 12px;
 }
 
-.portal-post__identity img {
+.portal-post__avatar {
     width: 54px;
-    height: 54px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid rgba(190, 178, 198, 0.58);
-    background: #f2edf6;
+    min-width: 54px;
+    font-size: 1rem;
+}
+
+.portal-post__identity-copy {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
 }
 
 .portal-post__identity h3 {
     margin: 0;
     color: #211f26;
     font-family: var(--font-display);
-    font-size: 1.75rem;
+    font-size: 1.2rem;
     font-weight: 700;
     line-height: 1.05;
+}
+
+.portal-post__title {
+    margin: 0;
+    color: #2b2730;
+    font-family: var(--font-display);
+    font-size: 1.56rem;
+    font-weight: 700;
+    line-height: 1.08;
 }
 
 .portal-post__meta {
     margin-top: 4px;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
     color: #8f848a;
     font-size: 0.9rem;
@@ -1606,11 +1786,6 @@ button {
     left: 0;
     top: 0;
     color: #8a5ba0;
-    font-weight: 700;
-}
-
-.portal-post__footer {
-    margin-top: 8px;
     font-weight: 700;
 }
 
@@ -2114,6 +2289,10 @@ button {
         grid-template-columns: 1fr;
     }
 
+    .portal-post-tools {
+        grid-template-columns: 1fr;
+    }
+
     .portal-clubs__aside {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -2221,6 +2400,10 @@ button {
         font-size: 1.5rem;
     }
 
+    .portal-post__title {
+        font-size: 1.34rem;
+    }
+
     .search-panel {
         grid-template-columns: 1fr;
         gap: 22px;
@@ -2291,6 +2474,8 @@ button {
     .contact-card,
     .portal-sidebar,
     .portal-post,
+    .portal-post-editor,
+    .portal-post-guide,
     .portal-club-card,
     .portal-clubs__hero-copy,
     .portal-clubs__hero-panel,
@@ -2334,6 +2519,16 @@ button {
 
     .portal-post__identity h3 {
         font-size: 1.22rem;
+    }
+
+    .portal-post__title {
+        font-size: 1.16rem;
+    }
+
+    .portal-post-editor__header,
+    .portal-post-editor__actions {
+        flex-direction: column;
+        align-items: stretch;
     }
 
     .search-section {

@@ -22,7 +22,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt
 
 # Importujemy Twój customowy model User pod aliasem, żeby nie nadpisał domyślnego User z Django
-from .models import Dostepnosc, Przedmiot, Tutor, User as CustomUser
+from .models import Dostepnosc, Post, Przedmiot, Tutor, User as CustomUser
 
 AVATAR_TONES = (
     "violet",
@@ -165,6 +165,7 @@ def _get_home_props(request):
             "login": reverse("login_user"),
             "logout": reverse("logout_user"),
             "onboarding": reverse("onboarding_account_type"),
+            "portalPosts": reverse("portal_posts"),
             "register": reverse("register_user"),
             "databaseError": reverse("database_error_page"),
             "schoolLevelSelectPreview": reverse(
@@ -741,6 +742,56 @@ def _serialize_tutor_dashboard(tutor):
     }
 
 
+def _split_post_content(content):
+    paragraphs = []
+    checklist = []
+
+    for raw_line in (content or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        if line.startswith("- ") or line.startswith("* "):
+            item = line[2:].strip()
+            if item:
+                checklist.append(item)
+            continue
+
+        paragraphs.append(line)
+
+    if not paragraphs and (content or "").strip():
+        paragraphs = [(content or "").strip()]
+
+    return {
+        "paragraphs": paragraphs[:6],
+        "checklist": checklist[:6],
+    }
+
+
+def _format_followers_count(followers_count):
+    return f"{int(followers_count or 0):,}".replace(",", " ")
+
+
+def _serialize_portal_post(post):
+    content_parts = _split_post_content(post.tresc)
+    tutor = post.tutor
+    localized_created_at = timezone.localtime(post.data_utworzenia)
+
+    return {
+        "id": post.pk,
+        "author": _build_display_name(tutor),
+        "title": post.tytul,
+        "createdAt": localized_created_at.isoformat(),
+        "dateLabel": localized_created_at.strftime("%d.%m.%Y o %H:%M"),
+        "followers": _format_followers_count(tutor.followers_count),
+        "initials": _build_initials(tutor.uzytkownik.imie, tutor.uzytkownik.nazwisko),
+        "avatarTone": tutor.avatar_tone or AVATAR_TONES[tutor.pk % len(AVATAR_TONES)],
+        "tags": _build_tags(tutor.przedmioty.all()),
+        "paragraphs": content_parts["paragraphs"],
+        "checklist": content_parts["checklist"],
+    }
+
+
 def _sort_results_key(item):
     rating = item["rating"] or 0
     return (-item["score"], -rating, item["name"].lower())
@@ -926,6 +977,67 @@ def tutor_dashboard_data(request):
         )
 
     return JsonResponse(_serialize_tutor_dashboard(tutor))
+
+
+def portal_posts(request):
+    if request.method == "GET":
+        posts = (
+            Post.objects.select_related("tutor__uzytkownik")
+            .prefetch_related("tutor__przedmioty")
+            .order_by("-data_utworzenia", "-pk")[:24]
+        )
+
+        return JsonResponse(
+            {
+                "posts": [_serialize_portal_post(post) for post in posts],
+            }
+        )
+
+    if request.method != "POST":
+        return JsonResponse({"detail": "Zla metoda."}, status=405)
+
+    if not request.user.is_authenticated:
+        return JsonResponse({"detail": "Zaloguj sie, aby dodac wpis."}, status=401)
+
+    tutor = _get_tutor_for_auth_user(request.user)
+    if tutor is None:
+        return JsonResponse(
+            {"detail": "Dodawanie wpisow jest dostepne tylko dla konta korepetytora."},
+            status=403,
+        )
+
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"detail": "Niepoprawne dane JSON."}, status=400)
+
+    title = (payload.get("title") or "").strip()
+    content = (payload.get("content") or "").strip()
+
+    if len(title) < 4:
+        return JsonResponse({"detail": "Tytul wpisu musi miec co najmniej 4 znaki."}, status=400)
+
+    if len(content) < 12:
+        return JsonResponse({"detail": "Tresc wpisu musi miec co najmniej 12 znakow."}, status=400)
+
+    post = Post.objects.create(
+        tutor=tutor,
+        tytul=title,
+        tresc=content,
+    )
+    post = (
+        Post.objects.select_related("tutor__uzytkownik")
+        .prefetch_related("tutor__przedmioty")
+        .get(pk=post.pk)
+    )
+
+    return JsonResponse(
+        {
+            "message": "Wpis zostal opublikowany.",
+            "post": _serialize_portal_post(post),
+        },
+        status=201,
+    )
 
 
 def login_user(request):

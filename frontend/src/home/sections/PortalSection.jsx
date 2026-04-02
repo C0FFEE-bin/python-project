@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { createPortalPost, fetchPortalPosts } from "../api.js";
 import Reveal from "../components/Reveal.jsx";
+import joinClasses from "../utils/joinClasses.js";
 
 const SIDEBAR_SECTIONS = [
     {
@@ -21,45 +23,6 @@ const SIDEBAR_SECTIONS = [
             { id: "progress", icon: "fa-solid fa-chart-line", label: "Postep w nauce", note: "raport" },
             { id: "message", icon: "fa-solid fa-envelope", label: "Wyslij wiadomosc", note: "nowe" },
         ],
-    },
-];
-
-const PORTAL_POSTS = [
-    {
-        author: "Tomasz Kowalski",
-        avatarSrc: "/static/main/img/profile1.png",
-        dateLabel: "01.04.2026 o 15:13",
-        followers: "1,021",
-        tags: ["matura", "matematyka", "planowanie"],
-        lines: [
-            "Nowy semestr to dobry moment, zeby ustalic rytm pracy i nie czekac na pierwsze zaleglosci.",
-            "Rozpisalem trzy proste kroki, ktore pomagaja utrzymac regularnosc i szybciej wychwycic braki.",
-            "Jesli chcesz, moge pomoc Ci ulozyc tygodniowy plan nauki pod mature lub kolokwium.",
-        ],
-        checklist: [
-            "cotygodniowy plan z priorytetami",
-            "powtorki rozbite na male bloki",
-            "mierzalne cele na kazdy tydzien",
-        ],
-        footer: "Mam dwa wolne terminy na konsultacje organizacyjne w tym tygodniu.",
-    },
-    {
-        author: "Sebastian Enrique Alvarez",
-        avatarSrc: "/static/main/img/profile2.png",
-        dateLabel: "30.03.2026 o 19:15",
-        followers: "311",
-        tags: ["fizyka", "egzamin", "warsztaty"],
-        lines: [
-            "Dziekuje wszystkim uczniom za poprzedni semestr i swietna wspolprace przy przygotowaniach do egzaminow.",
-            "W kwietniu ruszamy z mini-warsztatami z rachunku bledow i rozwiazywania zadan otwartych.",
-            "Jesli potrzebujesz intensywnej powtorki przed sprawdzianem, napisz do mnie przez portal.",
-        ],
-        checklist: [
-            "zadania egzaminacyjne krok po kroku",
-            "krotkie bloki teorii przed praktyka",
-            "powtorki w grupie 2-3 osobowej",
-        ],
-        footer: "Zostaly mi dwa miejsca w czwartkowym bloku wieczornym.",
     },
 ];
 
@@ -207,14 +170,18 @@ const CLUB_JOIN_STEPS = [
     "dolacz na otwarte warsztaty lub spotkanie rekrutacyjne",
 ];
 
-const OBSERVED_ITEMS = {
-    posts: ["AI & Data Lab", "Tomasz Kowalski", "Robotics Forge"],
-    clubs: ["Bio Innovators", "Law & Policy Lab", "Astronomical Observatory Crew"],
+const POST_PUBLISH_STEPS = [
+    "dodaj tytul wpisu, np. wolne terminy albo nowy material",
+    "w tresci opisz aktualnosc, a linie od - zamienia sie w liste punktow",
+    "kliknij publikuj, a wpis od razu zapisze sie w bazie",
+];
+
+const EMPTY_POST_FORM = {
+    title: "",
+    content: "",
 };
 
-function joinClasses(...classes) {
-    return classes.filter(Boolean).join(" ");
-}
+const OBSERVED_CLUBS = ["Bio Innovators", "Law & Policy Lab", "Astronomical Observatory Crew"];
 
 function matchesSearch(searchValue, entries) {
     if (!searchValue) {
@@ -224,7 +191,175 @@ function matchesSearch(searchValue, entries) {
     return entries.some((entry) => String(entry).toLowerCase().includes(searchValue));
 }
 
-function PortalPostsView({ posts, searchValue }) {
+function buildPostSearchEntries(post) {
+    return [
+        post.author,
+        post.title,
+        ...(post.tags || []),
+        ...(post.paragraphs || []),
+        ...(post.checklist || []),
+    ];
+}
+
+function buildObservedPostItems(posts) {
+    const items = [];
+
+    posts.forEach((post) => {
+        const label = post.author || post.title;
+        if (label && !items.includes(label)) {
+            items.push(label);
+        }
+    });
+
+    if (!items.length) {
+        return ["Brak aktywnych wpisow", "Pierwszy tutor moze publikowac", "Portal czeka na start"];
+    }
+
+    return items.slice(0, 3);
+}
+
+function formatPostsBadge(postsCount) {
+    if (postsCount > 99) {
+        return "99+";
+    }
+
+    return String(postsCount).padStart(2, "0");
+}
+
+function PortalPostComposer({
+    currentUser,
+    formValues,
+    isSaving,
+    onSubmit,
+    onTitleChange,
+    onContentChange,
+    submitError,
+    submitSuccess,
+}) {
+    return (
+        <section className="portal-post-editor">
+            <div className="portal-post-editor__header">
+                <div>
+                    <p className="portal-post-guide__eyebrow">Panel tutora</p>
+                    <h3>Dodaj nowy wpis do portalu</h3>
+                </div>
+                <span className="portal-post-editor__author">@{currentUser?.username || "tutor"}</span>
+            </div>
+
+            <p className="portal-post-editor__copy">
+                Publikuj wolne terminy, nowe materialy, mini-ogloszenia albo szybkie aktualnosci dla uczniow.
+            </p>
+
+            <form className="portal-post-form" onSubmit={onSubmit}>
+                <label className="portal-post-form__field">
+                    <span>Tytul wpisu</span>
+                    <input
+                        type="text"
+                        value={formValues.title}
+                        onChange={onTitleChange}
+                        placeholder="Np. Wolne terminy przed matura z matematyki"
+                        maxLength={200}
+                        required
+                    />
+                </label>
+
+                <label className="portal-post-form__field">
+                    <span>Tresc</span>
+                    <textarea
+                        value={formValues.content}
+                        onChange={onContentChange}
+                        placeholder={"Dodaj krotka aktualnosc dla uczniow.\n- wolny termin w czwartek 18:00\n- nowy zestaw zadan juz czeka"}
+                        required
+                    />
+                </label>
+
+                <div className="portal-post-editor__actions">
+                    <button
+                        type="submit"
+                        className="button button--primary portal-post-editor__submit"
+                        disabled={isSaving}
+                    >
+                        {isSaving ? "Publikowanie..." : "Publikuj wpis"}
+                    </button>
+                    <p className="portal-post-editor__hint">
+                        Akapity zostana wyswietlone jako opis, a linie od <code>-</code> jako lista punktow.
+                    </p>
+                </div>
+
+                {submitError ? (
+                    <p className="portal-post-editor__status portal-post-editor__status--error">{submitError}</p>
+                ) : null}
+                {submitSuccess ? (
+                    <p className="portal-post-editor__status portal-post-editor__status--success">{submitSuccess}</p>
+                ) : null}
+            </form>
+        </section>
+    );
+}
+
+function PortalPostGuide({ canCreatePosts, isAuthenticated, loginUrl, onboardingUrl }) {
+    return (
+        <aside className="portal-post-guide">
+            <p className="portal-post-guide__eyebrow">Jak dodac wpis</p>
+            <h3>Prosty schemat publikacji dla tutora</h3>
+
+            <ol className="portal-post-guide__steps">
+                {POST_PUBLISH_STEPS.map((step) => (
+                    <li key={step}>{step}</li>
+                ))}
+            </ol>
+
+            {canCreatePosts ? (
+                <p className="portal-post-guide__note">
+                    Twoj wpis pojawi sie od razu w sekcji <strong>Wpisy</strong> i zostanie zapisany w bazie.
+                </p>
+            ) : null}
+
+            {!canCreatePosts && isAuthenticated ? (
+                <p className="portal-post-guide__note">
+                    Konto ucznia widzi wpisy, ale nie publikuje ich.{" "}
+                    <a className="portal-post-guide__link" href={onboardingUrl}>
+                        Przejdz do onboardingu tutora
+                    </a>
+                    .
+                </p>
+            ) : null}
+
+            {!canCreatePosts && !isAuthenticated ? (
+                <p className="portal-post-guide__note">
+                    <a className="portal-post-guide__link" href={loginUrl}>
+                        Zaloguj sie
+                    </a>{" "}
+                    jako tutor, aby publikowac aktualnosci w portalu.
+                </p>
+            ) : null}
+        </aside>
+    );
+}
+
+function PortalPostsView({
+    currentUser,
+    formValues,
+    hasAnyPosts,
+    isAuthenticated,
+    isLoading,
+    isSaving,
+    loginUrl,
+    onboardingUrl,
+    onContentChange,
+    onSubmit,
+    onTitleChange,
+    posts,
+    postsError,
+    postsLastWeekCount,
+    searchValue,
+    submitError,
+    submitSuccess,
+    totalAuthorsCount,
+    totalPostsCount,
+}) {
+    const canCreatePosts = Boolean(currentUser?.isTutor);
+
     return (
         <>
             <section className="portal-main__intro">
@@ -232,74 +367,123 @@ function PortalPostsView({ posts, searchValue }) {
                     <p className="portal-main__eyebrow">Portal ucznia</p>
                     <h2>Wpisy, ogloszenia i szybkie aktualnosci od tutorow</h2>
                     <p className="portal-main__copy">
-                        Zbieraj informacje o wolnych terminach, mini-warsztatach i nowych materialach bez
+                        Zbieraj informacje o wolnych terminach, nowych materialach i publikacjach tutorow bez
                         przechodzenia miedzy zakladkami.
                     </p>
                 </div>
 
                 <div className="portal-main__stats">
                     <div className="portal-main__stat">
-                        <strong>{posts.length}</strong>
+                        <strong>{totalPostsCount}</strong>
                         <span>aktywnych wpisow</span>
                     </div>
                     <div className="portal-main__stat">
-                        <strong>5</strong>
-                        <span>nowych terminow w tym tygodniu</span>
+                        <strong>{postsLastWeekCount}</strong>
+                        <span>publikacji z ostatnich 7 dni</span>
                     </div>
                     <div className="portal-main__stat">
-                        <strong>1:1</strong>
-                        <span>szybki kontakt z tutorami</span>
+                        <strong>{totalAuthorsCount}</strong>
+                        <span>tutorow publikuje w portalu</span>
                     </div>
                 </div>
             </section>
 
-            {posts.length ? (
+            <section className={joinClasses("portal-post-tools", !canCreatePosts && "portal-post-tools--single")}>
+                {canCreatePosts ? (
+                    <PortalPostComposer
+                        currentUser={currentUser}
+                        formValues={formValues}
+                        isSaving={isSaving}
+                        onSubmit={onSubmit}
+                        onTitleChange={onTitleChange}
+                        onContentChange={onContentChange}
+                        submitError={submitError}
+                        submitSuccess={submitSuccess}
+                    />
+                ) : null}
+
+                <PortalPostGuide
+                    canCreatePosts={canCreatePosts}
+                    isAuthenticated={isAuthenticated}
+                    loginUrl={loginUrl}
+                    onboardingUrl={onboardingUrl}
+                />
+            </section>
+
+            {isLoading ? <div className="portal-empty-state">Ladowanie wpisow z bazy...</div> : null}
+            {!isLoading && postsError ? <div className="portal-empty-state">{postsError}</div> : null}
+
+            {!isLoading && !postsError && posts.length ? (
                 <div className="portal-feed__list">
                     {posts.map((post) => (
-                        <article key={post.author} className="portal-post">
+                        <article key={post.id} className="portal-post">
                             <header className="portal-post__header">
                                 <div className="portal-post__identity">
-                                    <img src={post.avatarSrc} alt={post.author} />
-                                    <div>
-                                        <h3>{post.author}</h3>
-                                        <div className="portal-post__meta">
-                                            <span className="portal-post__follow">Obserwuj</span>
-                                            <span>{post.followers}</span>
+                                    <div
+                                        className={joinClasses(
+                                            "portal-post__avatar",
+                                            "tutor-card__avatar",
+                                            `tutor-card__avatar--${post.avatarTone || "slate"}`,
+                                        )}
+                                    >
+                                        <span>{post.initials}</span>
+                                    </div>
+
+                                    <div className="portal-post__identity-copy">
+                                        <div>
+                                            <h3>{post.author}</h3>
+                                            <div className="portal-post__meta">
+                                                <span className="portal-post__follow">Obserwuj</span>
+                                                <span>{post.followers} obserwujacych</span>
+                                            </div>
                                         </div>
+                                        <h4 className="portal-post__title">{post.title}</h4>
                                     </div>
                                 </div>
-                                <time>{post.dateLabel}</time>
+                                <time dateTime={post.createdAt}>{post.dateLabel}</time>
                             </header>
 
                             <div className="portal-post__body">
                                 <div className="portal-post__tags" aria-label="Tematy wpisu">
                                     {post.tags.map((tag) => (
-                                        <span key={tag} className="portal-post__tag">
+                                        <span key={`${post.id}-${tag}`} className="portal-post__tag">
                                             {tag}
                                         </span>
                                     ))}
                                 </div>
 
-                                {post.lines.map((line) => (
-                                    <p key={line}>{line}</p>
+                                {post.paragraphs.map((paragraph) => (
+                                    <p key={`${post.id}-${paragraph}`}>{paragraph}</p>
                                 ))}
 
-                                <ul>
-                                    {post.checklist.map((item) => (
-                                        <li key={item}>{item}</li>
-                                    ))}
-                                </ul>
-
-                                <p className="portal-post__footer">{post.footer}</p>
+                                {post.checklist.length ? (
+                                    <ul>
+                                        {post.checklist.map((item) => (
+                                            <li key={`${post.id}-${item}`}>{item}</li>
+                                        ))}
+                                    </ul>
+                                ) : null}
                             </div>
                         </article>
                     ))}
                 </div>
-            ) : (
+            ) : null}
+
+            {!isLoading && !postsError && !posts.length ? (
                 <div className="portal-empty-state">
-                    Nie znaleziono wpisow pasujacych do frazy <strong>{searchValue}</strong>.
+                    {hasAnyPosts ? (
+                        <>
+                            Nie znaleziono wpisow pasujacych do frazy <strong>{searchValue}</strong>.
+                        </>
+                    ) : (
+                        <>
+                            Na razie nie ma jeszcze wpisow w portalu. {canCreatePosts
+                                ? "Mozesz opublikowac pierwszy wpis i zapisac go od razu w bazie."
+                                : "Pierwszy tutor moze dodac wpis po zalogowaniu."}
+                        </>
+                    )}
                 </div>
-            )}
+            ) : null}
         </>
     );
 }
@@ -449,20 +633,65 @@ function ScientificClubsView({ clubs, searchValue }) {
     );
 }
 
-export default function PortalSection() {
+export default function PortalSection({
+    csrfToken = "",
+    currentUser = null,
+    isAuthenticated = false,
+    urls = {},
+}) {
     const [activeView, setActiveView] = useState("posts");
     const [searchValue, setSearchValue] = useState("");
+    const [portalPosts, setPortalPosts] = useState([]);
+    const [isPostsLoading, setIsPostsLoading] = useState(false);
+    const [postsError, setPostsError] = useState("");
+    const [isSavingPost, setIsSavingPost] = useState(false);
+    const [submitError, setSubmitError] = useState("");
+    const [submitSuccess, setSubmitSuccess] = useState("");
+    const [postForm, setPostForm] = useState(EMPTY_POST_FORM);
 
     const normalizedSearch = searchValue.trim().toLowerCase();
+    const postsUrl = urls.portalPosts ?? "/api/portal-posts";
+    const databaseErrorUrl = urls.databaseError ?? "/database-error";
+    const loginUrl = urls.login ?? "/login";
+    const onboardingUrl = urls.onboarding ?? "/onboarding";
 
-    const filteredPosts = PORTAL_POSTS.filter((post) =>
-        matchesSearch(normalizedSearch, [
-            post.author,
-            post.footer,
-            ...post.tags,
-            ...post.lines,
-            ...post.checklist,
-        ]),
+    useEffect(() => {
+        let ignoreResponse = false;
+
+        async function loadPortalPosts() {
+            setIsPostsLoading(true);
+            setPostsError("");
+
+            try {
+                const loadedPosts = await fetchPortalPosts({
+                    postsUrl,
+                    databaseErrorUrl,
+                });
+
+                if (!ignoreResponse) {
+                    setPortalPosts(loadedPosts);
+                }
+            } catch (error) {
+                if (!ignoreResponse) {
+                    setPortalPosts([]);
+                    setPostsError(error?.message || "Nie udalo sie pobrac wpisow z portalu.");
+                }
+            } finally {
+                if (!ignoreResponse) {
+                    setIsPostsLoading(false);
+                }
+            }
+        }
+
+        loadPortalPosts();
+
+        return () => {
+            ignoreResponse = true;
+        };
+    }, [databaseErrorUrl, postsUrl]);
+
+    const filteredPosts = portalPosts.filter((post) =>
+        matchesSearch(normalizedSearch, buildPostSearchEntries(post)),
     );
 
     const filteredClubs = SCIENTIFIC_CLUBS.filter((club) =>
@@ -478,10 +707,62 @@ export default function PortalSection() {
         ]),
     );
 
-    const observedItems = OBSERVED_ITEMS[activeView];
+    const postsLastWeekCount = portalPosts.filter((post) => {
+        const createdTimestamp = Date.parse(post.createdAt || "");
+        return Number.isFinite(createdTimestamp) && (Date.now() - createdTimestamp) <= 7 * 24 * 60 * 60 * 1000;
+    }).length;
+    const totalAuthorsCount = new Set(portalPosts.map((post) => post.author).filter(Boolean)).size;
+    const observedItems = activeView === "clubs" ? OBSERVED_CLUBS : buildObservedPostItems(portalPosts);
     const searchPlaceholder = activeView === "clubs"
         ? "Szukaj kol, tematow lub projektow..."
-        : "Szukaj wpisow lub autorow...";
+        : "Szukaj wpisow, autorow lub tematow...";
+
+    async function handleCreatePost(event) {
+        event.preventDefault();
+        if (isSavingPost) {
+            return;
+        }
+
+        setIsSavingPost(true);
+        setSubmitError("");
+        setSubmitSuccess("");
+
+        try {
+            const responsePayload = await createPortalPost({
+                payload: {
+                    title: postForm.title,
+                    content: postForm.content,
+                },
+                postsUrl,
+                csrfToken,
+                databaseErrorUrl,
+            });
+
+            if (responsePayload.post) {
+                setPortalPosts((currentPosts) => [responsePayload.post, ...currentPosts].slice(0, 24));
+            }
+
+            setPostForm(EMPTY_POST_FORM);
+            setSearchValue("");
+            setSubmitSuccess(responsePayload.message || "Wpis zostal opublikowany.");
+        } catch (error) {
+            setSubmitError(error?.message || "Nie udalo sie zapisac wpisu.");
+        } finally {
+            setIsSavingPost(false);
+        }
+    }
+
+    function handleFieldChange(fieldName) {
+        return (event) => {
+            const nextValue = event.target.value;
+            setPostForm((currentForm) => ({
+                ...currentForm,
+                [fieldName]: nextValue,
+            }));
+            setSubmitError("");
+            setSubmitSuccess("");
+        };
+    }
 
     return (
         <Reveal as="section" id="portal" className="portal-hub landing-section">
@@ -505,35 +786,41 @@ export default function PortalSection() {
                         <div key={section.title} className="portal-sidebar__group">
                             <p className="portal-sidebar__heading">{section.title}</p>
                             <ul>
-                                {section.items.map((item) => (
-                                    <li key={item.id}>
-                                        {item.view ? (
-                                            <button
-                                                type="button"
-                                                className={joinClasses(
-                                                    "portal-sidebar__button",
-                                                    activeView === item.view && "is-active",
-                                                )}
-                                                aria-pressed={activeView === item.view}
-                                                onClick={() => setActiveView(item.view)}
-                                            >
-                                                <span className="portal-sidebar__button-main">
-                                                    <i className={item.icon} aria-hidden="true"></i>
-                                                    <span>{item.label}</span>
-                                                </span>
-                                                <span className="portal-sidebar__badge">{item.badge}</span>
-                                            </button>
-                                        ) : (
-                                            <div className="portal-sidebar__item">
-                                                <span className="portal-sidebar__button-main">
-                                                    <i className={item.icon} aria-hidden="true"></i>
-                                                    <span>{item.label}</span>
-                                                </span>
-                                                <span className="portal-sidebar__note">{item.note}</span>
-                                            </div>
-                                        )}
-                                    </li>
-                                ))}
+                                {section.items.map((item) => {
+                                    const badgeValue = item.view === "posts"
+                                        ? formatPostsBadge(portalPosts.length)
+                                        : item.badge;
+
+                                    return (
+                                        <li key={item.id}>
+                                            {item.view ? (
+                                                <button
+                                                    type="button"
+                                                    className={joinClasses(
+                                                        "portal-sidebar__button",
+                                                        activeView === item.view && "is-active",
+                                                    )}
+                                                    aria-pressed={activeView === item.view}
+                                                    onClick={() => setActiveView(item.view)}
+                                                >
+                                                    <span className="portal-sidebar__button-main">
+                                                        <i className={item.icon} aria-hidden="true"></i>
+                                                        <span>{item.label}</span>
+                                                    </span>
+                                                    <span className="portal-sidebar__badge">{badgeValue}</span>
+                                                </button>
+                                            ) : (
+                                                <div className="portal-sidebar__item">
+                                                    <span className="portal-sidebar__button-main">
+                                                        <i className={item.icon} aria-hidden="true"></i>
+                                                        <span>{item.label}</span>
+                                                    </span>
+                                                    <span className="portal-sidebar__note">{item.note}</span>
+                                                </div>
+                                            )}
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         </div>
                     ))}
@@ -554,7 +841,27 @@ export default function PortalSection() {
                     {activeView === "clubs" ? (
                         <ScientificClubsView clubs={filteredClubs} searchValue={searchValue} />
                     ) : (
-                        <PortalPostsView posts={filteredPosts} searchValue={searchValue} />
+                        <PortalPostsView
+                            currentUser={currentUser}
+                            formValues={postForm}
+                            hasAnyPosts={portalPosts.length > 0}
+                            isAuthenticated={isAuthenticated}
+                            isLoading={isPostsLoading}
+                            isSaving={isSavingPost}
+                            loginUrl={loginUrl}
+                            onboardingUrl={onboardingUrl}
+                            onContentChange={handleFieldChange("content")}
+                            onSubmit={handleCreatePost}
+                            onTitleChange={handleFieldChange("title")}
+                            posts={filteredPosts}
+                            postsError={postsError}
+                            postsLastWeekCount={postsLastWeekCount}
+                            searchValue={searchValue}
+                            submitError={submitError}
+                            submitSuccess={submitSuccess}
+                            totalAuthorsCount={totalAuthorsCount}
+                            totalPostsCount={portalPosts.length}
+                        />
                     )}
                 </div>
             </div>
