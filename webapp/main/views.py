@@ -22,7 +22,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt
 
 # Importujemy Twój customowy model User pod aliasem, żeby nie nadpisał domyślnego User z Django
-from .models import Dostepnosc, Post, Przedmiot, Tutor, User as CustomUser
+from .models import Dostepnosc, Obserwacja, Post, Przedmiot, Tutor, User as CustomUser
 
 AVATAR_TONES = (
     "violet",
@@ -108,6 +108,27 @@ def _get_custom_user_for_auth_user(auth_user):
     return CustomUser.objects.filter(email__iexact=normalized_email).first()
 
 
+def _get_or_create_custom_user_for_auth_user(auth_user):
+    custom_user = _get_custom_user_for_auth_user(auth_user)
+    if custom_user is not None:
+        return custom_user
+
+    normalized_email = User.objects.normalize_email(auth_user.email or "").strip().lower()
+    if not normalized_email:
+        return None
+
+    first_name = (auth_user.first_name or auth_user.get_username() or "").strip()
+    last_name = (auth_user.last_name or "").strip()
+
+    return CustomUser.objects.create(
+        imie=first_name or auth_user.get_username(),
+        nazwisko=last_name,
+        email=normalized_email,
+        haslo="",
+        typ="uczen",
+    )
+
+
 def _get_tutor_for_auth_user(auth_user):
     custom_user = _get_custom_user_for_auth_user(auth_user)
     if custom_user is None:
@@ -120,6 +141,29 @@ def _get_tutor_for_auth_user(auth_user):
         .annotate(opinions_count=Count("opinie_dla", distinct=True))
         .first()
     )
+
+
+def _is_tutor_followed_by_user(tutor, custom_user):
+    if custom_user is None or tutor is None:
+        return False
+
+    return Obserwacja.objects.filter(uzytkownik=custom_user, tutor=tutor).exists()
+
+
+def _can_follow_tutor(tutor, custom_user):
+    if custom_user is None or tutor is None:
+        return False
+
+    return tutor.uzytkownik_id != custom_user.pk
+
+
+def _refresh_tutor_followers_count(tutor):
+    followers_count = Obserwacja.objects.filter(tutor=tutor).count()
+    if tutor.followers_count != followers_count:
+        tutor.followers_count = followers_count
+        tutor.save(update_fields=["followers_count"])
+
+    return followers_count
 
 
 def _get_safe_next_target(request):
@@ -164,6 +208,7 @@ def _get_home_props(request):
             "home": reverse("home"),
             "login": reverse("login_user"),
             "logout": reverse("logout_user"),
+            "observations": reverse("portal_observations"),
             "onboarding": reverse("onboarding_account_type"),
             "portalPosts": reverse("portal_posts"),
             "register": reverse("register_user"),
@@ -536,14 +581,15 @@ def _build_review_payload(tutor, rating):
     }
 
 
-def _serialize_tutor_profile(tutor, selected_date):
+def _serialize_tutor_profile(tutor, selected_date, custom_user=None):
     przedmioty = list(tutor.przedmioty.all())
     rating = float(tutor.rating) if tutor.rating is not None else 0.0
     opinions_count = getattr(tutor, "opinions_count", None)
     if opinions_count is None:
         opinions_count = tutor.opinie_dla.count()
 
-    followers_count = tutor.followers_count or max(120, opinions_count * 18 + 95)
+    followers_count = tutor.followers_count
+    can_follow = _can_follow_tutor(tutor, custom_user)
 
     return {
         "id": tutor.pk,
@@ -554,7 +600,9 @@ def _serialize_tutor_profile(tutor, selected_date):
         "rating": rating,
         "opinions": opinions_count,
         "experience": _build_experience_label(tutor),
+        "canFollow": can_follow,
         "followersCount": followers_count,
+        "isFollowed": _is_tutor_followed_by_user(tutor, custom_user) if can_follow else False,
         "statusBadges": _build_status_badges(tutor),
         "tags": _build_tags(przedmioty),
         "aboutParagraphs": _build_about_paragraphs(tutor, przedmioty),
@@ -772,23 +820,41 @@ def _format_followers_count(followers_count):
     return f"{int(followers_count or 0):,}".replace(",", " ")
 
 
-def _serialize_portal_post(post):
+def _serialize_portal_post(post, custom_user=None):
     content_parts = _split_post_content(post.tresc)
     tutor = post.tutor
     localized_created_at = timezone.localtime(post.data_utworzenia)
+    can_follow = _can_follow_tutor(tutor, custom_user)
 
     return {
         "id": post.pk,
+        "tutorId": tutor.pk,
         "author": _build_display_name(tutor),
         "title": post.tytul,
+        "canFollow": can_follow,
         "createdAt": localized_created_at.isoformat(),
         "dateLabel": localized_created_at.strftime("%d.%m.%Y o %H:%M"),
         "followers": _format_followers_count(tutor.followers_count),
+        "followersCount": tutor.followers_count,
         "initials": _build_initials(tutor.uzytkownik.imie, tutor.uzytkownik.nazwisko),
+        "isFollowed": _is_tutor_followed_by_user(tutor, custom_user) if can_follow else False,
         "avatarTone": tutor.avatar_tone or AVATAR_TONES[tutor.pk % len(AVATAR_TONES)],
         "tags": _build_tags(tutor.przedmioty.all()),
         "paragraphs": content_parts["paragraphs"],
         "checklist": content_parts["checklist"],
+    }
+
+
+def _serialize_observation(observation):
+    tutor = observation.tutor
+    return {
+        "id": tutor.pk,
+        "author": _build_display_name(tutor),
+        "avatarTone": tutor.avatar_tone or AVATAR_TONES[tutor.pk % len(AVATAR_TONES)],
+        "followersCount": tutor.followers_count,
+        "followersLabel": _format_followers_count(tutor.followers_count),
+        "initials": _build_initials(tutor.uzytkownik.imie, tutor.uzytkownik.nazwisko),
+        "postsCount": tutor.posty.count(),
     }
 
 
@@ -951,6 +1017,7 @@ def tutor_profile_base(request):
 
 def tutor_profile(request, tutor_id):
     selected_date = _parse_iso_date((request.GET.get("date") or "").strip()) or date.today()
+    custom_user = _get_custom_user_for_auth_user(request.user)
 
     tutor = (
         Tutor.objects.filter(pk=tutor_id)
@@ -963,7 +1030,7 @@ def tutor_profile(request, tutor_id):
     if tutor is None:
         return JsonResponse({"detail": "Nie znaleziono tutora."}, status=404)
 
-    return JsonResponse(_serialize_tutor_profile(tutor, selected_date))
+    return JsonResponse(_serialize_tutor_profile(tutor, selected_date, custom_user=custom_user))
 
 
 @login_required
@@ -981,6 +1048,7 @@ def tutor_dashboard_data(request):
 
 def portal_posts(request):
     if request.method == "GET":
+        custom_user = _get_custom_user_for_auth_user(request.user)
         posts = (
             Post.objects.select_related("tutor__uzytkownik")
             .prefetch_related("tutor__przedmioty")
@@ -989,7 +1057,7 @@ def portal_posts(request):
 
         return JsonResponse(
             {
-                "posts": [_serialize_portal_post(post) for post in posts],
+                "posts": [_serialize_portal_post(post, custom_user=custom_user) for post in posts],
             }
         )
 
@@ -1034,7 +1102,104 @@ def portal_posts(request):
     return JsonResponse(
         {
             "message": "Wpis zostal opublikowany.",
-            "post": _serialize_portal_post(post),
+            "post": _serialize_portal_post(post, custom_user=tutor.uzytkownik),
+        },
+        status=201,
+    )
+
+
+def portal_observations(request):
+    if request.method == "GET":
+        if not request.user.is_authenticated:
+            return JsonResponse({"observations": []})
+
+        custom_user = _get_or_create_custom_user_for_auth_user(request.user)
+        if custom_user is None:
+            return JsonResponse({"observations": []})
+
+        observations = (
+            Obserwacja.objects.filter(uzytkownik=custom_user)
+            .select_related("tutor__uzytkownik")
+            .prefetch_related("tutor__posty")
+            .order_by("-data_utworzenia", "-pk")[:12]
+        )
+
+        return JsonResponse(
+            {
+                "observations": [_serialize_observation(observation) for observation in observations],
+            }
+        )
+
+    if request.method != "POST":
+        return JsonResponse({"detail": "Zla metoda."}, status=405)
+
+    if not request.user.is_authenticated:
+        return JsonResponse({"detail": "Zaloguj sie, aby obserwowac tutora."}, status=401)
+
+    custom_user = _get_or_create_custom_user_for_auth_user(request.user)
+    if custom_user is None:
+        return JsonResponse({"detail": "Konto nie ma poprawnego adresu e-mail."}, status=400)
+
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"detail": "Niepoprawne dane JSON."}, status=400)
+
+    tutor_id = payload.get("tutorId")
+    try:
+        tutor_id = int(tutor_id)
+    except (TypeError, ValueError):
+        return JsonResponse({"detail": "Brakuje poprawnego identyfikatora tutora."}, status=400)
+
+    tutor = (
+        Tutor.objects.filter(pk=tutor_id)
+        .select_related("uzytkownik")
+        .prefetch_related("posty")
+        .first()
+    )
+    if tutor is None:
+        return JsonResponse({"detail": "Nie znaleziono tutora do obserwowania."}, status=404)
+
+    if tutor.uzytkownik_id == custom_user.pk:
+        return JsonResponse({"detail": "Nie mozesz obserwowac wlasnego profilu."}, status=400)
+
+    observation = Obserwacja.objects.filter(
+        uzytkownik=custom_user,
+        tutor=tutor,
+    ).first()
+
+    if observation is not None:
+        observation.delete()
+        followers_count = _refresh_tutor_followers_count(tutor)
+        return JsonResponse(
+            {
+                "isFollowed": False,
+                "message": "Tutor zostal usuniety z obserwowanych.",
+                "observation": None,
+                "tutorId": tutor.pk,
+                "followersCount": followers_count,
+            }
+        )
+
+    observation = Obserwacja.objects.create(
+        uzytkownik=custom_user,
+        tutor=tutor,
+    )
+    followers_count = _refresh_tutor_followers_count(tutor)
+    observation = (
+        Obserwacja.objects.filter(pk=observation.pk)
+        .select_related("tutor__uzytkownik")
+        .prefetch_related("tutor__posty")
+        .get()
+    )
+
+    return JsonResponse(
+        {
+            "isFollowed": True,
+            "message": "Tutor zostal dodany do obserwowanych.",
+            "observation": _serialize_observation(observation),
+            "tutorId": tutor.pk,
+            "followersCount": followers_count,
         },
         status=201,
     )

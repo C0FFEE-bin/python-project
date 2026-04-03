@@ -12,7 +12,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from main.middleware import DatabaseErrorPageMiddleware
-from main.models import Dostepnosc, Post, Przedmiot, Tutor, User as TutorUser
+from main.models import Dostepnosc, Obserwacja, Post, Przedmiot, Tutor, User as TutorUser
 
 
 class MainViewsTests(TestCase):
@@ -56,6 +56,7 @@ class MainViewsTests(TestCase):
         self.assertEqual(home_props['currentUser']['username'], 'tester')
         self.assertFalse(home_props['currentUser']['isTutor'])
         self.assertEqual(home_props['currentUser']['accountType'], 'uczen')
+        self.assertEqual(home_props['urls']['observations'], reverse('portal_observations'))
         self.assertEqual(home_props['urls']['portalPosts'], reverse('portal_posts'))
         self.assertEqual(home_props['urls']['tutorSearch'], reverse('tutor_search'))
         self.assertEqual(home_props['urls']['tutorDashboardData'], reverse('tutor_dashboard_data'))
@@ -452,6 +453,94 @@ class MainViewsTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(Post.objects.count(), 0)
         self.assertIn('korepetytora', response.json()['detail'])
+
+    def test_portal_observations_returns_current_user_entries(self):
+        auth_user = User.objects.create_user(
+            username='observation-user',
+            email='observation-user@example.com',
+            password='secret123',
+        )
+        custom_user = TutorUser.objects.create(
+            imie='Ola',
+            nazwisko='Notatka',
+            email='observation-user@example.com',
+            haslo='sekret',
+            typ='uczen',
+        )
+        tutor_user = TutorUser.objects.create(
+            imie='Patryk',
+            nazwisko='Tutor',
+            email='patryk-tutor@example.com',
+            haslo='sekret',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(uzytkownik=tutor_user, followers_count=1)
+        Post.objects.create(
+            tutor=tutor,
+            tytul='Nowy wpis',
+            tresc='Dostepne sa jeszcze terminy na konsultacje w tym tygodniu.',
+        )
+        Obserwacja.objects.create(uzytkownik=custom_user, tutor=tutor)
+
+        self.client.force_login(auth_user)
+        response = self.client.get(reverse('portal_observations'))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(len(payload['observations']), 1)
+        self.assertEqual(payload['observations'][0]['id'], tutor.pk)
+        self.assertEqual(payload['observations'][0]['author'], 'Patryk Tutor')
+        self.assertEqual(payload['observations'][0]['followersCount'], 1)
+        self.assertEqual(payload['observations'][0]['postsCount'], 1)
+
+    def test_portal_observations_get_returns_empty_list_for_guest(self):
+        response = self.client.get(reverse('portal_observations'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['observations'], [])
+
+    def test_portal_observations_create_persists_entry(self):
+        auth_user = User.objects.create_user(
+            username='observation-create',
+            email='observation-create@example.com',
+            password='secret123',
+        )
+        TutorUser.objects.create(
+            imie='Adam',
+            nazwisko='Uczen',
+            email='observation-create@example.com',
+            haslo='sekret',
+            typ='uczen',
+        )
+        tutor_user = TutorUser.objects.create(
+            imie='Kasia',
+            nazwisko='Mentorka',
+            email='kasia-mentor@example.com',
+            haslo='sekret',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(uzytkownik=tutor_user)
+
+        self.client.force_login(auth_user)
+        response = self.client.post(
+            reverse('portal_observations'),
+            data=json.dumps(
+                {
+                    'tutorId': tutor.pk,
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Obserwacja.objects.count(), 1)
+        created_observation = Obserwacja.objects.get()
+        self.assertEqual(created_observation.uzytkownik.email, 'observation-create@example.com')
+        self.assertEqual(created_observation.tutor, tutor)
+        self.assertTrue(response.json()['isFollowed'])
+        self.assertEqual(response.json()['tutorId'], tutor.pk)
+        self.assertEqual(response.json()['followersCount'], 1)
+        self.assertEqual(response.json()['observation']['author'], 'Kasia Mentorka')
 
     def test_tutor_search_returns_exact_and_suggested_results(self):
         exact_user = TutorUser.objects.create(

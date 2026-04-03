@@ -12,6 +12,7 @@ urlpatterns = [
     path("login", views.login_user, name="login_user"),
     path("register", views.register, name="register_user"),
     path("logout", views.logout_user, name="logout_user"),
+    path("api/portal-observations", views.portal_observations, name="portal_observations"),
     path("api/portal-posts", views.portal_posts, name="portal_posts"),
     path("api/tutor-search", views.tutor_search, name="tutor_search"),
     path("api/tutor-onboarding/profile", views.tutor_onboarding_save, name="tutor_onboarding_save"),

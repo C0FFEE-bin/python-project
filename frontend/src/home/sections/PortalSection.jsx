@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 
-import { createPortalPost, fetchPortalPosts } from "../api.js";
+import {
+    createPortalObservation,
+    createPortalPost,
+    fetchPortalObservations,
+    fetchPortalPosts,
+} from "../api.js";
 import Reveal from "../components/Reveal.jsx";
 import joinClasses from "../utils/joinClasses.js";
 
@@ -181,7 +186,9 @@ const EMPTY_POST_FORM = {
     content: "",
 };
 
-const OBSERVED_CLUBS = ["Bio Innovators", "Law & Policy Lab", "Astronomical Observatory Crew"];
+const EMPTY_OBSERVATION_FORM = {
+    content: "",
+};
 
 function matchesSearch(searchValue, entries) {
     if (!searchValue) {
@@ -199,23 +206,6 @@ function buildPostSearchEntries(post) {
         ...(post.paragraphs || []),
         ...(post.checklist || []),
     ];
-}
-
-function buildObservedPostItems(posts) {
-    const items = [];
-
-    posts.forEach((post) => {
-        const label = post.author || post.title;
-        if (label && !items.includes(label)) {
-            items.push(label);
-        }
-    });
-
-    if (!items.length) {
-        return ["Brak aktywnych wpisow", "Pierwszy tutor moze publikowac", "Portal czeka na start"];
-    }
-
-    return items.slice(0, 3);
 }
 
 function formatPostsBadge(postsCount) {
@@ -334,6 +324,84 @@ function PortalPostGuide({ canCreatePosts, isAuthenticated, loginUrl, onboarding
                 </p>
             ) : null}
         </aside>
+    );
+}
+
+function PortalObservationsPanel({
+    hasLoaded,
+    isAuthenticated,
+    isSaving,
+    observations,
+    observationsError,
+    loginUrl,
+    formValue,
+    onChange,
+    onSubmit,
+    submitError,
+    submitSuccess,
+}) {
+    return (
+        <div className="portal-sidebar__group">
+            <p className="portal-sidebar__heading">Twoje obserwacje</p>
+
+            {isAuthenticated ? (
+                <form className="portal-sidebar__observation-form" onSubmit={onSubmit}>
+                    <textarea
+                        className="portal-sidebar__observation-textarea"
+                        value={formValue}
+                        onChange={onChange}
+                        placeholder="Dodaj krotka obserwacje, np. tutor odpisal szybko albo temat warto powtorzyc."
+                        maxLength={240}
+                    />
+                    <button
+                        type="submit"
+                        className="button button--primary portal-sidebar__observation-submit"
+                        disabled={isSaving}
+                    >
+                        {isSaving ? "Zapisywanie..." : "Dodaj obserwacje"}
+                    </button>
+                    {submitError ? (
+                        <p className="portal-sidebar__observation-status portal-sidebar__observation-status--error">
+                            {submitError}
+                        </p>
+                    ) : null}
+                    {submitSuccess ? (
+                        <p className="portal-sidebar__observation-status portal-sidebar__observation-status--success">
+                            {submitSuccess}
+                        </p>
+                    ) : null}
+                </form>
+            ) : (
+                <p className="portal-sidebar__observation-auth">
+                    <a href={loginUrl}>Zaloguj sie</a>, aby zapisywac wlasne obserwacje w portalu.
+                </p>
+            )}
+
+            {observationsError ? <p className="portal-sidebar__observation-auth">{observationsError}</p> : null}
+
+            {!observationsError && !hasLoaded ? (
+                <p className="portal-sidebar__observation-auth">Ladowanie obserwacji...</p>
+            ) : null}
+
+            {!observationsError && hasLoaded && observations.length ? (
+                <div className="portal-sidebar__observation-list">
+                    {observations.map((observation) => (
+                        <article key={observation.id} className="portal-sidebar__observation-card">
+                            <p>{observation.content}</p>
+                            <time dateTime={observation.createdAt}>{observation.dateLabel}</time>
+                        </article>
+                    ))}
+                </div>
+            ) : null}
+
+            {!observationsError && hasLoaded && !observations.length ? (
+                <p className="portal-sidebar__observation-auth">
+                    {isAuthenticated
+                        ? "Nie masz jeszcze zapisanych obserwacji."
+                        : "Obserwacje sa dostepne po zalogowaniu."}
+                </p>
+            ) : null}
+        </div>
     );
 }
 
@@ -648,9 +716,17 @@ export default function PortalSection({
     const [submitError, setSubmitError] = useState("");
     const [submitSuccess, setSubmitSuccess] = useState("");
     const [postForm, setPostForm] = useState(EMPTY_POST_FORM);
+    const [observations, setObservations] = useState([]);
+    const [hasLoadedObservations, setHasLoadedObservations] = useState(false);
+    const [observationsError, setObservationsError] = useState("");
+    const [isSavingObservation, setIsSavingObservation] = useState(false);
+    const [observationSubmitError, setObservationSubmitError] = useState("");
+    const [observationSubmitSuccess, setObservationSubmitSuccess] = useState("");
+    const [observationForm, setObservationForm] = useState(EMPTY_OBSERVATION_FORM);
 
     const normalizedSearch = searchValue.trim().toLowerCase();
     const postsUrl = urls.portalPosts ?? "/api/portal-posts";
+    const observationsUrl = urls.observations ?? "/api/portal-observations";
     const databaseErrorUrl = urls.databaseError ?? "/database-error";
     const loginUrl = urls.login ?? "/login";
     const onboardingUrl = urls.onboarding ?? "/onboarding";
@@ -690,6 +766,41 @@ export default function PortalSection({
         };
     }, [databaseErrorUrl, postsUrl]);
 
+    useEffect(() => {
+        let ignoreResponse = false;
+
+        async function loadObservations() {
+            setObservationsError("");
+            setHasLoadedObservations(false);
+
+            try {
+                const loadedObservations = await fetchPortalObservations({
+                    observationsUrl,
+                    databaseErrorUrl,
+                });
+
+                if (!ignoreResponse) {
+                    setObservations(loadedObservations);
+                }
+            } catch (error) {
+                if (!ignoreResponse) {
+                    setObservations([]);
+                    setObservationsError(error?.message || "Nie udalo sie pobrac obserwacji.");
+                }
+            } finally {
+                if (!ignoreResponse) {
+                    setHasLoadedObservations(true);
+                }
+            }
+        }
+
+        loadObservations();
+
+        return () => {
+            ignoreResponse = true;
+        };
+    }, [databaseErrorUrl, observationsUrl]);
+
     const filteredPosts = portalPosts.filter((post) =>
         matchesSearch(normalizedSearch, buildPostSearchEntries(post)),
     );
@@ -712,7 +823,6 @@ export default function PortalSection({
         return Number.isFinite(createdTimestamp) && (Date.now() - createdTimestamp) <= 7 * 24 * 60 * 60 * 1000;
     }).length;
     const totalAuthorsCount = new Set(portalPosts.map((post) => post.author).filter(Boolean)).size;
-    const observedItems = activeView === "clubs" ? OBSERVED_CLUBS : buildObservedPostItems(portalPosts);
     const searchPlaceholder = activeView === "clubs"
         ? "Szukaj kol, tematow lub projektow..."
         : "Szukaj wpisow, autorow lub tematow...";
@@ -762,6 +872,45 @@ export default function PortalSection({
             setSubmitError("");
             setSubmitSuccess("");
         };
+    }
+
+    async function handleCreateObservation(event) {
+        event.preventDefault();
+        if (isSavingObservation) {
+            return;
+        }
+
+        setIsSavingObservation(true);
+        setObservationSubmitError("");
+        setObservationSubmitSuccess("");
+
+        try {
+            const responsePayload = await createPortalObservation({
+                payload: {
+                    content: observationForm.content,
+                },
+                observationsUrl,
+                csrfToken,
+                databaseErrorUrl,
+            });
+
+            if (responsePayload.observation) {
+                setObservations((currentObservations) => [responsePayload.observation, ...currentObservations].slice(0, 12));
+            }
+
+            setObservationForm(EMPTY_OBSERVATION_FORM);
+            setObservationSubmitSuccess(responsePayload.message || "Obserwacja zostala zapisana.");
+        } catch (error) {
+            setObservationSubmitError(error?.message || "Nie udalo sie zapisac obserwacji.");
+        } finally {
+            setIsSavingObservation(false);
+        }
+    }
+
+    function handleObservationChange(event) {
+        setObservationForm({ content: event.target.value });
+        setObservationSubmitError("");
+        setObservationSubmitSuccess("");
     }
 
     return (
@@ -825,16 +974,19 @@ export default function PortalSection({
                         </div>
                     ))}
 
-                    <div className="portal-sidebar__group">
-                        <p className="portal-sidebar__heading">Twoje obserwacje</p>
-                        <div className="portal-sidebar__stack">
-                            {observedItems.map((item) => (
-                                <span key={item} className="portal-sidebar__stack-item">
-                                    {item}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
+                    <PortalObservationsPanel
+                        formValue={observationForm.content}
+                        hasLoaded={hasLoadedObservations}
+                        isAuthenticated={isAuthenticated}
+                        isSaving={isSavingObservation}
+                        loginUrl={loginUrl}
+                        observations={observations}
+                        observationsError={observationsError}
+                        onChange={handleObservationChange}
+                        onSubmit={handleCreateObservation}
+                        submitError={observationSubmitError}
+                        submitSuccess={observationSubmitSuccess}
+                    />
                 </aside>
 
                 <div className="portal-main">

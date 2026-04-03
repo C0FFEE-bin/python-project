@@ -21,6 +21,18 @@ function normalizePortalPost(post) {
     };
 }
 
+function normalizeObservedTutor(observation) {
+    return {
+        ...observation,
+        author: observation?.author || "",
+        avatarTone: observation?.avatarTone || "slate",
+        followersCount: typeof observation?.followersCount === "number" ? observation.followersCount : 0,
+        followersLabel: observation?.followersLabel || "0",
+        initials: observation?.initials || "T",
+        postsCount: typeof observation?.postsCount === "number" ? observation.postsCount : 0,
+    };
+}
+
 function shouldRedirectToDatabaseError(response) {
     return response.status >= 500 && response.headers.get("X-Database-Error") === "1";
 }
@@ -127,6 +139,21 @@ export async function fetchPortalPosts({ postsUrl, databaseErrorUrl = "/database
     return (payload.posts ?? []).map(normalizePortalPost);
 }
 
+export async function fetchPortalObservations({ observationsUrl, databaseErrorUrl = "/database-error" }) {
+    const response = await fetch(observationsUrl);
+    if (shouldRedirectToDatabaseError(response)) {
+        window.location.assign(databaseErrorUrl);
+        throw new Error("Blad bazy danych.");
+    }
+
+    if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+    }
+
+    const payload = await response.json();
+    return (payload.observations ?? []).map(normalizeObservedTutor);
+}
+
 export async function saveTutorOnboardingProfile({
     payload,
     saveUrl,
@@ -182,5 +209,36 @@ export async function createPortalPost({
     return {
         ...responsePayload,
         post: responsePayload?.post ? normalizePortalPost(responsePayload.post) : null,
+    };
+}
+
+export async function toggleTutorObservation({
+    payload,
+    observationsUrl,
+    csrfToken,
+    databaseErrorUrl = "/database-error",
+}) {
+    const response = await fetch(observationsUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (shouldRedirectToDatabaseError(response)) {
+        window.location.assign(databaseErrorUrl);
+        throw new Error("Blad bazy danych.");
+    }
+
+    if (!response.ok) {
+        throw new Error(await parseWriteErrorMessage(response));
+    }
+
+    const responsePayload = await response.json();
+    return {
+        ...responsePayload,
+        observation: responsePayload?.observation ? normalizeObservedTutor(responsePayload.observation) : null,
     };
 }

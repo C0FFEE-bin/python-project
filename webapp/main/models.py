@@ -89,6 +89,25 @@ class Comment(models.Model):
     def __str__(self):
         return f"Komentarz od {self.uzytkownik.imie} do posta {self.post.id}"
 
+
+class Obserwacja(models.Model):
+    uzytkownik = models.ForeignKey(User, on_delete=models.CASCADE, related_name="obserwacje")
+    tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name="obserwacje")
+    data_utworzenia = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "obserwacja"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["uzytkownik", "tutor"],
+                name="unique_tutor_observation_per_user",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.uzytkownik} obserwuje {self.tutor}"
+
+
 class Opinia(models.Model):
     autor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='opinie_od')
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='opinie_dla')
