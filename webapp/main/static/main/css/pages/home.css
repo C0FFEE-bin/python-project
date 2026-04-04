@@ -74,10 +74,10 @@ button {
 .landing-header,
 .landing-main {
     position: relative;
-    z-index: 1;
 }
 
 .landing-header {
+    z-index: 20;
     width: min(1320px, calc(100% - 48px));
     margin: 0 auto;
     padding: 34px 0 0;
@@ -158,6 +158,10 @@ button {
     gap: 14px;
 }
 
+.quick-actions__notifications {
+    position: relative;
+}
+
 .quick-actions__account {
     display: flex;
     align-items: center;
@@ -203,13 +207,192 @@ button {
     transition: transform 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.quick-actions__button--notifications {
+    position: relative;
+}
+
+.quick-actions__button.is-active {
+    color: var(--accent-strong);
+    transform: translateY(-3px);
+    box-shadow: 0 18px 32px rgba(99, 84, 109, 0.24);
+}
+
+.quick-actions__badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border: 2px solid rgba(255, 255, 255, 0.92);
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--accent-strong), #d585e5);
+    color: #ffffff;
+    font-family: var(--font-display);
+    font-size: 0.76rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
 .quick-actions__button:hover {
     color: var(--accent-strong);
     transform: translateY(-3px);
     box-shadow: 0 18px 30px rgba(99, 84, 109, 0.2);
 }
 
+.notifications-panel {
+    position: absolute;
+    top: calc(100% + 18px);
+    right: 0;
+    z-index: 30;
+    width: min(360px, calc(100vw - 48px));
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 30px;
+    background:
+        radial-gradient(circle at top right, rgba(237, 218, 245, 0.92), transparent 34%),
+        rgba(255, 255, 255, 0.94);
+    box-shadow: 0 28px 44px rgba(93, 75, 106, 0.18);
+    backdrop-filter: blur(16px);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+}
+
+.quick-actions__notifications.is-open .notifications-panel {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.notifications-panel__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.notifications-panel__eyebrow {
+    display: inline-block;
+    margin-bottom: 6px;
+    color: var(--accent-strong);
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.notifications-panel__header h2 {
+    margin: 0;
+    color: #423e48;
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.notifications-panel__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    height: 42px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(233, 219, 241, 0.86);
+    color: var(--accent-strong);
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.notifications-panel__list {
+    display: grid;
+    gap: 12px;
+}
+
+.notifications-panel__item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 14px;
+    align-items: flex-start;
+    padding: 14px;
+    border: 1px solid rgba(208, 192, 217, 0.54);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.74);
+}
+
+.notifications-panel__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 16px;
+    background: rgba(234, 215, 244, 0.92);
+    color: var(--accent-strong);
+    font-size: 1rem;
+}
+
+.notifications-panel__copy {
+    min-width: 0;
+}
+
+.notifications-panel__copy p {
+    margin: 0;
+    color: #413c49;
+    font-size: 0.98rem;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+.notifications-panel__copy span {
+    display: inline-block;
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.notifications-panel__empty {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border: 1px dashed rgba(190, 164, 205, 0.7);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.notifications-panel__empty p {
+    margin: 0;
+    color: #514a57;
+    font-size: 0.96rem;
+    line-height: 1.5;
+}
+
+.notifications-panel__link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    padding: 0 18px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--accent-strong), #d585e5);
+    color: #ffffff;
+    font-family: var(--font-display);
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+
 .landing-main {
+    z-index: 1;
     width: min(1320px, calc(100% - 48px));
     margin: 0 auto;
     padding: 34px 0 120px;
@@ -2437,6 +2620,22 @@ button {
     .quick-actions__button {
         width: 64px;
         height: 64px;
+    }
+
+    .quick-actions__badge {
+        top: 8px;
+        right: 8px;
+    }
+
+    .notifications-panel {
+        top: calc(100% + 14px);
+        right: 50%;
+        width: min(360px, calc(100vw - 72px));
+        transform: translate(50%, 12px);
+    }
+
+    .quick-actions__notifications.is-open .notifications-panel {
+        transform: translate(50%, 0);
     }
 
     .hero__metrics {

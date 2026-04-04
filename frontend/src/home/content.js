@@ -5,6 +5,27 @@ export const navLinks = [
     { id: "kontakt", label: "Kontakt" },
 ];
 
+export const headerNotifications = [
+    {
+        id: "lesson-confirmation",
+        icon: "fa-solid fa-calendar-check",
+        title: "Jutrzejszy termin 19:00-20:00 zostal potwierdzony.",
+        meta: "Plan spotkan - przed chwila",
+    },
+    {
+        id: "tutor-reply",
+        icon: "fa-solid fa-comment-dots",
+        title: "Tutor matematyki odpowiedzial na Twoje ostatnie zapytanie.",
+        meta: "Wiadomosci - 12 min temu",
+    },
+    {
+        id: "portal-update",
+        icon: "fa-solid fa-book-open-reader",
+        title: "W portalu pojawil sie nowy wpis z szybkiej powtorki do matury.",
+        meta: "Portal - 1 godz. temu",
+    },
+];
+
 export const metrics = [
     { value: "120+", label: "aktywnych tutorow" },
     { value: "24h", label: "na pierwsze dopasowanie" },

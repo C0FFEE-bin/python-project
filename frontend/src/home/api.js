@@ -242,3 +242,5 @@ export async function toggleTutorObservation({
         observation: responsePayload?.observation ? normalizeObservedTutor(responsePayload.observation) : null,
     };
 }
+
+export const createPortalObservation = toggleTutorObservation;
