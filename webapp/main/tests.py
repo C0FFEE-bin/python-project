@@ -54,6 +54,9 @@ class MainViewsTests(TestCase):
         self.assertTrue(home_props['isAuthenticated'])
         self.assertEqual(home_props['currentUser']['email'], 'tester@example.com')
         self.assertEqual(home_props['currentUser']['username'], 'tester')
+        self.assertEqual(home_props['currentUser']['displayName'], 'tester')
+        self.assertEqual(home_props['currentUser']['initials'], 'T')
+        self.assertIn('/static/main/img/profile1.png', home_props['currentUser']['avatarUrl'])
         self.assertFalse(home_props['currentUser']['isTutor'])
         self.assertEqual(home_props['currentUser']['accountType'], 'uczen')
         self.assertEqual(home_props['urls']['observations'], reverse('portal_observations'))
@@ -124,6 +127,19 @@ class MainViewsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'main/pages/cars/index.html')
+
+    def test_about_page_renders_animated_layout(self):
+        response = self.client.get(reverse('about'))
+        html = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'main/pages/about/index.html')
+        self.assertIn('Poznaj ekipe, ktora sklada Rent a Nerd.', html)
+        self.assertIn('5 osob, jeden wspolny kierunek.', html)
+        self.assertIn('/static/main/css/pages/about.css', html)
+        self.assertIn('/static/main/css/pages/home.css', html)
+        self.assertIn('/static/main/js/about.js', html)
+        self.assertNotIn('app-shell__sidebar', html)
 
     def test_register_rejects_password_confirmation_mismatch(self):
         response = self.client.post(

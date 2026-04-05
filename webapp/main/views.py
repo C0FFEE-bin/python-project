@@ -143,6 +143,32 @@ def _get_tutor_for_auth_user(auth_user):
     )
 
 
+def _get_user_display_name(auth_user, custom_user=None):
+    if custom_user is not None:
+        name_parts = [
+            part.strip()
+            for part in (custom_user.imie, custom_user.nazwisko)
+            if part and part.strip()
+        ]
+    else:
+        name_parts = [
+            part.strip()
+            for part in (auth_user.first_name, auth_user.last_name)
+            if part and part.strip()
+        ]
+
+    return " ".join(name_parts) or auth_user.get_username()
+
+
+def _get_user_initials(display_name):
+    initials = [part[0].upper() for part in display_name.split() if part][:2]
+    if initials:
+        return "".join(initials)
+
+    fallback = (display_name or "U").strip()
+    return (fallback[:1] or "U").upper()
+
+
 def _is_tutor_followed_by_user(tutor, custom_user):
     if custom_user is None or tutor is None:
         return False
@@ -187,9 +213,13 @@ def _get_home_props(request):
             and custom_user.typ == "tutor"
             and Tutor.objects.filter(uzytkownik=custom_user).exists()
         )
+        display_name = _get_user_display_name(request.user, custom_user=custom_user)
         current_user = {
             "email": request.user.email,
             "username": request.user.get_username(),
+            "displayName": display_name,
+            "initials": _get_user_initials(display_name),
+            "avatarUrl": static("main/img/profile1.png"),
             "accountType": custom_user.typ if custom_user and custom_user.typ else "uczen",
             "isTutor": is_tutor,
         }

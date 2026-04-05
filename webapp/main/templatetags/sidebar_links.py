@@ -17,7 +17,7 @@ def get_links():
         'href': '/contact',
         'icon': 'fa-paper-plane',
     }, {
-        'name': 'About',
+        'name': 'O nas',
         'href': '/about',
         'icon': 'fa-address-card',
     },{
