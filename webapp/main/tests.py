@@ -45,6 +45,8 @@ class MainViewsTests(TestCase):
             username='tester',
             email='tester@example.com',
             password='secret123',
+            first_name='Jan',
+            last_name='Kowalski',
         )
         self.client.force_login(user)
 
@@ -53,6 +55,7 @@ class MainViewsTests(TestCase):
 
         self.assertTrue(home_props['isAuthenticated'])
         self.assertEqual(home_props['currentUser']['email'], 'tester@example.com')
+        self.assertEqual(home_props['currentUser']['fullName'], 'Jan Kowalski')
         self.assertEqual(home_props['currentUser']['username'], 'tester')
         self.assertFalse(home_props['currentUser']['isTutor'])
         self.assertEqual(home_props['currentUser']['accountType'], 'uczen')
@@ -60,6 +63,19 @@ class MainViewsTests(TestCase):
         self.assertEqual(home_props['urls']['portalPosts'], reverse('portal_posts'))
         self.assertEqual(home_props['urls']['tutorSearch'], reverse('tutor_search'))
         self.assertEqual(home_props['urls']['tutorDashboardData'], reverse('tutor_dashboard_data'))
+
+    def test_home_page_falls_back_to_username_when_full_name_missing(self):
+        user = User.objects.create_user(
+            username='tester',
+            email='tester@example.com',
+            password='secret123',
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse('home'))
+        home_props = self._extract_home_props(response)
+
+        self.assertEqual(home_props['currentUser']['fullName'], 'tester')
 
     def test_component_preview_page_exposes_requested_component(self):
         response = self.client.get(

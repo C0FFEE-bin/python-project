@@ -129,6 +129,14 @@ def _get_or_create_custom_user_for_auth_user(auth_user):
     )
 
 
+def _build_user_full_name(custom_user, auth_user):
+    first_name = ((custom_user.imie if custom_user else "") or auth_user.first_name or "").strip()
+    last_name = ((custom_user.nazwisko if custom_user else "") or auth_user.last_name or "").strip()
+    full_name = " ".join(part for part in (first_name, last_name) if part)
+
+    return full_name or auth_user.get_username()
+
+
 def _get_tutor_for_auth_user(auth_user):
     custom_user = _get_custom_user_for_auth_user(auth_user)
     if custom_user is None:
@@ -189,6 +197,7 @@ def _get_home_props(request):
         )
         current_user = {
             "email": request.user.email,
+            "fullName": _build_user_full_name(custom_user, request.user),
             "username": request.user.get_username(),
             "accountType": custom_user.typ if custom_user and custom_user.typ else "uczen",
             "isTutor": is_tutor,
@@ -1491,4 +1500,3 @@ def api_current_user(request):
             'email': request.user.email,
         })
     return JsonResponse({'is_logged_in': False}, status=401)
-

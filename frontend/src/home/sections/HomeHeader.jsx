@@ -13,6 +13,8 @@ export default function HomeHeader({
     isScrolled,
     logoSrc,
     onNavClick,
+    onOpenPortal,
+    onOpenTutorDashboard,
     onToggleMenu,
     urls,
 }) {
@@ -148,6 +150,8 @@ export default function HomeHeader({
                         csrfToken={csrfToken}
                         currentUser={currentUser}
                         isAuthenticated={isAuthenticated}
+                        onOpenPortal={onOpenPortal}
+                        onOpenTutorDashboard={onOpenTutorDashboard}
                         urls={urls}
                     />
                 </div>

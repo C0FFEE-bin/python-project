@@ -357,6 +357,36 @@ export default function HomeApp({
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
+    const handleOpenPortal = () => {
+        const nextState = {
+            date: pageState.date,
+            filters: { ...pageState.filters },
+            mode: "portal",
+            tutorId: "",
+        };
+
+        updateLocationState(nextState);
+        setPageState(nextState);
+        setActiveSection("portal");
+        setIsMenuOpen(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    const handleOpenTutorDashboard = () => {
+        const nextState = {
+            date: pageState.date,
+            filters: { ...pageState.filters },
+            mode: "tutor-dashboard",
+            tutorId: "",
+        };
+
+        updateLocationState(nextState);
+        setPageState(nextState);
+        setActiveSection("home");
+        setIsMenuOpen(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
     const handleBackToSearch = () => {
         const nextState = {
             date: pageState.date,
@@ -416,6 +446,8 @@ export default function HomeApp({
                 isScrolled={isScrolled}
                 logoSrc={images.logo}
                 onNavClick={handleNavClick}
+                onOpenPortal={handleOpenPortal}
+                onOpenTutorDashboard={handleOpenTutorDashboard}
                 onToggleMenu={() => setIsMenuOpen((currentValue) => !currentValue)}
                 urls={urls}
             />
