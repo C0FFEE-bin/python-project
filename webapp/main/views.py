@@ -613,6 +613,7 @@ def _build_review_payload(tutor, rating):
 
 def _serialize_tutor_profile(tutor, selected_date, custom_user=None):
     przedmioty = list(tutor.przedmioty.all())
+    taxonomy = _collect_tutor_taxonomy(przedmioty)
     rating = float(tutor.rating) if tutor.rating is not None else 0.0
     opinions_count = getattr(tutor, "opinions_count", None)
     if opinions_count is None:
@@ -634,6 +635,9 @@ def _serialize_tutor_profile(tutor, selected_date, custom_user=None):
         "followersCount": followers_count,
         "isFollowed": _is_tutor_followed_by_user(tutor, custom_user) if can_follow else False,
         "statusBadges": _build_status_badges(tutor),
+        "subjects": taxonomy["subjects"],
+        "levels": taxonomy["levels"],
+        "topics": taxonomy["topics"],
         "tags": _build_tags(przedmioty),
         "aboutParagraphs": _build_about_paragraphs(tutor, przedmioty),
         "review": _build_review_payload(tutor, rating),
