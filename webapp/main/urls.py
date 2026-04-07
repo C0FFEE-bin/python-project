@@ -7,6 +7,7 @@ urlpatterns = [
     path("onboarding", views.onboarding_account_type, name="onboarding_account_type"),
     path("preview/<slug:component_slug>", views.component_preview, name="component_preview"),
     path("about", views.about, name="about"),
+    path("tutor/profile", views.tutor_profile_settings, name="tutor_profile_settings"),
     path("database-error", views.database_error_page, name="database_error_page"),
     path("cars", views.cars, name="cars"),
     path("login", views.login_user, name="login_user"),

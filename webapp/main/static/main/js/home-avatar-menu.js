@@ -96,7 +96,7 @@
                 type: "link",
                 label: "Moj profil",
                 icon: "fa-regular fa-user",
-                href: buildHomeViewUrl(homeUrl, "portal", "portal"),
+                href: urls.tutorProfileSettings || buildHomeViewUrl(homeUrl, "portal", "portal"),
             },
             {
                 type: "link",
@@ -110,7 +110,9 @@
                 type: "link",
                 label: "Ustawienia strony",
                 icon: "fa-solid fa-gear",
-                href: urls.onboarding || homeUrl,
+                href: currentUser.isTutor && urls.tutorProfileSettings
+                    ? (urls.tutorProfileSettings + "#konto")
+                    : (urls.onboarding || homeUrl),
             },
             {
                 type: "link",

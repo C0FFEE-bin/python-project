@@ -21,6 +21,12 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt
 
+from .forms import (
+    DEFAULT_TUTOR_LEVEL_OPTIONS,
+    DEFAULT_TUTOR_SUBJECT_OPTIONS,
+    TutorProfileSettingsForm,
+)
+
 # Importujemy Twój customowy model User pod aliasem, żeby nie nadpisał domyślnego User z Django
 from .models import Dostepnosc, Obserwacja, Post, Przedmiot, Tutor, User as CustomUser
 
@@ -243,6 +249,7 @@ def _get_home_props(request):
             "portalPosts": reverse("portal_posts"),
             "register": reverse("register_user"),
             "databaseError": reverse("database_error_page"),
+            "tutorProfileSettings": reverse("tutor_profile_settings"),
             "schoolLevelSelectPreview": reverse(
                 "component_preview",
                 kwargs={"component_slug": "school-level-select"},
@@ -442,6 +449,27 @@ def _collect_tutor_taxonomy(przedmioty):
         "levels": levels,
         "topics": topics,
     }
+
+
+def _build_choice_pairs(default_values, database_values):
+    unique_values = []
+
+    for value in list(default_values) + list(database_values):
+        normalized_value = str(value or "").strip()
+        if normalized_value and normalized_value not in unique_values:
+            unique_values.append(normalized_value)
+
+    return [(value, value) for value in unique_values]
+
+
+def _get_tutor_profile_subject_choices():
+    database_values = Przedmiot.objects.order_by("nazwa").values_list("nazwa", flat=True).distinct()
+    return _build_choice_pairs(DEFAULT_TUTOR_SUBJECT_OPTIONS, database_values)
+
+
+def _get_tutor_profile_level_choices():
+    database_values = Przedmiot.objects.order_by("poziom").values_list("poziom", flat=True).distinct()
+    return _build_choice_pairs(DEFAULT_TUTOR_LEVEL_OPTIONS, database_values)
 
 
 def _summarize_values(values, fallback, max_items=2):
@@ -974,6 +1002,155 @@ def about(request):
 
 def database_error_page(request):
     return render(request, "main/errors/database_error.html", status=500)
+
+
+@login_required
+def tutor_profile_settings(request):
+    custom_user = _get_or_create_custom_user_for_auth_user(request.user)
+    if custom_user is None:
+        messages.error(request, "Nie udalo sie pobrac danych Twojego konta.")
+        return redirect("home")
+
+    if custom_user.typ != "tutor":
+        next_target = reverse("tutor_profile_settings")
+        onboarding_url = reverse("onboarding_account_type")
+        onboarding_url = f'{onboarding_url}?{urlencode({"next": next_target})}'
+        messages.error(request, "Ta strona jest dostepna tylko dla konta korepetytora.")
+        return redirect(onboarding_url)
+
+    tutor, _ = Tutor.objects.get_or_create(uzytkownik=custom_user)
+    tutor = (
+        Tutor.objects.filter(pk=tutor.pk)
+        .select_related("uzytkownik")
+        .prefetch_related("przedmioty", "dostepnosci", "posty", "opinie_dla")
+        .annotate(opinions_count=Count("opinie_dla", distinct=True))
+        .first()
+    )
+
+    przedmioty = list(tutor.przedmioty.all())
+    taxonomy = _collect_tutor_taxonomy(przedmioty)
+    subject_choices = _get_tutor_profile_subject_choices()
+    level_choices = _get_tutor_profile_level_choices()
+
+    initial_data = {
+        "full_name": _build_display_name(tutor),
+        "phone": custom_user.tel_num or "",
+        "about": tutor.opis or "",
+        "hourly_rate": tutor.stawka_godzinowa,
+        "age": tutor.wiek,
+        "experience_label": tutor.experience_label or "",
+        "avatar_tone": tutor.avatar_tone or "slate",
+        "status_badges": ", ".join(tutor.status_badges or []),
+        "subjects": taxonomy["subjects"],
+        "levels": taxonomy["levels"],
+    }
+
+    form = TutorProfileSettingsForm(
+        subject_choices=subject_choices,
+        level_choices=level_choices,
+        initial=initial_data,
+    )
+
+    if request.method == "POST":
+        form = TutorProfileSettingsForm(
+            request.POST,
+            subject_choices=subject_choices,
+            level_choices=level_choices,
+            initial=initial_data,
+        )
+
+        if form.is_valid():
+            cleaned_data = form.cleaned_data
+            normalized_subjects = _normalize_string_list(cleaned_data["subjects"])
+            normalized_levels = _normalize_string_list(cleaned_data["levels"])
+            first_name, last_name = _split_full_name(
+                cleaned_data["full_name"],
+                request.user.get_username(),
+            )
+            status_badges = cleaned_data["status_badges"] or ["sprawny kontakt"]
+
+            with transaction.atomic():
+                auth_user = request.user
+                auth_user.first_name = first_name
+                auth_user.last_name = last_name
+                auth_user.save(update_fields=["first_name", "last_name"])
+
+                custom_user.imie = first_name or auth_user.get_username()
+                custom_user.nazwisko = last_name
+                custom_user.tel_num = cleaned_data["phone"] or None
+                custom_user.typ = "tutor"
+                custom_user.save(update_fields=["imie", "nazwisko", "tel_num", "typ"])
+
+                tutor.opis = cleaned_data["about"] or ""
+                tutor.stawka_godzinowa = (
+                    cleaned_data["hourly_rate"]
+                    if cleaned_data["hourly_rate"] is not None
+                    else None
+                )
+                tutor.wiek = cleaned_data["age"]
+                tutor.experience_label = (cleaned_data["experience_label"] or "").strip() or None
+                tutor.avatar_tone = cleaned_data["avatar_tone"] or "slate"
+                tutor.status_badges = status_badges
+                tutor.save(
+                    update_fields=[
+                        "opis",
+                        "stawka_godzinowa",
+                        "wiek",
+                        "experience_label",
+                        "avatar_tone",
+                        "status_badges",
+                    ]
+                )
+
+                tutor_subjects = []
+                for subject_name in normalized_subjects:
+                    for school_level in normalized_levels:
+                        subject_obj, _ = Przedmiot.objects.get_or_create(
+                            nazwa=subject_name,
+                            temat="Powtorka",
+                            poziom=school_level,
+                        )
+                        tutor_subjects.append(subject_obj)
+
+                tutor.przedmioty.set(tutor_subjects)
+
+            messages.success(request, "Profil tutora zostal zaktualizowany.")
+            return redirect("tutor_profile_settings")
+
+    preview_name = (form["full_name"].value() or initial_data["full_name"] or "").strip()
+    preview_tone = (form["avatar_tone"].value() or initial_data["avatar_tone"] or "slate").strip()
+    preview_subjects = form["subjects"].value() or taxonomy["subjects"]
+    preview_levels = form["levels"].value() or taxonomy["levels"]
+    preview_about = (form["about"].value() or initial_data["about"] or "").strip()
+    preview_experience = (
+        form["experience_label"].value()
+        or initial_data["experience_label"]
+        or _build_experience_label(tutor)
+    )
+    preview_badges = _normalize_string_list(
+        str(form["status_badges"].value() or initial_data["status_badges"] or "").split(",")
+    )
+
+    context = {
+        "form": form,
+        "page_title": "Profil tutora",
+        "tutor": tutor,
+        "profile_name": preview_name or _build_display_name(tutor),
+        "profile_initials": _get_user_initials(preview_name or _build_display_name(tutor)),
+        "profile_subjects": preview_subjects,
+        "profile_levels": preview_levels,
+        "profile_about": preview_about,
+        "profile_experience": preview_experience,
+        "profile_badges": preview_badges,
+        "profile_avatar_tone": preview_tone,
+        "followers_count": tutor.followers_count,
+        "opinions_count": getattr(tutor, "opinions_count", tutor.opinie_dla.count()),
+        "posts_count": tutor.posty.count(),
+        "available_slots_count": tutor.dostepnosci.count(),
+        "dashboard_url": f'{reverse("home")}?view=tutor-dashboard#tutor-dashboard',
+        "back_url": reverse("home"),
+    }
+    return render(request, "main/pages/tutor_profile/index.html", context)
 
 
 def tutor_search(request):

@@ -63,6 +63,7 @@ class MainViewsTests(TestCase):
         self.assertEqual(home_props['urls']['portalPosts'], reverse('portal_posts'))
         self.assertEqual(home_props['urls']['tutorSearch'], reverse('tutor_search'))
         self.assertEqual(home_props['urls']['tutorDashboardData'], reverse('tutor_dashboard_data'))
+        self.assertEqual(home_props['urls']['tutorProfileSettings'], reverse('tutor_profile_settings'))
 
     def test_component_preview_page_exposes_requested_component(self):
         response = self.client.get(
@@ -366,6 +367,98 @@ class MainViewsTests(TestCase):
         self.assertEqual(len(payload['highlights']), 4)
         self.assertTrue(payload['schedule']['rows'])
         self.assertIn('upcomingLessons', payload)
+
+    def test_tutor_profile_settings_redirects_non_tutor_to_onboarding(self):
+        auth_user = User.objects.create_user(
+            username='student-profile',
+            email='student-profile@example.com',
+            password='secret123',
+        )
+        self.client.force_login(auth_user)
+
+        response = self.client.get(reverse('tutor_profile_settings'))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response.url,
+            f'{reverse("onboarding_account_type")}?{urlencode({"next": reverse("tutor_profile_settings")})}',
+        )
+
+    def test_tutor_profile_settings_updates_tutor_profile(self):
+        auth_user = User.objects.create_user(
+            username='edit-tutor',
+            email='edit-tutor@example.com',
+            password='secret123',
+        )
+        tutor_user = TutorUser.objects.create(
+            imie='Ela',
+            nazwisko='Maj',
+            email='edit-tutor@example.com',
+            haslo='sekret',
+            typ='tutor',
+            tel_num='111222333',
+        )
+        tutor = Tutor.objects.create(
+            uzytkownik=tutor_user,
+            opis='Stary opis',
+            experience_label='Nowy korepetytor',
+            avatar_tone='rose',
+        )
+        tutor.przedmioty.add(
+            Przedmiot.objects.create(
+                nazwa='Matematyka',
+                temat='Powtorka',
+                poziom='Podstawowka',
+            )
+        )
+
+        self.client.force_login(auth_user)
+        response = self.client.post(
+            reverse('tutor_profile_settings'),
+            {
+                'full_name': 'Tomasz Kowalski',
+                'phone': '500600700',
+                'about': 'Prowadze zajecia 1:1 i przygotowuje do matury.',
+                'hourly_rate': '110',
+                'age': '29',
+                'experience_label': '5 lat pracy z uczniami',
+                'avatar_tone': 'ocean',
+                'status_badges': 'sprawny kontakt, zajecia online, matura 2026',
+                'subjects': ['Matematyka', 'Fizyka'],
+                'levels': ['Szkola srednia', 'Studia'],
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('tutor_profile_settings'))
+
+        auth_user.refresh_from_db()
+        tutor_user.refresh_from_db()
+        tutor.refresh_from_db()
+
+        self.assertEqual(auth_user.first_name, 'Tomasz')
+        self.assertEqual(auth_user.last_name, 'Kowalski')
+        self.assertEqual(tutor_user.imie, 'Tomasz')
+        self.assertEqual(tutor_user.nazwisko, 'Kowalski')
+        self.assertEqual(tutor_user.tel_num, '500600700')
+        self.assertEqual(tutor.opis, 'Prowadze zajecia 1:1 i przygotowuje do matury.')
+        self.assertEqual(float(tutor.stawka_godzinowa), 110.0)
+        self.assertEqual(tutor.wiek, 29)
+        self.assertEqual(tutor.experience_label, '5 lat pracy z uczniami')
+        self.assertEqual(tutor.avatar_tone, 'ocean')
+        self.assertEqual(
+            tutor.status_badges,
+            ['sprawny kontakt', 'zajecia online', 'matura 2026'],
+        )
+        self.assertEqual(
+            sorted(tutor.przedmioty.values_list('nazwa', 'poziom')),
+            [
+                ('Fizyka', 'Studia'),
+                ('Fizyka', 'Szkola srednia'),
+                ('Matematyka', 'Studia'),
+                ('Matematyka', 'Szkola srednia'),
+            ],
+        )
 
     def test_portal_posts_returns_serialized_entries(self):
         tutor_user = TutorUser.objects.create(
