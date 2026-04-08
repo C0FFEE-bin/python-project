@@ -712,6 +712,44 @@ class MainViewsTests(TestCase):
         self.assertEqual(len(payload['suggestedTutors']), 1)
         self.assertEqual(payload['suggestedTutors'][0]['name'], 'Anna Nowak')
 
+    def test_tutor_search_returns_fallback_suggestions_when_exact_match_is_missing(self):
+        tutor_user = TutorUser.objects.create(
+            imie='Piotr',
+            nazwisko='Mazur',
+            email='piotr@example.com',
+            haslo='sekret',
+        )
+        fallback_tutor = Tutor.objects.create(
+            uzytkownik=tutor_user,
+            stawka_godzinowa='85.00',
+            rating=4.2,
+        )
+        fallback_tutor.przedmioty.add(
+            Przedmiot.objects.create(
+                nazwa='Matematyka',
+                temat='Geometria',
+                poziom='Studia',
+            )
+        )
+
+        response = self.client.get(
+            reverse('tutor_search'),
+            {
+                'subject': 'Matematyka',
+                'topic': 'Algebra',
+                'level': 'Szkola srednia',
+                'hour': '19:00-20:00',
+                'date': '2026-03-11',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        self.assertEqual(payload['exactMatches'], [])
+        self.assertEqual(len(payload['suggestedTutors']), 1)
+        self.assertEqual(payload['suggestedTutors'][0]['name'], 'Piotr Mazur')
+
     def test_tutor_search_rejects_missing_filters(self):
         response = self.client.get(reverse('tutor_search'), {'subject': 'Matematyka'})
 
