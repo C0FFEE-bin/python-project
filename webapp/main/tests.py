@@ -111,23 +111,14 @@ class MainViewsTests(TestCase):
         user = User.objects.create_user(username='tester', password='secret123')
         self.client.force_login(user)
         response = self.client.get(
-            f'{reverse("onboarding_account_type")}?{urlencode({"next": reverse("cars")})}'
+            f'{reverse("onboarding_account_type")}?{urlencode({"next": reverse("about")})}'
         )
         home_props = self._extract_home_props(response)
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'main/pages/home/index.html')
         self.assertEqual(home_props['onboardingMode'], 'account-type')
-        self.assertEqual(home_props['onboardingNextTarget'], reverse('cars'))
-
-    def test_cars_page_renders_for_authenticated_user(self):
-        user = User.objects.create_user(username='tester', password='secret123')
-        self.client.force_login(user)
-
-        response = self.client.get(reverse('cars'))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'main/pages/cars/index.html')
+        self.assertEqual(home_props['onboardingNextTarget'], reverse('about'))
 
     def test_about_page_renders_animated_layout(self):
         response = self.client.get(reverse('about'))
@@ -150,14 +141,14 @@ class MainViewsTests(TestCase):
                 'email': 'newuser@example.com',
                 'password': 'secret123',
                 'password_confirm': 'secret456',
-                'next': reverse('cars'),
+                'next': reverse('about'),
             },
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'main/auth/register.html')
         self.assertContains(response, 'Hasla musza byc takie same.')
-        self.assertContains(response, f'value="{reverse("cars")}"')
+        self.assertContains(response, f'value="{reverse("about")}"')
         self.assertFalse(User.objects.filter(username='newuser').exists())
 
     def test_register_rejects_username_duplicate_case_insensitive(self):
@@ -227,11 +218,11 @@ class MainViewsTests(TestCase):
             {
                 'username': 'tester',
                 'password': 'secret123',
-                'next': reverse('cars'),
+                'next': reverse('about'),
             },
         )
 
-        self.assertRedirects(response, reverse('cars'))
+        self.assertRedirects(response, reverse('about'))
 
     def test_login_ignores_external_next_target(self):
         User.objects.create_user(username='tester', password='secret123')
@@ -255,11 +246,11 @@ class MainViewsTests(TestCase):
                 'email': 'newuser@example.com',
                 'password': 'secret123',
                 'password_confirm': 'secret123',
-                'next': reverse('cars'),
+                'next': reverse('about'),
             },
         )
 
-        expected_redirect = f'{reverse("onboarding_account_type")}?{urlencode({"next": reverse("cars")})}'
+        expected_redirect = f'{reverse("onboarding_account_type")}?{urlencode({"next": reverse("about")})}'
         self.assertRedirects(response, expected_redirect)
         self.assertTrue(User.objects.filter(username='newuser').exists())
 
