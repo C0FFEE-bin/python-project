@@ -28,7 +28,16 @@ from .forms import (
 )
 
 # Importujemy Twój customowy model User pod aliasem, żeby nie nadpisał domyślnego User z Django
-from .models import Dostepnosc, Obserwacja, Post, Przedmiot, Tutor, User as CustomUser
+from .models import (
+    Dostepnosc,
+    Obserwacja,
+    Post,
+    Przedmiot,
+    Tutor,
+    TutorConversation,
+    TutorMessage,
+    User as CustomUser,
+)
 
 AVATAR_TONES = (
     "violet",
@@ -249,6 +258,7 @@ def _get_home_props(request):
             "portalPosts": reverse("portal_posts"),
             "register": reverse("register_user"),
             "databaseError": reverse("database_error_page"),
+            "tutorMessages": reverse("tutor_messages"),
             "tutorProfileSettings": reverse("tutor_profile_settings"),
             "schoolLevelSelectPreview": reverse(
                 "component_preview",
@@ -267,6 +277,36 @@ def _get_home_props(request):
         "onboardingNextTarget": "",
         "previewComponent": None,
     }
+
+
+def _build_tutor_panel_tabs(active_tab):
+    return [
+        {
+            "label": "Profil",
+            "href": reverse("tutor_profile_settings"),
+            "is_active": active_tab == "profile",
+        },
+        {
+            "label": "Wiadomosci",
+            "href": reverse("tutor_messages"),
+            "is_active": active_tab == "messages",
+        },
+    ]
+
+
+def _build_custom_user_display_name(custom_user):
+    return " ".join(
+        part.strip()
+        for part in (custom_user.imie, custom_user.nazwisko)
+        if part and part.strip()
+    ) or (custom_user.email or "Uzytkownik")
+
+
+def _build_tutor_messages_redirect_url(conversation_id=None):
+    base_url = reverse("tutor_messages")
+    if conversation_id:
+        return f'{base_url}?{urlencode({"conversation": conversation_id})}'
+    return base_url
 
 
 def _parse_iso_date(value):
@@ -1130,10 +1170,13 @@ def tutor_profile_settings(request):
     preview_badges = _normalize_string_list(
         str(form["status_badges"].value() or initial_data["status_badges"] or "").split(",")
     )
+    followers_count = _refresh_tutor_followers_count(tutor)
 
     context = {
         "form": form,
         "page_title": "Profil tutora",
+        "page_description": "Edytuj informacje, ktore widza uczniowie: dane podstawowe, opis, specjalizacje oraz styl profilu.",
+        "panel_tabs": _build_tutor_panel_tabs("profile"),
         "tutor": tutor,
         "profile_name": preview_name or _build_display_name(tutor),
         "profile_initials": _get_user_initials(preview_name or _build_display_name(tutor)),
@@ -1143,7 +1186,7 @@ def tutor_profile_settings(request):
         "profile_experience": preview_experience,
         "profile_badges": preview_badges,
         "profile_avatar_tone": preview_tone,
-        "followers_count": tutor.followers_count,
+        "followers_count": followers_count,
         "opinions_count": getattr(tutor, "opinions_count", tutor.opinie_dla.count()),
         "posts_count": tutor.posty.count(),
         "available_slots_count": tutor.dostepnosci.count(),
@@ -1151,6 +1194,201 @@ def tutor_profile_settings(request):
         "back_url": reverse("home"),
     }
     return render(request, "main/pages/tutor_profile/index.html", context)
+
+
+@login_required
+def tutor_messages(request):
+    custom_user = _get_or_create_custom_user_for_auth_user(request.user)
+    if custom_user is None:
+        messages.error(request, "Nie udalo sie pobrac danych Twojego konta.")
+        return redirect("home")
+
+    if custom_user.typ != "tutor":
+        next_target = reverse("tutor_messages")
+        onboarding_url = reverse("onboarding_account_type")
+        onboarding_url = f'{onboarding_url}?{urlencode({"next": next_target})}'
+        messages.error(request, "Ta strona jest dostepna tylko dla konta korepetytora.")
+        return redirect(onboarding_url)
+
+    tutor, _ = Tutor.objects.get_or_create(uzytkownik=custom_user)
+    tutor = (
+        Tutor.objects.filter(pk=tutor.pk)
+        .select_related("uzytkownik")
+        .prefetch_related("dostepnosci", "posty", "opinie_dla")
+        .annotate(opinions_count=Count("opinie_dla", distinct=True))
+        .first()
+    )
+
+    observations = list(
+        Obserwacja.objects.filter(tutor=tutor)
+        .select_related("uzytkownik")
+        .order_by("uzytkownik__imie", "uzytkownik__nazwisko", "uzytkownik__email")
+    )
+    follower_ids = {observation.uzytkownik_id for observation in observations}
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        body = (request.POST.get("body") or "").strip()
+        selected_conversation_id = request.POST.get("conversation_id") or None
+
+        if not body:
+            messages.error(request, "Wpisz tresc wiadomosci przed wysylka.")
+            return redirect(_build_tutor_messages_redirect_url(selected_conversation_id))
+
+        if action == "start":
+            student_id = request.POST.get("student_id") or ""
+
+            try:
+                student_id = int(student_id)
+            except (TypeError, ValueError):
+                student_id = None
+
+            if not student_id or student_id not in follower_ids:
+                messages.error(request, "Mozesz napisac tylko do swoich podopiecznych.")
+                return redirect(reverse("tutor_messages"))
+
+            conversation, _ = TutorConversation.objects.get_or_create(
+                tutor=tutor,
+                student_id=student_id,
+            )
+            TutorMessage.objects.create(
+                conversation=conversation,
+                sender=custom_user,
+                body=body,
+            )
+            conversation.updated_at = timezone.now()
+            conversation.save(update_fields=["updated_at"])
+            messages.success(request, "Wiadomosc zostala wyslana.")
+            return redirect(_build_tutor_messages_redirect_url(conversation.pk))
+
+        if action == "reply":
+            try:
+                conversation_id = int(selected_conversation_id or "")
+            except (TypeError, ValueError):
+                conversation_id = None
+
+            conversation = (
+                TutorConversation.objects.filter(pk=conversation_id, tutor=tutor)
+                .select_related("student")
+                .first()
+            )
+            if conversation is None:
+                messages.error(request, "Nie znaleziono wybranej rozmowy.")
+                return redirect(reverse("tutor_messages"))
+
+            TutorMessage.objects.create(
+                conversation=conversation,
+                sender=custom_user,
+                body=body,
+            )
+            conversation.updated_at = timezone.now()
+            conversation.save(update_fields=["updated_at"])
+            messages.success(request, "Odpowiedz zostala wyslana.")
+            return redirect(_build_tutor_messages_redirect_url(conversation.pk))
+
+        messages.error(request, "Nie rozpoznano akcji formularza.")
+        return redirect(_build_tutor_messages_redirect_url(selected_conversation_id))
+
+    conversations = list(
+        TutorConversation.objects.filter(tutor=tutor)
+        .select_related("student")
+        .prefetch_related("messages__sender")
+        .order_by("-updated_at", "-id")
+    )
+
+    selected_conversation = None
+    selected_param = (request.GET.get("conversation") or "").strip()
+    if selected_param.isdigit():
+        selected_id = int(selected_param)
+        selected_conversation = next(
+            (conversation for conversation in conversations if conversation.pk == selected_id),
+            None,
+        )
+
+    if selected_conversation is None and conversations:
+        selected_conversation = conversations[0]
+
+    conversation_items = []
+    existing_conversation_ids_by_student = {}
+    for conversation in conversations:
+        student_name = _build_custom_user_display_name(conversation.student)
+        conversation_messages = list(conversation.messages.all())
+        last_message = conversation_messages[-1] if conversation_messages else None
+        last_preview = (last_message.body if last_message else "Rozmowa gotowa na pierwsza wiadomosc.").strip()
+        if len(last_preview) > 84:
+            last_preview = f"{last_preview[:81].rstrip()}..."
+
+        existing_conversation_ids_by_student[conversation.student_id] = conversation.pk
+        conversation_items.append(
+            {
+                "id": conversation.pk,
+                "student_name": student_name,
+                "student_initials": _get_user_initials(student_name),
+                "message_count": len(conversation_messages),
+                "last_preview": last_preview,
+                "last_message_at": last_message.created_at if last_message else conversation.updated_at,
+                "is_selected": selected_conversation is not None and selected_conversation.pk == conversation.pk,
+            }
+        )
+
+    student_candidates = []
+    for observation in observations:
+        student = observation.uzytkownik
+        student_name = _build_custom_user_display_name(student)
+        student_candidates.append(
+            {
+                "id": student.pk,
+                "name": student_name,
+                "initials": _get_user_initials(student_name),
+                "email": student.email,
+                "conversation_id": existing_conversation_ids_by_student.get(student.pk),
+            }
+        )
+    followers_count = _refresh_tutor_followers_count(tutor)
+
+    selected_messages = []
+    if selected_conversation is not None:
+        for message in selected_conversation.messages.all():
+            sender_name = _build_custom_user_display_name(message.sender)
+            selected_messages.append(
+                {
+                    "id": message.pk,
+                    "body": message.body,
+                    "created_at": message.created_at,
+                    "sender_name": sender_name,
+                    "sender_initials": _get_user_initials(sender_name),
+                    "is_tutor": message.sender_id == custom_user.pk,
+                }
+            )
+
+    selected_student = selected_conversation.student if selected_conversation is not None else None
+    selected_student_name = (
+        _build_custom_user_display_name(selected_student)
+        if selected_student is not None
+        else ""
+    )
+
+    context = {
+        "page_title": "Wiadomosci",
+        "page_description": "Prowadz rozmowy z podopiecznymi, ktorzy obserwuja Twoj profil i sa gotowi na kontakt.",
+        "panel_tabs": _build_tutor_panel_tabs("messages"),
+        "tutor": tutor,
+        "conversations": conversation_items,
+        "selected_conversation": selected_conversation,
+        "selected_student_name": selected_student_name,
+        "selected_student_initials": _get_user_initials(selected_student_name) if selected_student_name else "U",
+        "selected_messages": selected_messages,
+        "student_candidates": student_candidates,
+        "conversation_count": len(conversation_items),
+        "students_count": len(student_candidates),
+        "followers_count": followers_count,
+        "opinions_count": getattr(tutor, "opinions_count", tutor.opinie_dla.count()),
+        "posts_count": tutor.posty.count(),
+        "available_slots_count": tutor.dostepnosci.count(),
+        "dashboard_url": f'{reverse("home")}?view=tutor-dashboard#tutor-dashboard',
+        "back_url": reverse("home"),
+    }
+    return render(request, "main/pages/tutor_messages/index.html", context)
 
 
 def tutor_search(request):

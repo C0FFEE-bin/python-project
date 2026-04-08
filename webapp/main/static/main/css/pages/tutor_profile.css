@@ -168,6 +168,41 @@
     color: #a34c65;
 }
 
+.tutor-profile-settings-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.tutor-profile-settings-tabs__item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50px;
+    padding: 0 20px;
+    border: 1px solid rgba(213, 198, 225, 0.92);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #5d5365;
+    font-size: 0.94rem;
+    font-weight: 800;
+    text-decoration: none;
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.tutor-profile-settings-tabs__item:hover,
+.tutor-profile-settings-tabs__item.is-active {
+    transform: translateY(-2px);
+    border-color: rgba(190, 103, 217, 0.82);
+    box-shadow: 0 14px 24px rgba(197, 93, 224, 0.12);
+}
+
+.tutor-profile-settings-tabs__item.is-active {
+    background: linear-gradient(135deg, rgba(250, 240, 254, 0.98) 0%, rgba(243, 232, 252, 0.98) 100%);
+    color: var(--tutor-profile-accent-strong);
+}
+
 .tutor-profile-settings-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.72fr);
@@ -462,6 +497,296 @@
     margin-top: 18px;
 }
 
+.tutor-messages-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.86fr) minmax(0, 1.24fr);
+    gap: 22px;
+    margin-top: 22px;
+}
+
+.tutor-messages-sidebar {
+    display: grid;
+    align-content: start;
+    gap: 18px;
+}
+
+.tutor-messages-panel,
+.tutor-messages-thread {
+    border: 1px solid var(--tutor-profile-border);
+    border-radius: 30px;
+    background: var(--tutor-profile-surface);
+    box-shadow: var(--tutor-profile-shadow);
+    backdrop-filter: blur(14px);
+}
+
+.tutor-messages-panel {
+    display: grid;
+    gap: 18px;
+    padding: 22px;
+}
+
+.tutor-messages-panel__head,
+.tutor-messages-thread__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.tutor-messages-panel__head h2,
+.tutor-messages-thread__head h2,
+.tutor-messages-thread__empty h2 {
+    margin: 10px 0 0;
+    color: #4f4757;
+    font-size: 1.45rem;
+}
+
+.tutor-messages-panel__badge,
+.tutor-messages-thread__note {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    min-height: 42px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: rgba(236, 226, 244, 0.95);
+    color: #885ea0;
+    font-size: 0.88rem;
+    font-weight: 800;
+}
+
+.tutor-messages-compose-form,
+.tutor-messages-reply-form {
+    display: grid;
+    gap: 14px;
+}
+
+.tutor-messages-compose-form__textarea {
+    min-height: 138px;
+}
+
+.tutor-messages-empty {
+    display: grid;
+    gap: 8px;
+    padding: 18px;
+    border: 1px dashed rgba(212, 193, 225, 0.94);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.tutor-messages-empty p,
+.tutor-messages-empty span {
+    margin: 0;
+}
+
+.tutor-messages-empty p,
+.tutor-messages-reply-form__actions p,
+.tutor-messages-thread__empty p:last-child {
+    color: var(--tutor-profile-text-soft);
+    line-height: 1.6;
+}
+
+.tutor-messages-empty p {
+    color: #564d5f;
+    font-weight: 800;
+}
+
+.tutor-messages-empty span {
+    color: var(--tutor-profile-text-soft);
+    font-size: 0.92rem;
+    line-height: 1.55;
+}
+
+.tutor-messages-list {
+    display: grid;
+    gap: 12px;
+}
+
+.tutor-messages-list__item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid rgba(220, 207, 230, 0.9);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.88);
+    color: inherit;
+    text-decoration: none;
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.tutor-messages-list__item:hover,
+.tutor-messages-list__item.is-active {
+    transform: translateY(-2px);
+    border-color: rgba(190, 103, 217, 0.78);
+    box-shadow: 0 14px 28px rgba(197, 93, 224, 0.1);
+}
+
+.tutor-messages-list__item.is-active {
+    background: rgba(250, 243, 253, 0.96);
+}
+
+.tutor-messages-list__avatar,
+.tutor-messages-thread__avatar {
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-weight: 800;
+    background: linear-gradient(135deg, #ad79d8 0%, #cf98eb 100%);
+    box-shadow: 0 14px 24px rgba(163, 104, 205, 0.22);
+}
+
+.tutor-messages-list__avatar {
+    width: 48px;
+    aspect-ratio: 1;
+    border-radius: 16px;
+    font-size: 1rem;
+}
+
+.tutor-messages-list__content {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.tutor-messages-list__content strong {
+    color: #534b5b;
+    font-size: 0.96rem;
+}
+
+.tutor-messages-list__content span,
+.tutor-messages-list__content small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--tutor-profile-text-soft);
+}
+
+.tutor-messages-list__content span {
+    font-size: 0.92rem;
+}
+
+.tutor-messages-list__content small {
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.tutor-messages-thread {
+    display: grid;
+    gap: 18px;
+    min-height: 760px;
+    padding: 24px;
+}
+
+.tutor-messages-thread__identity {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.tutor-messages-thread__avatar {
+    width: 64px;
+    aspect-ratio: 1;
+    border-radius: 20px;
+    font-size: 1.3rem;
+}
+
+.tutor-messages-thread__messages {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 260px;
+    max-height: 520px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.tutor-message {
+    display: grid;
+    gap: 8px;
+    max-width: min(100%, 560px);
+}
+
+.tutor-message.is-own {
+    justify-self: end;
+}
+
+.tutor-message__meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--tutor-profile-text-soft);
+    font-size: 0.81rem;
+    font-weight: 700;
+}
+
+.tutor-message.is-own .tutor-message__meta {
+    justify-content: flex-end;
+}
+
+.tutor-message__sender {
+    color: #4e4656;
+}
+
+.tutor-message__bubble {
+    padding: 16px 18px;
+    border: 1px solid rgba(218, 206, 228, 0.95);
+    border-radius: 22px 22px 22px 10px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 12px 24px rgba(97, 86, 108, 0.08);
+}
+
+.tutor-message.is-own .tutor-message__bubble {
+    border-color: transparent;
+    border-radius: 22px 22px 10px 22px;
+    background: linear-gradient(135deg, var(--tutor-profile-accent) 0%, var(--tutor-profile-accent-strong) 100%);
+    color: #fff;
+}
+
+.tutor-message__bubble p {
+    margin: 0;
+    line-height: 1.65;
+}
+
+.tutor-messages-reply-form {
+    margin-top: auto;
+    padding-top: 18px;
+    border-top: 1px solid rgba(220, 207, 230, 0.88);
+}
+
+.tutor-messages-reply-form__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.tutor-messages-reply-form__actions p {
+    margin: 0;
+    font-size: 0.92rem;
+}
+
+.tutor-messages-thread__empty {
+    display: grid;
+    align-content: center;
+    gap: 14px;
+    min-height: 660px;
+    padding: 32px;
+    border: 1px dashed rgba(212, 193, 225, 0.92);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.tutor-messages-thread__empty p {
+    margin: 0;
+}
+
+.tutor-profile-settings-stats--panel {
+    margin-top: 22px;
+}
+
 @media (max-width: 1100px) {
     .tutor-profile-settings-layout {
         grid-template-columns: 1fr;
@@ -470,6 +795,18 @@
     .tutor-profile-settings-sidebar {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         align-items: start;
+    }
+
+    .tutor-messages-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .tutor-messages-thread {
+        min-height: 0;
+    }
+
+    .tutor-messages-thread__empty {
+        min-height: 320px;
     }
 }
 
@@ -496,18 +833,27 @@
         grid-template-columns: 1fr;
     }
 
+    .tutor-profile-settings-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .tutor-profile-settings-hero,
     .tutor-profile-settings-form,
     .tutor-profile-settings-preview,
     .tutor-profile-settings-stats,
-    .tutor-profile-settings-note {
+    .tutor-profile-settings-note,
+    .tutor-messages-panel,
+    .tutor-messages-thread {
         border-radius: 24px;
     }
 
     .tutor-profile-settings-hero,
     .tutor-profile-settings-form,
     .tutor-profile-settings-preview,
-    .tutor-profile-settings-note {
+    .tutor-profile-settings-note,
+    .tutor-messages-panel,
+    .tutor-messages-thread {
         padding: 18px;
     }
 
@@ -525,5 +871,25 @@
 
     .tutor-profile-settings-actions p {
         max-width: none;
+    }
+
+    .tutor-messages-panel__head,
+    .tutor-messages-thread__head,
+    .tutor-messages-reply-form__actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tutor-messages-list__item {
+        border-radius: 18px;
+    }
+
+    .tutor-messages-thread__messages {
+        max-height: none;
+    }
+
+    .tutor-messages-thread__empty {
+        min-height: 0;
+        padding: 20px;
     }
 }

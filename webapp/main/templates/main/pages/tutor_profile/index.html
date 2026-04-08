@@ -5,7 +5,7 @@
 {% block body_class %}tutor-profile-settings-body{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'main/css/pages/tutor_profile.css' %}?v=20260407a">
+<link rel="stylesheet" href="{% static 'main/css/pages/tutor_profile.css' %}?v=20260408a">
 {% endblock %}
 
 {% block content %}
@@ -19,7 +19,7 @@
                 <p class="tutor-profile-settings__eyebrow">Panel tutora</p>
                 <h1>{{ page_title }}</h1>
                 <p>
-                    Edytuj informacje, ktore widza uczniowie: dane podstawowe, opis, specjalizacje oraz styl profilu.
+                    {{ page_description }}
                 </p>
             </div>
 
@@ -44,6 +44,18 @@
                 {% endfor %}
             </div>
         {% endif %}
+
+        <nav class="tutor-profile-settings-tabs" aria-label="Zakladki panelu tutora">
+            {% for tab in panel_tabs %}
+                <a
+                    class="tutor-profile-settings-tabs__item{% if tab.is_active %} is-active{% endif %}"
+                    href="{{ tab.href }}"
+                    {% if tab.is_active %}aria-current="page"{% endif %}
+                >
+                    {{ tab.label }}
+                </a>
+            {% endfor %}
+        </nav>
 
         <section class="tutor-profile-settings-layout">
             <form class="tutor-profile-settings-form" method="post" novalidate>

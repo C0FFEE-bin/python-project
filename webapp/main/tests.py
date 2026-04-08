@@ -12,7 +12,16 @@ from django.test import TestCase
 from django.urls import reverse
 
 from main.middleware import DatabaseErrorPageMiddleware
-from main.models import Dostepnosc, Obserwacja, Post, Przedmiot, Tutor, User as TutorUser
+from main.models import (
+    Dostepnosc,
+    Obserwacja,
+    Post,
+    Przedmiot,
+    Tutor,
+    TutorConversation,
+    TutorMessage,
+    User as TutorUser,
+)
 
 
 class MainViewsTests(TestCase):
@@ -63,6 +72,7 @@ class MainViewsTests(TestCase):
         self.assertEqual(home_props['urls']['portalPosts'], reverse('portal_posts'))
         self.assertEqual(home_props['urls']['tutorSearch'], reverse('tutor_search'))
         self.assertEqual(home_props['urls']['tutorDashboardData'], reverse('tutor_dashboard_data'))
+        self.assertEqual(home_props['urls']['tutorMessages'], reverse('tutor_messages'))
         self.assertEqual(home_props['urls']['tutorProfileSettings'], reverse('tutor_profile_settings'))
 
     def test_component_preview_page_exposes_requested_component(self):
@@ -459,6 +469,109 @@ class MainViewsTests(TestCase):
                 ('Matematyka', 'Szkola srednia'),
             ],
         )
+
+    def test_tutor_messages_redirects_non_tutor_to_onboarding(self):
+        auth_user = User.objects.create_user(
+            username='student-messages',
+            email='student-messages@example.com',
+            password='secret123',
+        )
+        self.client.force_login(auth_user)
+
+        response = self.client.get(reverse('tutor_messages'))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response.url,
+            f'{reverse("onboarding_account_type")}?{urlencode({"next": reverse("tutor_messages")})}',
+        )
+
+    def test_tutor_messages_creates_conversation_and_message(self):
+        auth_user = User.objects.create_user(
+            username='message-tutor',
+            email='message-tutor@example.com',
+            password='secret123',
+        )
+        tutor_user = TutorUser.objects.create(
+            imie='Alicja',
+            nazwisko='Nowak',
+            email='message-tutor@example.com',
+            haslo='sekret',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(uzytkownik=tutor_user, followers_count=1)
+        student = TutorUser.objects.create(
+            imie='Jan',
+            nazwisko='Uczen',
+            email='student-thread@example.com',
+            haslo='sekret',
+            typ='uczen',
+        )
+        Obserwacja.objects.create(uzytkownik=student, tutor=tutor)
+
+        self.client.force_login(auth_user)
+        response = self.client.post(
+            reverse('tutor_messages'),
+            {
+                'action': 'start',
+                'student_id': str(student.pk),
+                'body': 'Czesc, widze ze obserwujesz moj profil. Ustalmy pierwszy termin.',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith(reverse('tutor_messages')))
+        self.assertEqual(TutorConversation.objects.count(), 1)
+        self.assertEqual(TutorMessage.objects.count(), 1)
+
+        conversation = TutorConversation.objects.get()
+        message = TutorMessage.objects.get()
+
+        self.assertEqual(conversation.tutor, tutor)
+        self.assertEqual(conversation.student, student)
+        self.assertEqual(message.conversation, conversation)
+        self.assertEqual(message.sender, tutor_user)
+        self.assertIn('Ustalmy pierwszy termin', message.body)
+
+    def test_tutor_messages_page_renders_existing_thread(self):
+        auth_user = User.objects.create_user(
+            username='thread-tutor',
+            email='thread-tutor@example.com',
+            password='secret123',
+        )
+        tutor_user = TutorUser.objects.create(
+            imie='Karol',
+            nazwisko='Tutor',
+            email='thread-tutor@example.com',
+            haslo='sekret',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(uzytkownik=tutor_user, followers_count=1)
+        student = TutorUser.objects.create(
+            imie='Ola',
+            nazwisko='Student',
+            email='ola-student@example.com',
+            haslo='sekret',
+            typ='uczen',
+        )
+        Obserwacja.objects.create(uzytkownik=student, tutor=tutor)
+        conversation = TutorConversation.objects.create(tutor=tutor, student=student)
+        TutorMessage.objects.create(
+            conversation=conversation,
+            sender=tutor_user,
+            body='Pierwsza wiadomosc do ucznia.',
+        )
+
+        self.client.force_login(auth_user)
+        response = self.client.get(
+            f'{reverse("tutor_messages")}?{urlencode({"conversation": conversation.pk})}'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'main/pages/tutor_messages/index.html')
+        self.assertContains(response, 'Aktywne rozmowy')
+        self.assertContains(response, 'Ola Student')
+        self.assertContains(response, 'Pierwsza wiadomosc do ucznia.')
 
     def test_portal_posts_returns_serialized_entries(self):
         tutor_user = TutorUser.objects.create(
