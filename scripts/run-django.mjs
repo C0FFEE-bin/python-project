@@ -19,6 +19,7 @@ if (!pythonPath) {
 }
 
 const managePyPath = path.join(repoRoot, "webapp", "manage.py");
+const managePyDir = path.dirname(managePyPath);
 
 if (!existsSync(managePyPath)) {
   console.error(`manage.py not found at ${managePyPath}.`);
@@ -28,6 +29,7 @@ if (!existsSync(managePyPath)) {
 const djangoArgs = [managePyPath, ...process.argv.slice(2)];
 
 const child = spawn(pythonPath, djangoArgs, {
+  cwd: managePyDir,
   stdio: "inherit",
 });
 

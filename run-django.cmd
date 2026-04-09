@@ -14,4 +14,8 @@ if not exist "%MANAGE_PY%" (
   exit /b 1
 )
 
-"%PYTHON_EXE%" "%MANAGE_PY%" runserver %*
+if "%~1"=="" (
+  "%PYTHON_EXE%" "%MANAGE_PY%" runserver
+) else (
+  "%PYTHON_EXE%" "%MANAGE_PY%" %*
+)
