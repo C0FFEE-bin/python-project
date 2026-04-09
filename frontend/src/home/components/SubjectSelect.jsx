@@ -109,7 +109,7 @@ export default function SubjectSelect({
                         className="student-flow-button is-secondary"
                         onClick={onBack}
                     >
-                        Wroc
+                        Wroć
                     </button>
                     <button
                         type="button"
