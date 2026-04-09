@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { toggleTutorObservation } from "../api.js";
+
 const PROFILE_TABS = [
     { id: "info", label: "Informacje" },
     { id: "posts", label: "Wpisy" },
@@ -196,14 +198,19 @@ function buildSubjectOptions(tutor, requestFilters) {
 }
 
 export default function TutorProfile({
+    csrfToken = "",
     heroImageSrc = "",
     onBack,
     requestDate = "",
     requestFilters = {},
     tutor,
+    urls = {},
 }) {
     const [activeTab, setActiveTab] = useState("info");
     const [isFollowing, setIsFollowing] = useState(Boolean(tutor?.isFollowed));
+    const [followersCount, setFollowersCount] = useState(Number(tutor?.followersCount || 0));
+    const [followError, setFollowError] = useState("");
+    const [isFollowSubmitting, setIsFollowSubmitting] = useState(false);
     const [message, setMessage] = useState("");
 
     const subjectOptions = useMemo(() => buildSubjectOptions(tutor, requestFilters), [requestFilters, tutor]);
@@ -227,9 +234,11 @@ export default function TutorProfile({
 
     useEffect(() => {
         setIsFollowing(Boolean(tutor?.isFollowed));
+        setFollowersCount(Number(tutor?.followersCount || 0));
+        setFollowError("");
         setMessage("");
         setActiveTab("info");
-    }, [tutor?.id, tutor?.isFollowed]);
+    }, [tutor?.followersCount, tutor?.id, tutor?.isFollowed]);
 
     if (!tutor) {
         return null;
@@ -242,15 +251,36 @@ export default function TutorProfile({
     const summarySubjectLabel = selectedSubject || subjectOptions[0] || "Przedmiot do ustalenia";
     const summaryLevelLabel = requestFilters?.level || levelOptions[0] || "Rozne poziomy";
     const summaryTopicLabel = requestFilters?.topic || topicOptions[0] || "";
-    const displayFollowersCount = Math.max(
-        0,
-        Number(tutor.followersCount || 0)
-            + (isFollowing && !tutor.isFollowed ? 1 : 0)
-            - (!isFollowing && tutor.isFollowed ? 1 : 0),
-    );
     const coverStyle = heroImageSrc
         ? { backgroundImage: `linear-gradient(135deg, rgba(57, 70, 104, 0.14), rgba(205, 142, 231, 0.36)), url(${heroImageSrc})` }
         : undefined;
+
+    async function handleFollowToggle() {
+        if (!tutor?.canFollow || !tutor?.id || isFollowSubmitting) {
+            return;
+        }
+
+        setIsFollowSubmitting(true);
+        setFollowError("");
+
+        try {
+            const responsePayload = await toggleTutorObservation({
+                payload: {
+                    tutorId: tutor.id,
+                },
+                observationsUrl: urls.observations ?? "/api/portal-observations",
+                csrfToken,
+                databaseErrorUrl: urls.databaseError ?? "/database-error",
+            });
+
+            setIsFollowing(Boolean(responsePayload.isFollowed));
+            setFollowersCount(Number(responsePayload.followersCount || 0));
+        } catch (error) {
+            setFollowError(error?.message || "Nie udalo sie zapisac obserwacji tutora.");
+        } finally {
+            setIsFollowSubmitting(false);
+        }
+    }
 
     return (
         <div className="tutor-profile">
@@ -363,14 +393,22 @@ export default function TutorProfile({
                                                 <button
                                                     className={`tutor-profile__follow${isFollowing ? " is-active" : ""}`}
                                                     type="button"
-                                                    onClick={() => setIsFollowing((currentValue) => !currentValue)}
+                                                    onClick={handleFollowToggle}
+                                                    disabled={isFollowSubmitting}
                                                 >
-                                                    {isFollowing ? "Obserwujesz" : "Obserwuj"}
+                                                    {isFollowSubmitting
+                                                        ? "Zapisywanie..."
+                                                        : isFollowing
+                                                            ? "Obserwujesz"
+                                                            : "Obserwuj"}
                                                 </button>
                                             ) : (
                                                 <span className="tutor-profile__follow-note">Profil publiczny</span>
                                             )}
-                                            <span className="tutor-profile__followers">{displayFollowersCount} obserwujacych</span>
+                                            <span className="tutor-profile__followers">{followersCount} obserwujacych</span>
+                                            {followError ? (
+                                                <span className="tutor-profile__followers">{followError}</span>
+                                            ) : null}
                                         </div>
                                     </div>
                                     <div className="tutor-profile__facts">

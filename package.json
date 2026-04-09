@@ -1,5 +1,5 @@
 {
-  "name": "django-blueprint-app-frontend",
+  "name": "ran-frontend",
   "private": true,
   "type": "module",
   "scripts": {

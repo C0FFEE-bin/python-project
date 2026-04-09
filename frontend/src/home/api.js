@@ -30,6 +30,7 @@ function normalizeObservedTutor(observation) {
         followersLabel: observation?.followersLabel || "0",
         initials: observation?.initials || "T",
         postsCount: typeof observation?.postsCount === "number" ? observation.postsCount : 0,
+        profileUrl: buildTutorProfileHref(observation?.id),
     };
 }
 
@@ -243,4 +244,3 @@ export async function toggleTutorObservation({
     };
 }
 
-export const createPortalObservation = toggleTutorObservation;

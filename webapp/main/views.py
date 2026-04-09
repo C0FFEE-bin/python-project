@@ -19,7 +19,6 @@ from django.templatetags.static import static
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.views.decorators.csrf import csrf_exempt
 
 from .forms import (
     DEFAULT_TUTOR_LEVEL_OPTIONS,
@@ -106,7 +105,8 @@ def _create_auth_and_custom_user(username, normalized_email, password):
             imie=username,
             nazwisko="",
             email=normalized_email,
-            haslo=password,
+            # Passwords are stored only in Django's auth model.
+            haslo="",
         )
 
     return user
@@ -387,6 +387,28 @@ def _build_tags(przedmioty):
     return tags[:4]
 
 
+def _time_to_minutes(value):
+    return value.hour * 60 + value.minute
+
+
+def _get_time_gap_minutes(slots, start_time, end_time):
+    if not slots:
+        return None
+
+    requested_start = _time_to_minutes(start_time)
+    requested_end = _time_to_minutes(end_time)
+    best_gap = None
+
+    for slot in slots:
+        slot_gap = abs(_time_to_minutes(slot.godzina_od) - requested_start)
+        slot_gap += abs(_time_to_minutes(slot.godzina_do) - requested_end)
+
+        if best_gap is None or slot_gap < best_gap:
+            best_gap = slot_gap
+
+    return best_gap
+
+
 def _serialize_tutor_result(tutor, filters, selected_date, start_time, end_time):
     przedmioty = list(tutor.przedmioty.all())
     subject_matches = [przedmiot for przedmiot in przedmioty if przedmiot.nazwa == filters["subject"]]
@@ -402,6 +424,7 @@ def _serialize_tutor_result(tutor, filters, selected_date, start_time, end_time)
         slot.godzina_od == start_time and slot.godzina_do == end_time
         for slot in matching_day_slots
     )
+    time_gap_minutes = _get_time_gap_minutes(matching_day_slots, start_time, end_time)
 
     score = 6
     if has_topic:
@@ -410,6 +433,13 @@ def _serialize_tutor_result(tutor, filters, selected_date, start_time, end_time)
         score += 4
     if has_hour:
         score += 5
+    elif time_gap_minutes is not None:
+        if time_gap_minutes <= 60:
+            score += 3
+        elif time_gap_minutes <= 120:
+            score += 2
+        else:
+            score += 1
     if has_date:
         score += 3
     if matching_day_slots:
@@ -435,7 +465,8 @@ def _serialize_tutor_result(tutor, filters, selected_date, start_time, end_time)
         "statusBadges": status_badges,
         "tags": _build_tags(przedmioty),
         "score": score,
-        "isExactMatch": has_level and has_hour and has_date,
+        "isExactMatch": has_topic and has_level and has_hour and has_date,
+        "timeGapMinutes": time_gap_minutes,
     }
 
 
@@ -962,7 +993,9 @@ def _serialize_observation(observation):
 
 def _sort_results_key(item):
     rating = item["rating"] or 0
-    return (-item["score"], -rating, item["name"].lower())
+    time_gap_minutes = item.get("timeGapMinutes")
+    normalized_time_gap = time_gap_minutes if time_gap_minutes is not None else 10 ** 9
+    return (-item["score"], normalized_time_gap, -rating, -item["opinions"], item["name"].lower())
 
 
 def index(request):
@@ -997,43 +1030,6 @@ def onboarding_account_type(request):
     }
 
     return render(request, 'main/pages/home/index.html', values)
-
-@login_required
-def cars(request):
-    values = {
-        "cars": [
-            {
-                "car": "Nissan 350Z",
-                "year": 2003,
-                "drive_wheel": "rwd",
-                "color": "orange",
-                "price": "$35,000",
-            },
-            {
-                "car": "Mitsubishi Lancer Evolution VIII",
-                "year": 2004,
-                "drive_wheel": "4wd",
-                "color": "yellow",
-                "price": "$36,000",
-            },
-            {
-                "car": "Ford Mustang GT (Gen. 5)",
-                "year": 2005,
-                "drive_wheel": "rwd",
-                "color": "red",
-                "price": "$36,000",
-            },
-            {
-                "car": "BMW M3 GTR (E46)",
-                "year": 2005,
-                "drive_wheel": "rwd",
-                "color": "blue and gray",
-                "price": "Priceless",
-            },
-        ],
-    }
-
-    return render(request, "main/pages/cars/index.html", values)
 
 
 def about(request):
@@ -1438,15 +1434,24 @@ def tutor_search(request):
         [item for item in serialized_results if item["isExactMatch"]],
         key=_sort_results_key,
     )
-    suggested_tutors = sorted(
+    suggested_candidates = sorted(
         [item for item in serialized_results if not item["isExactMatch"] and item["score"] >= 12],
         key=_sort_results_key,
     )
+    suggested_tutors = suggested_candidates
+
+    # If there is no ideal match, fall back to the closest tutors for the same subject.
+    if not exact_matches:
+        suggested_tutors = sorted(
+            [item for item in serialized_results if not item["isExactMatch"]],
+            key=_sort_results_key,
+        )[:6]
 
     for collection in (exact_matches, suggested_tutors):
         for item in collection:
             item.pop("score", None)
             item.pop("isExactMatch", None)
+            item.pop("timeGapMinutes", None)
 
     return JsonResponse(
         {
@@ -1892,7 +1897,6 @@ def tutor_onboarding_save(request):
     )
 
 
-@csrf_exempt
 def api_register(request):
     if request.method == "POST":
         try:
