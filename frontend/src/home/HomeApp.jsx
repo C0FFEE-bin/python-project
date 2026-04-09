@@ -431,11 +431,13 @@ export default function HomeApp({
                         ) : null}
                         {!isTutorLoading && !tutorError && selectedTutor ? (
                             <TutorProfile
+                                csrfToken={csrfToken}
                                 heroImageSrc={images.hero}
                                 requestDate={pageState.date}
                                 requestFilters={pageState.filters}
                                 tutor={selectedTutor}
                                 onBack={handleCloseTutorProfile}
+                                urls={urls}
                             />
                         ) : null}
                     </section>

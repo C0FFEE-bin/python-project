@@ -1,5 +1,13 @@
 import { useState } from 'react';
 
+function getCsrfTokenFromCookie() {
+    const csrfCookie = document.cookie
+        .split('; ')
+        .find((cookie) => cookie.startsWith('csrftoken='));
+
+    return csrfCookie ? decodeURIComponent(csrfCookie.split('=').slice(1).join('=')) : '';
+}
+
 export default function ApiRegisterForm({ onRegisterSuccess }) {
     const [formData, setFormData] = useState({ username: '', email: '', password: '' });
     const [errorMsg, setErrorMsg] = useState('');
@@ -16,6 +24,7 @@ export default function ApiRegisterForm({ onRegisterSuccess }) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfTokenFromCookie(),
             },
             body: JSON.stringify(formData)
         });

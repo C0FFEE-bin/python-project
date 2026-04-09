@@ -19,7 +19,6 @@ from django.templatetags.static import static
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.views.decorators.csrf import csrf_exempt
 
 from .forms import (
     DEFAULT_TUTOR_LEVEL_OPTIONS,
@@ -106,7 +105,8 @@ def _create_auth_and_custom_user(username, normalized_email, password):
             imie=username,
             nazwisko="",
             email=normalized_email,
-            haslo=password,
+            # Passwords are stored only in Django's auth model.
+            haslo="",
         )
 
     return user
@@ -465,7 +465,7 @@ def _serialize_tutor_result(tutor, filters, selected_date, start_time, end_time)
         "statusBadges": status_badges,
         "tags": _build_tags(przedmioty),
         "score": score,
-        "isExactMatch": has_level and has_hour and has_date,
+        "isExactMatch": has_topic and has_level and has_hour and has_date,
         "timeGapMinutes": time_gap_minutes,
     }
 
@@ -1897,7 +1897,6 @@ def tutor_onboarding_save(request):
     )
 
 
-@csrf_exempt
 def api_register(request):
     if request.method == "POST":
         try:
