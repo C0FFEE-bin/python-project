@@ -85,7 +85,7 @@ WSGI_APPLICATION = 'webapp.wsgi.application' #created as an implementation-neutr
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': REPO_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
