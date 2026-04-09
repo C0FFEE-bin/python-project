@@ -108,6 +108,44 @@ class Obserwacja(models.Model):
         return f"{self.uzytkownik} obserwuje {self.tutor}"
 
 
+class TutorConversation(models.Model):
+    tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name="conversations")
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tutor_conversations")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "tutor_conversation"
+        ordering = ["-updated_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tutor", "student"],
+                name="unique_tutor_conversation_per_student",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Rozmowa {self.tutor} z {self.student}"
+
+
+class TutorMessage(models.Model):
+    conversation = models.ForeignKey(
+        TutorConversation,
+        on_delete=models.CASCADE,
+        related_name="messages",
+    )
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_tutor_messages")
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "tutor_message"
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return f"Wiadomosc {self.sender} @ {self.created_at:%Y-%m-%d %H:%M}"
+
+
 class Opinia(models.Model):
     autor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='opinie_od')
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='opinie_dla')

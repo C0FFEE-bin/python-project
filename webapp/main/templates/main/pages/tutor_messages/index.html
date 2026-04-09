@@ -1,0 +1,231 @@
+{% extends 'main/layouts/base_public.html' %}
+{% load static %}
+
+{% block title %}Wiadomosci tutora{% endblock %}
+{% block body_class %}tutor-profile-settings-body{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'main/css/pages/tutor_profile.css' %}?v=20260408a">
+{% endblock %}
+
+{% block content %}
+<div class="tutor-profile-settings-page" id="wiadomosci">
+    <div class="tutor-profile-settings-page__backdrop tutor-profile-settings-page__backdrop--top" aria-hidden="true"></div>
+    <div class="tutor-profile-settings-page__backdrop tutor-profile-settings-page__backdrop--bottom" aria-hidden="true"></div>
+
+    <main class="tutor-profile-settings-shell">
+        <header class="tutor-profile-settings-hero">
+            <div class="tutor-profile-settings-hero__copy">
+                <p class="tutor-profile-settings__eyebrow">Panel tutora</p>
+                <h1>{{ page_title }}</h1>
+                <p>
+                    {{ page_description }}
+                </p>
+            </div>
+
+            <div class="tutor-profile-settings-hero__actions">
+                <a class="tutor-profile-settings__ghost-link" href="{{ back_url }}">
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    Wroc na glowna
+                </a>
+                <a class="tutor-profile-settings__primary-link" href="{{ dashboard_url }}">
+                    <i class="fa-solid fa-chart-column" aria-hidden="true"></i>
+                    Otworz dashboard
+                </a>
+            </div>
+        </header>
+
+        {% if messages %}
+            <div class="tutor-profile-settings-alerts" aria-live="polite">
+                {% for message in messages %}
+                    <div class="tutor-profile-settings-alert tutor-profile-settings-alert--{{ message.tags|default:'info' }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <nav class="tutor-profile-settings-tabs" aria-label="Zakladki panelu tutora">
+            {% for tab in panel_tabs %}
+                <a
+                    class="tutor-profile-settings-tabs__item{% if tab.is_active %} is-active{% endif %}"
+                    href="{{ tab.href }}"
+                    {% if tab.is_active %}aria-current="page"{% endif %}
+                >
+                    {{ tab.label }}
+                </a>
+            {% endfor %}
+        </nav>
+
+        <section class="tutor-messages-layout">
+            <aside class="tutor-messages-sidebar">
+                <section class="tutor-messages-panel">
+                    <div class="tutor-messages-panel__head">
+                        <div>
+                            <p class="tutor-profile-settings__eyebrow">Nowa rozmowa</p>
+                            <h2>Napisz do podopiecznego</h2>
+                        </div>
+                        <span class="tutor-messages-panel__badge">{{ students_count }}</span>
+                    </div>
+
+                    {% if student_candidates %}
+                        <form class="tutor-messages-compose-form" method="post" novalidate>
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="start">
+
+                            <label class="tutor-profile-settings-field">
+                                <span>Wybierz osobe</span>
+                                <select class="tutor-profile-settings__input" name="student_id" required>
+                                    <option value="">Wybierz podopiecznego</option>
+                                    {% for student in student_candidates %}
+                                        <option value="{{ student.id }}">
+                                            {{ student.name }}{% if student.conversation_id %} - aktywna rozmowa{% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+
+                            <label class="tutor-profile-settings-field">
+                                <span>Pierwsza wiadomosc</span>
+                                <textarea
+                                    class="tutor-profile-settings__textarea tutor-messages-compose-form__textarea"
+                                    name="body"
+                                    placeholder="Napisz, z czym chcesz pomoc i zaproponuj kolejny krok."
+                                    required
+                                ></textarea>
+                            </label>
+
+                            <button class="tutor-profile-settings__submit" type="submit">
+                                <i class="fa-regular fa-paper-plane" aria-hidden="true"></i>
+                                Wyslij wiadomosc
+                            </button>
+                        </form>
+                    {% else %}
+                        <div class="tutor-messages-empty">
+                            <p>Nie masz jeszcze podopiecznych do kontaktu.</p>
+                            <span>Gdy uczen zacznie obserwowac Twoj profil, pojawi sie tutaj na liscie.</span>
+                        </div>
+                    {% endif %}
+                </section>
+
+                <section class="tutor-messages-panel">
+                    <div class="tutor-messages-panel__head">
+                        <div>
+                            <p class="tutor-profile-settings__eyebrow">Skrzynka</p>
+                            <h2>Aktywne rozmowy</h2>
+                        </div>
+                        <span class="tutor-messages-panel__badge">{{ conversation_count }}</span>
+                    </div>
+
+                    {% if conversations %}
+                        <div class="tutor-messages-list">
+                            {% for conversation in conversations %}
+                                <a
+                                    class="tutor-messages-list__item{% if conversation.is_selected %} is-active{% endif %}"
+                                    href="?conversation={{ conversation.id }}#thread"
+                                    {% if conversation.is_selected %}aria-current="page"{% endif %}
+                                >
+                                    <span class="tutor-messages-list__avatar">{{ conversation.student_initials }}</span>
+                                    <span class="tutor-messages-list__content">
+                                        <strong>{{ conversation.student_name }}</strong>
+                                        <span>{{ conversation.last_preview }}</span>
+                                        <small>
+                                            {{ conversation.message_count }} wiad. - {{ conversation.last_message_at|date:"d.m.Y H:i" }}
+                                        </small>
+                                    </span>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="tutor-messages-empty">
+                            <p>Nie masz jeszcze zadnej rozmowy.</p>
+                            <span>Wyslij pierwsza wiadomosc z formularza powyzej, a watek pojawi sie tutaj.</span>
+                        </div>
+                    {% endif %}
+                </section>
+            </aside>
+
+            <section class="tutor-messages-thread" id="thread">
+                {% if selected_conversation %}
+                    <header class="tutor-messages-thread__head">
+                        <div class="tutor-messages-thread__identity">
+                            <span class="tutor-messages-thread__avatar">{{ selected_student_initials }}</span>
+                            <div>
+                                <p class="tutor-profile-settings__eyebrow">Rozmowa</p>
+                                <h2>{{ selected_student_name }}</h2>
+                            </div>
+                        </div>
+                        <span class="tutor-messages-thread__note">Kontakt 1:1 z uczniem</span>
+                    </header>
+
+                    <div class="tutor-messages-thread__messages">
+                        {% for message in selected_messages %}
+                            <article class="tutor-message{% if message.is_tutor %} is-own{% endif %}">
+                                <div class="tutor-message__meta">
+                                    <span class="tutor-message__sender">{{ message.sender_name }}</span>
+                                    <time datetime="{{ message.created_at|date:'c' }}">{{ message.created_at|date:"d.m.Y H:i" }}</time>
+                                </div>
+                                <div class="tutor-message__bubble">
+                                    <p>{{ message.body|linebreaksbr }}</p>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+
+                    <form class="tutor-messages-reply-form" method="post" novalidate>
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reply">
+                        <input type="hidden" name="conversation_id" value="{{ selected_conversation.id }}">
+
+                        <label class="tutor-profile-settings-field">
+                            <span>Odpowiedz</span>
+                            <textarea
+                                class="tutor-profile-settings__textarea tutor-messages-compose-form__textarea"
+                                name="body"
+                                placeholder="Dopytaj o potrzeby ucznia albo zaproponuj termin startu."
+                                required
+                            ></textarea>
+                        </label>
+
+                        <div class="tutor-messages-reply-form__actions">
+                            <p>Wiadomosc trafi do watku {{ selected_student_name }}.</p>
+                            <button class="tutor-profile-settings__submit" type="submit">
+                                <i class="fa-regular fa-paper-plane" aria-hidden="true"></i>
+                                Wyslij odpowiedz
+                            </button>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="tutor-messages-thread__empty">
+                        <p class="tutor-profile-settings__eyebrow">Wiadomosci</p>
+                        <h2>Wybierz rozmowe albo zacznij nowa</h2>
+                        <p>
+                            Po lewej stronie widzisz podopiecznych oraz wszystkie aktywne watki. Gdy tylko
+                            wybierzesz osobe lub wyslesz pierwsza wiadomosc, pelny podglad rozmowy pojawi sie tutaj.
+                        </p>
+                    </div>
+                {% endif %}
+            </section>
+        </section>
+
+        <section class="tutor-profile-settings-stats tutor-profile-settings-stats--panel">
+            <article>
+                <strong>{{ students_count }}</strong>
+                <span>podopiecznych do kontaktu</span>
+            </article>
+            <article>
+                <strong>{{ conversation_count }}</strong>
+                <span>aktywnych rozmow</span>
+            </article>
+            <article>
+                <strong>{{ followers_count }}</strong>
+                <span>obserwujacych profil</span>
+            </article>
+            <article>
+                <strong>{{ available_slots_count }}</strong>
+                <span>aktywnych slotow</span>
+            </article>
+        </section>
+    </main>
+</div>
+{% endblock %}
