@@ -160,6 +160,20 @@ class Opinia(models.Model):
         return f"Opinia ({self.rating}) od {self.autor.imie} dla {self.tutor.uzytkownik.imie}"
 
 
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    notification_type = models.CharField(max_length=50, blank=True, null=True)  # np. 'new_message', 'new_follower', etc.
+
+    class Meta:
+        db_table = "notification"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Notification for {self.user.imie}: {self.message[:50]}"
+
 
 @receiver(post_delete, sender='auth.User')
 def delete_custom_user(sender, instance, **kwargs):
