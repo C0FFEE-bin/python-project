@@ -6,7 +6,7 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'main/css/pages/home.css' %}?v=20260405a">
-<link rel="stylesheet" href="{% static 'main/css/pages/about.css' %}?v=20260405a">
+<link rel="stylesheet" href="{% static 'main/css/pages/about.css' %}?v=20260410b">
 {% endblock %}
 
 {% block content %}
@@ -21,28 +21,29 @@
                     <img src="{% static 'main/img/rent_nerd_logo.svg' %}" alt="Rent Nerd">
                     <span>Rent a Nerd</span>
                 </div>
-                <p class="eyebrow">Poznaj Rent a Nerd</p>
+                <p class="eyebrow">O Rent a Nerd</p>
                 <h1 class="about-hero__title">Poznaj ekipe, ktora sklada Rent a Nerd.</h1>
                 <p class="about-hero__text">
-                    Chcemy, zeby ta strona wreszcie wygladala jak naturalna czesc aplikacji:
-                    lekko, czytelnie i z ruchem, ktory cos wnosi zamiast odrywac od tresci.
+                    Budujemy platforme, ktora pomaga uczniom szybciej znalezc odpowiedniego korepetytora,
+                    a tutorom pokazac swoj styl pracy, przedmioty i dostepnosc bez chaosu oraz bez zgadywania,
+                    czy po drugiej stronie jest wlasciwa osoba.
                 </p>
                 <div class="about-hero__actions">
-                    <a class="button button--primary" href="#tworcy">Poznaj 5 tworcow</a>
+                    <a class="button button--primary" href="#tworcy">Poznaj zespol</a>
                     <a class="button button--ghost" href="/">Znajdz korepetytora</a>
                 </div>
                 <div class="about-hero__metrics">
                     <article class="metric-card">
                         <strong>5 osob</strong>
-                        <span>Jeden zespol budujacy wspolny produkt.</span>
+                        <span>Jeden zespol odpowiedzialny za produkt od szkicu po wdrozenie.</span>
                     </article>
                     <article class="metric-card">
-                        <strong>1 rytm</strong>
-                        <span>Spokojny interfejs, szybkie decyzje, mniej chaosu.</span>
+                        <strong>1 wspolny przeplyw</strong>
+                        <span>Od wyszukiwania korepetytora do pierwszego kontaktu bez urwanych etapow.</span>
                     </article>
                     <article class="metric-card">
                         <strong>Rozne kompetencje</strong>
-                        <span>Frontend, backend, UX i komunikacja pracuja razem.</span>
+                        <span>Produkt, UX, frontend, backend i komunikacja pracuja na jednej mapie.</span>
                     </article>
                 </div>
             </div>
@@ -50,12 +51,12 @@
             <div class="about-hero__visual js-parallax" data-animate style="--delay: 0.08s;">
                 <div class="about-showcase">
                     <article class="about-showcase__note about-showcase__note--top">
-                        <span>Produkt</span>
-                        <strong>nauka 1:1</strong>
+                        <span>Uczen</span>
+                        <strong>widzi, kto uczy, w jakim stylu i kiedy da sie zaczac</strong>
                     </article>
                     <article class="about-showcase__note about-showcase__note--bottom">
-                        <span>Zespol</span>
-                        <strong>frontend + backend + UX</strong>
+                        <span>Tutor</span>
+                        <strong>pokazuje oferte, profil i dostepnosc w jednym miejscu</strong>
                     </article>
 
                     <div class="about-showcase__panel">
@@ -65,38 +66,67 @@
                             <span></span>
                         </div>
                         <div class="about-showcase__panel-body">
-                            <img src="{% static 'main/img/hero_tutor.png' %}" alt="Ilustracja Rent a Nerd">
+                            <div class="about-showcase__panel-copy">
+                                <p class="eyebrow">Co porzadkujemy</p>
+                                <h2>Od pierwszego filtra do pierwszej rozmowy.</h2>
+                                <ul class="about-showcase__list">
+                                    <li>czytelne profile tutorow i realne specjalizacje</li>
+                                    <li>jedno miejsce na dostepnosc, opinie i temat zajec</li>
+                                    <li>mniej tarcia po drodze do decyzji ucznia</li>
+                                </ul>
+                            </div>
+                            <img src="{% static 'main/img/mentor_scene.png' %}" alt="Mentor prowadzacy ucznia przez nauke">
                         </div>
                     </div>
                 </div>
             </div>
         </section>
 
+        <section class="about-story landing-section">
+            <div class="about-story__media" data-animate>
+                <img src="{% static 'main/img/auth_kids_scene.png' %}" alt="Uczniowie korzystajacy z platformy edukacyjnej">
+            </div>
+            <div class="about-story__copy" data-animate style="--delay: 0.08s;">
+                <p class="eyebrow">Po co to robimy</p>
+                <h2>Platforma ma zdejmowac tarcie, a nie dokladac kolejny krok do przebrniecia.</h2>
+                <p>
+                    Rent a Nerd powstal z prostego zalozenia: uczen powinien szybko zrozumiec,
+                    kto uczy, czego uczy i czy da sie zaczac w terminie, ktory ma sens.
+                    Dlatego porzadkujemy profil tutora, dostepnosc, opinie i kontakt w jednym przeplywie.
+                </p>
+                <p>
+                    Po drugiej stronie tutor ma przestrzen, zeby przedstawic swoj styl pracy,
+                    pokazac konkretna oferte i budowac zaufanie bez rozproszonych narzedzi,
+                    wiadomosci i przypadkowych opisow.
+                </p>
+            </div>
+        </section>
+
         <section class="about-principles landing-section">
             <div class="about-principles__intro" data-animate>
-                <p class="eyebrow">Jak o tym myslimy</p>
-                <h2>Nie osobny swiat, tylko ta sama aplikacja w bardziej ludzkim ujeciu.</h2>
+                <p class="eyebrow">Jak pracujemy</p>
+                <h2>5 osob, jeden wspolny kierunek.</h2>
                 <p>
-                    Dlatego ta strona nie odchodzi juz w ciemny, obcy klimat.
-                    Ma pasowac do landing page, ale dalej miec swoje animowane momenty.
+                    Kazda decyzja ma wspierac glowny cel produktu:
+                    mniej chaosu po stronie ucznia i wiecej jasnosci po stronie tutora.
                 </p>
             </div>
 
             <div class="about-principles__grid">
                 <article class="about-panel" data-animate style="--delay: 0.04s;">
                     <span class="about-panel__index">01</span>
-                    <h3>Czytelna droga ucznia</h3>
-                    <p>Interfejs ma prowadzic, a nie wymagac tlumaczenia na kazdym kroku.</p>
+                    <h3>Najpierw sens przeplywu</h3>
+                    <p>Zanim dodamy nowy ekran, sprawdzamy, czy rzeczywiscie upraszcza droge od potrzeby do kontaktu.</p>
                 </article>
                 <article class="about-panel" data-animate style="--delay: 0.1s;">
                     <span class="about-panel__index">02</span>
-                    <h3>Ruch tylko tam, gdzie pomaga</h3>
-                    <p>Animacje maja wzmacniac rytm strony, a nie udawac funkcje, ktorych nie ma.</p>
+                    <h3>Czytelnosc ponad ozdobniki</h3>
+                    <p>Interfejs ma wyjasniac decyzje samym ukladem, trescia i priorytetami, a nie dodatkowym tlumaczeniem.</p>
                 </article>
                 <article class="about-panel" data-animate style="--delay: 0.16s;">
                     <span class="about-panel__index">03</span>
-                    <h3>Projekt gotowy na rozwoj</h3>
-                    <p>Ta sekcja ma byc baza pod dalsze rozbudowy, a nie jednorazowa dekoracja.</p>
+                    <h3>Rozwoj bez rozjechania produktu</h3>
+                    <p>Nowe funkcje maja domykac istniejacy produkt, a nie tworzyc obok niego drugi, niespojny swiat.</p>
                 </article>
             </div>
         </section>
@@ -104,10 +134,10 @@
         <section class="about-creators landing-section" id="tworcy">
             <div class="about-creators__intro" data-animate>
                 <p class="eyebrow">Piatka tworcow</p>
-                <h2>5 osob, jeden wspolny kierunek.</h2>
+                <h2>Kazdy ma swoj obszar, ale pracujemy nad jednym produktem.</h2>
                 <p>
-                    Kazda karta pokazuje jeden obszar, ktory sklada sie na produkt
-                    i zamienia pojedynczy pomysl w dzialajaca platforme.
+                    Ta sekcja pokazuje, jak dzieli sie odpowiedzialnosc w zespole
+                    i jak poszczegolne role skladaja sie na dzialajaca platforme.
                 </p>
             </div>
 
@@ -117,53 +147,50 @@
                     type="button"
                     aria-expanded="false"
                     aria-controls="creator-cards"
-                    aria-label="Kliknij teczke, zeby otworzyc dokumenty"
+                    aria-label="Najedz na teczke, aby wysunac dokumenty. Kliknij, aby rozlozyc je wokol teczki."
                 >
                     <span class="creator-folder__shadow" aria-hidden="true"></span>
                     <span class="creator-folder__spine" aria-hidden="true"></span>
                     <span class="creator-folder__papers" aria-hidden="true">
-                        <span></span>
-                        <span></span>
-                        <span></span>
                     </span>
                     <span class="creator-folder__cover" aria-hidden="true">
                         <span class="creator-folder__shine"></span>
-                        <span class="creator-folder__title">5 tworcow</span>
-                        <span class="creator-folder__meta">mini archive</span>
+                        <span class="creator-folder__title">zespol</span>
+                        <span class="creator-folder__meta">rent a nerd</span>
                     </span>
                 </button>
 
-                <p class="about-creators__hint" aria-live="polite">Kliknij, zeby otworzyc teczke dokumentow.</p>
+                <p class="about-creators__hint" aria-live="polite">Najedz na teczke, aby wysunac dokumenty. Kliknij, aby rozlozyc je wokol teczki.</p>
 
                 <div class="about-creators__cards" id="creator-cards">
                     <article class="creator-card creator-card--1">
                         <span class="creator-card__number">01</span>
-                        <h3>Produkt i kierunek</h3>
-                        <p>Trzyma priorytety, pilnuje sensu funkcji i laczy wizje z realnym zakresem prac.</p>
+                        <h3>Strategia produktu</h3>
+                        <p>Pilnuje priorytetow, zakresu i tego, czy kolejne funkcje naprawde upraszczaja droge ucznia.</p>
                     </article>
 
                     <article class="creator-card creator-card--2">
                         <span class="creator-card__number">02</span>
-                        <h3>Frontend i UX</h3>
-                        <p>Odpowiada za rytm strony, czytelnosc interfejsu i to, jak produkt reaguje na uzytkownika.</p>
+                        <h3>UX i frontend</h3>
+                        <p>Projektuje ekran, interakcje i wdraza je tak, zeby decyzje byly czytelne na kazdym etapie.</p>
                     </article>
 
                     <article class="creator-card creator-card--3">
                         <span class="creator-card__number">03</span>
-                        <h3>Backend i logika</h3>
-                        <p>Spina dane, endpointy, walidacje oraz wszystkie warstwy, ktorych nie widac na pierwszym ekranie.</p>
+                        <h3>Backend i dane</h3>
+                        <p>Odpowiada za modele, walidacje, endpointy i stabilnosc danych, na ktorych stoi caly przeplyw.</p>
                     </article>
 
                     <article class="creator-card creator-card--4">
                         <span class="creator-card__number">04</span>
-                        <h3>Wyszukiwanie i dopasowanie</h3>
-                        <p>Skupia sie na filtrach, przeplywach i tym, zeby uczen trafial tam, gdzie faktycznie potrzebuje.</p>
+                        <h3>Dopasowanie tutorow</h3>
+                        <p>Uklada wyszukiwanie, filtry i logike wynikow tak, by odpowiedz byla trafna, a nie przypadkowa.</p>
                     </article>
 
                     <article class="creator-card creator-card--5">
                         <span class="creator-card__number">05</span>
-                        <h3>Marka i komunikacja</h3>
-                        <p>Pilnuje tonu, warstwy wizualnej i tego, jak caly projekt opowiada o sobie na zewnatrz.</p>
+                        <h3>Tresc i komunikacja</h3>
+                        <p>Nadaje produktowi ton, porzadkuje opisy funkcji i pilnuje spojnosci komunikacji w calym serwisie.</p>
                     </article>
                 </div>
             </div>
@@ -171,16 +198,16 @@
 
         <section class="about-banner landing-section" data-animate>
             <div class="about-banner__copy">
-                <p class="eyebrow">Po tej stronie</p>
-                <h2>O nas ma teraz ten sam rytm, co reszta aplikacji, ale dalej zostawia miejsce na rozwoj.</h2>
+                <p class="eyebrow">Co dalej</p>
+                <h2>Ta strona ma juz mowic jasno, kto stoi za produktem i po co ten produkt w ogole istnieje.</h2>
                 <p>
-                    Ta strona opowiada juz o ludziach i kierunku projektu,
-                    zamiast wygladac jak osobny, nieaktualny modul.
+                    Bez osobnego klimatu, bez przypadkowych hasel i bez wrazenia,
+                    ze to poboczny modul oderwany od reszty aplikacji.
                 </p>
             </div>
             <div class="about-banner__actions">
-                <a class="button button--primary" href="#tworcy">Przejdz do tworcow</a>
-                <a class="button button--ghost" href="/">Powrot na home</a>
+                <a class="button button--primary" href="#tworcy">Zobacz zespol</a>
+                <a class="button button--ghost" href="/">Wroc na home</a>
             </div>
         </section>
     </main>
@@ -188,5 +215,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'main/js/about.js' %}?v=20260405a"></script>
+<script src="{% static 'main/js/about.js' %}?v=20260410b"></script>
 {% endblock %}
