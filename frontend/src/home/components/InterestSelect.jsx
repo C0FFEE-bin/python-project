@@ -23,6 +23,8 @@ const DEFAULT_SELECTED_INTERESTS = [
 export default function InterestSelect({
     title = 'Uzupelnij "o mnie":',
     introLines = ["Czesc!", "Milo mi Cie tutaj widziec :)"],
+    initialIntroText = "",
+    introPlaceholder = "Wpisz kilka slow o sobie...",
     selectedTitle = "Wybierz twoje zainteresowania",
     availableTitle = "Dostepne zainteresowania:",
     initialInterests = DEFAULT_SELECTED_INTERESTS,
@@ -33,9 +35,22 @@ export default function InterestSelect({
     onConfirm,
     onNext,
 }) {
+    const defaultIntroText = useMemo(
+        () => (
+            typeof initialIntroText === "string" && initialIntroText.length
+                ? initialIntroText
+                : (Array.isArray(introLines) ? introLines.join("\n") : "")
+        ),
+        [initialIntroText, introLines],
+    );
+    const [introText, setIntroText] = useState(defaultIntroText);
     const [selectedInterests, setSelectedInterests] = useState(() =>
         initialInterests.length ? [...initialInterests] : [...DEFAULT_SELECTED_INTERESTS],
     );
+
+    useEffect(() => {
+        setIntroText(defaultIntroText);
+    }, [defaultIntroText]);
 
     useEffect(() => {
         if (!Array.isArray(initialInterests)) {
@@ -66,19 +81,21 @@ export default function InterestSelect({
     };
 
     const handleComplete = () => {
-        onConfirm?.(selectedInterests);
-        onNext?.(selectedInterests);
+        onConfirm?.(selectedInterests, introText);
+        onNext?.(selectedInterests, introText);
     };
 
     return (
         <StudentOnboardingFrame currentStep={currentStep} steps={steps}>
             <div className="interest-step student-flow-card">
                 <h1>{title}</h1>
-                <p className="interest-step__intro">
-                    {introLines.map((line) => (
-                        <span key={line}>{line}</span>
-                    ))}
-                </p>
+                <textarea
+                    className="interest-step__intro"
+                    value={introText}
+                    onChange={(event) => setIntroText(event.target.value)}
+                    placeholder={introPlaceholder}
+                    rows={3}
+                />
 
                 <h2>{selectedTitle}</h2>
                 <div className="interest-step__selected">

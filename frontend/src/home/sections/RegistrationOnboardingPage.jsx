@@ -48,6 +48,7 @@ function createInitialTutorData() {
     return {
         avatarFile: null,
         bannerFile: null,
+        about: "",
         schoolLevels: [],
         subjects: [...DEFAULT_TUTOR_SUBJECTS],
         interests: [...DEFAULT_TUTOR_INTERESTS],
@@ -246,17 +247,20 @@ export default function RegistrationOnboardingPage({ csrfToken = "", nextTarget 
         return (
             <InterestSelect
                 initialInterests={tutorData.interests}
+                initialIntroText={tutorData.about}
                 nextLabel="Dalej"
                 onBack={() => setTutorStep(TUTOR_STEPS.subjects)}
-                onConfirm={(interests) => {
+                onConfirm={(interests, about) => {
                     setTutorData((current) => ({
                         ...current,
+                        about,
                         interests: [...interests],
                     }));
                 }}
-                onNext={(interests) => {
+                onNext={(interests, about) => {
                     setTutorData((current) => ({
                         ...current,
+                        about,
                         interests: [...interests],
                     }));
                     setTutorStep(TUTOR_STEPS.profile);
@@ -269,6 +273,7 @@ export default function RegistrationOnboardingPage({ csrfToken = "", nextTarget 
         <TutorProfileSetup
             avatarFile={tutorData.avatarFile}
             bannerFile={tutorData.bannerFile}
+            initialAbout={tutorData.about}
             initialLevels={tutorData.schoolLevels}
             initialSubjects={tutorData.subjects}
             initialInterests={tutorData.interests}
@@ -283,6 +288,12 @@ export default function RegistrationOnboardingPage({ csrfToken = "", nextTarget 
                 setTutorData((current) => ({
                     ...current,
                     bannerFile: file,
+                }));
+            }}
+            onAboutChange={(about) => {
+                setTutorData((current) => ({
+                    ...current,
+                    about,
                 }));
             }}
             onComplete={async (payload) => {
