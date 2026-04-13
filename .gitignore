@@ -5,6 +5,12 @@
 __pycache__
 media
 
+# Local SQLite databases
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+
 # Backup files #
 *.bak
 

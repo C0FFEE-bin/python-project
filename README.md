@@ -1,4 +1,4 @@
-# Django blueprint app
+# RAN
 
 ## Requirements
 
@@ -6,13 +6,11 @@
 - Node.js 20+
 - Git
 
-## Clone repository
-
-Clone the project and enter the directory:
+## Setup
 
 ```powershell
-git clone https://github.com/C0FFEE-bin/python-project.git django-blueprint-app
-cd django-blueprint-app
+git clone <repo-url> RAN
+cd RAN
 ```
 
 ## Install backend

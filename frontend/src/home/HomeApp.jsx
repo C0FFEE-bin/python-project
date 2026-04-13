@@ -462,7 +462,15 @@ export default function HomeApp({
                             <div className="search-results__empty">{tutorError}</div>
                         ) : null}
                         {!isTutorLoading && !tutorError && selectedTutor ? (
-                            <TutorProfile tutor={selectedTutor} onBack={handleCloseTutorProfile} />
+                            <TutorProfile
+                                csrfToken={csrfToken}
+                                heroImageSrc={images.hero}
+                                requestDate={pageState.date}
+                                requestFilters={pageState.filters}
+                                tutor={selectedTutor}
+                                onBack={handleCloseTutorProfile}
+                                urls={urls}
+                            />
                         ) : null}
                     </section>
                 ) : null}

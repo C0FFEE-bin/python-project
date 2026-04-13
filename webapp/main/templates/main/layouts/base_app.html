@@ -15,18 +15,19 @@
 
     <title>{% block title %}{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'forum/css/forum.css' %}">
+    {% block extra_head %}{% endblock %}
 </head>
-<body>
-<div class="d-flex flex-nowrap">
+<body class="{% block body_class %}{% endblock %}">
+<div class="app-shell d-flex flex-nowrap">
     {% include 'main/components/sidebar.html' %}
-    <main class="py-5">
-        <div class="container-sm" style="min-width: 997px">
-            <!-- Blok zawierający zawartość, definiowaną przez wyświetlany widok-->
+    <main class="app-shell__main py-5">
+        <div class="app-shell__container container-sm">
+            <!-- Blok zawierajacy zawartosc, definiowana przez wyswietlany widok -->
             {% block content %}
-            {% endblock%}
+            {% endblock %}
         </div>
     </main>
 </div>
-    
+{% block scripts %}{% endblock %}
 </body>
 </html>

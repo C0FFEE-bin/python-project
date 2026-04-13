@@ -7,12 +7,22 @@ from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.db import OperationalError
 from django.http import HttpResponse
+from django.test import Client
 from django.test import RequestFactory
 from django.test import TestCase
 from django.urls import reverse
 
 from main.middleware import DatabaseErrorPageMiddleware
-from main.models import Dostepnosc, Obserwacja, Post, Przedmiot, Tutor, User as TutorUser
+from main.models import (
+    Dostepnosc,
+    Obserwacja,
+    Post,
+    Przedmiot,
+    Tutor,
+    TutorConversation,
+    TutorMessage,
+    User as TutorUser,
+)
 
 
 class MainViewsTests(TestCase):
@@ -57,12 +67,17 @@ class MainViewsTests(TestCase):
         self.assertEqual(home_props['currentUser']['email'], 'tester@example.com')
         self.assertEqual(home_props['currentUser']['fullName'], 'Jan Kowalski')
         self.assertEqual(home_props['currentUser']['username'], 'tester')
+        self.assertEqual(home_props['currentUser']['displayName'], 'tester')
+        self.assertEqual(home_props['currentUser']['initials'], 'T')
+        self.assertIn('/static/main/img/profile1.png', home_props['currentUser']['avatarUrl'])
         self.assertFalse(home_props['currentUser']['isTutor'])
         self.assertEqual(home_props['currentUser']['accountType'], 'uczen')
         self.assertEqual(home_props['urls']['observations'], reverse('portal_observations'))
         self.assertEqual(home_props['urls']['portalPosts'], reverse('portal_posts'))
         self.assertEqual(home_props['urls']['tutorSearch'], reverse('tutor_search'))
         self.assertEqual(home_props['urls']['tutorDashboardData'], reverse('tutor_dashboard_data'))
+        self.assertEqual(home_props['urls']['tutorMessages'], reverse('tutor_messages'))
+        self.assertEqual(home_props['urls']['tutorProfileSettings'], reverse('tutor_profile_settings'))
 
     def test_home_page_falls_back_to_username_when_full_name_missing(self):
         user = User.objects.create_user(
@@ -123,23 +138,27 @@ class MainViewsTests(TestCase):
         user = User.objects.create_user(username='tester', password='secret123')
         self.client.force_login(user)
         response = self.client.get(
-            f'{reverse("onboarding_account_type")}?{urlencode({"next": reverse("cars")})}'
+            f'{reverse("onboarding_account_type")}?{urlencode({"next": reverse("about")})}'
         )
         home_props = self._extract_home_props(response)
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'main/pages/home/index.html')
         self.assertEqual(home_props['onboardingMode'], 'account-type')
-        self.assertEqual(home_props['onboardingNextTarget'], reverse('cars'))
+        self.assertEqual(home_props['onboardingNextTarget'], reverse('about'))
 
-    def test_cars_page_renders_for_authenticated_user(self):
-        user = User.objects.create_user(username='tester', password='secret123')
-        self.client.force_login(user)
-
-        response = self.client.get(reverse('cars'))
+    def test_about_page_renders_animated_layout(self):
+        response = self.client.get(reverse('about'))
+        html = response.content.decode()
 
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'main/pages/cars/index.html')
+        self.assertTemplateUsed(response, 'main/pages/about/index.html')
+        self.assertIn('Poznaj ekipe, ktora sklada Rent a Nerd.', html)
+        self.assertIn('5 osob, jeden wspolny kierunek.', html)
+        self.assertIn('/static/main/css/pages/about.css', html)
+        self.assertIn('/static/main/css/pages/home.css', html)
+        self.assertIn('/static/main/js/about.js', html)
+        self.assertNotIn('app-shell__sidebar', html)
 
     def test_register_rejects_password_confirmation_mismatch(self):
         response = self.client.post(
@@ -149,14 +168,14 @@ class MainViewsTests(TestCase):
                 'email': 'newuser@example.com',
                 'password': 'secret123',
                 'password_confirm': 'secret456',
-                'next': reverse('cars'),
+                'next': reverse('about'),
             },
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'main/auth/register.html')
         self.assertContains(response, 'Hasla musza byc takie same.')
-        self.assertContains(response, f'value="{reverse("cars")}"')
+        self.assertContains(response, f'value="{reverse("about")}"')
         self.assertFalse(User.objects.filter(username='newuser').exists())
 
     def test_register_rejects_username_duplicate_case_insensitive(self):
@@ -218,6 +237,57 @@ class MainViewsTests(TestCase):
         created_user = User.objects.get(username='normalized-user')
         self.assertEqual(created_user.email, 'mixedcase@example.com')
 
+    def test_register_does_not_store_plaintext_password_in_custom_user(self):
+        self.client.post(
+            reverse('register_user'),
+            {
+                'username': 'safe-user',
+                'email': 'safe-user@example.com',
+                'password': 'secret123',
+                'password_confirm': 'secret123',
+            },
+        )
+
+        custom_user = TutorUser.objects.get(email='safe-user@example.com')
+
+        self.assertEqual(custom_user.haslo, '')
+        self.assertNotEqual(custom_user.haslo, 'secret123')
+
+    def test_api_register_requires_csrf_token(self):
+        csrf_client = Client(enforce_csrf_checks=True)
+        response = csrf_client.post(
+            reverse('api_register'),
+            data=json.dumps(
+                {
+                    'username': 'csrf-user',
+                    'email': 'csrf-user@example.com',
+                    'password': 'secret123',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(User.objects.filter(username='csrf-user').exists())
+
+    def test_api_register_does_not_store_plaintext_password_in_custom_user(self):
+        response = self.client.post(
+            reverse('api_register'),
+            data=json.dumps(
+                {
+                    'username': 'api-user',
+                    'email': 'api-user@example.com',
+                    'password': 'secret123',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        custom_user = TutorUser.objects.get(email='api-user@example.com')
+        self.assertEqual(custom_user.haslo, '')
+        self.assertNotEqual(custom_user.haslo, 'secret123')
+
     def test_login_redirects_to_safe_next_target(self):
         User.objects.create_user(username='tester', password='secret123')
 
@@ -226,11 +296,11 @@ class MainViewsTests(TestCase):
             {
                 'username': 'tester',
                 'password': 'secret123',
-                'next': reverse('cars'),
+                'next': reverse('about'),
             },
         )
 
-        self.assertRedirects(response, reverse('cars'))
+        self.assertRedirects(response, reverse('about'))
 
     def test_login_ignores_external_next_target(self):
         User.objects.create_user(username='tester', password='secret123')
@@ -254,11 +324,11 @@ class MainViewsTests(TestCase):
                 'email': 'newuser@example.com',
                 'password': 'secret123',
                 'password_confirm': 'secret123',
-                'next': reverse('cars'),
+                'next': reverse('about'),
             },
         )
 
-        expected_redirect = f'{reverse("onboarding_account_type")}?{urlencode({"next": reverse("cars")})}'
+        expected_redirect = f'{reverse("onboarding_account_type")}?{urlencode({"next": reverse("about")})}'
         self.assertRedirects(response, expected_redirect)
         self.assertTrue(User.objects.filter(username='newuser').exists())
 
@@ -366,6 +436,201 @@ class MainViewsTests(TestCase):
         self.assertEqual(len(payload['highlights']), 4)
         self.assertTrue(payload['schedule']['rows'])
         self.assertIn('upcomingLessons', payload)
+
+    def test_tutor_profile_settings_redirects_non_tutor_to_onboarding(self):
+        auth_user = User.objects.create_user(
+            username='student-profile',
+            email='student-profile@example.com',
+            password='secret123',
+        )
+        self.client.force_login(auth_user)
+
+        response = self.client.get(reverse('tutor_profile_settings'))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response.url,
+            f'{reverse("onboarding_account_type")}?{urlencode({"next": reverse("tutor_profile_settings")})}',
+        )
+
+    def test_tutor_profile_settings_updates_tutor_profile(self):
+        auth_user = User.objects.create_user(
+            username='edit-tutor',
+            email='edit-tutor@example.com',
+            password='secret123',
+        )
+        tutor_user = TutorUser.objects.create(
+            imie='Ela',
+            nazwisko='Maj',
+            email='edit-tutor@example.com',
+            haslo='sekret',
+            typ='tutor',
+            tel_num='111222333',
+        )
+        tutor = Tutor.objects.create(
+            uzytkownik=tutor_user,
+            opis='Stary opis',
+            experience_label='Nowy korepetytor',
+            avatar_tone='rose',
+        )
+        tutor.przedmioty.add(
+            Przedmiot.objects.create(
+                nazwa='Matematyka',
+                temat='Powtorka',
+                poziom='Podstawowka',
+            )
+        )
+
+        self.client.force_login(auth_user)
+        response = self.client.post(
+            reverse('tutor_profile_settings'),
+            {
+                'full_name': 'Tomasz Kowalski',
+                'phone': '500600700',
+                'about': 'Prowadze zajecia 1:1 i przygotowuje do matury.',
+                'hourly_rate': '110',
+                'age': '29',
+                'experience_label': '5 lat pracy z uczniami',
+                'avatar_tone': 'ocean',
+                'status_badges': 'sprawny kontakt, zajecia online, matura 2026',
+                'subjects': ['Matematyka', 'Fizyka'],
+                'levels': ['Szkola srednia', 'Studia'],
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('tutor_profile_settings'))
+
+        auth_user.refresh_from_db()
+        tutor_user.refresh_from_db()
+        tutor.refresh_from_db()
+
+        self.assertEqual(auth_user.first_name, 'Tomasz')
+        self.assertEqual(auth_user.last_name, 'Kowalski')
+        self.assertEqual(tutor_user.imie, 'Tomasz')
+        self.assertEqual(tutor_user.nazwisko, 'Kowalski')
+        self.assertEqual(tutor_user.tel_num, '500600700')
+        self.assertEqual(tutor.opis, 'Prowadze zajecia 1:1 i przygotowuje do matury.')
+        self.assertEqual(float(tutor.stawka_godzinowa), 110.0)
+        self.assertEqual(tutor.wiek, 29)
+        self.assertEqual(tutor.experience_label, '5 lat pracy z uczniami')
+        self.assertEqual(tutor.avatar_tone, 'ocean')
+        self.assertEqual(
+            tutor.status_badges,
+            ['sprawny kontakt', 'zajecia online', 'matura 2026'],
+        )
+        self.assertEqual(
+            sorted(tutor.przedmioty.values_list('nazwa', 'poziom')),
+            [
+                ('Fizyka', 'Studia'),
+                ('Fizyka', 'Szkola srednia'),
+                ('Matematyka', 'Studia'),
+                ('Matematyka', 'Szkola srednia'),
+            ],
+        )
+
+    def test_tutor_messages_redirects_non_tutor_to_onboarding(self):
+        auth_user = User.objects.create_user(
+            username='student-messages',
+            email='student-messages@example.com',
+            password='secret123',
+        )
+        self.client.force_login(auth_user)
+
+        response = self.client.get(reverse('tutor_messages'))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response.url,
+            f'{reverse("onboarding_account_type")}?{urlencode({"next": reverse("tutor_messages")})}',
+        )
+
+    def test_tutor_messages_creates_conversation_and_message(self):
+        auth_user = User.objects.create_user(
+            username='message-tutor',
+            email='message-tutor@example.com',
+            password='secret123',
+        )
+        tutor_user = TutorUser.objects.create(
+            imie='Alicja',
+            nazwisko='Nowak',
+            email='message-tutor@example.com',
+            haslo='sekret',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(uzytkownik=tutor_user, followers_count=1)
+        student = TutorUser.objects.create(
+            imie='Jan',
+            nazwisko='Uczen',
+            email='student-thread@example.com',
+            haslo='sekret',
+            typ='uczen',
+        )
+        Obserwacja.objects.create(uzytkownik=student, tutor=tutor)
+
+        self.client.force_login(auth_user)
+        response = self.client.post(
+            reverse('tutor_messages'),
+            {
+                'action': 'start',
+                'student_id': str(student.pk),
+                'body': 'Czesc, widze ze obserwujesz moj profil. Ustalmy pierwszy termin.',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith(reverse('tutor_messages')))
+        self.assertEqual(TutorConversation.objects.count(), 1)
+        self.assertEqual(TutorMessage.objects.count(), 1)
+
+        conversation = TutorConversation.objects.get()
+        message = TutorMessage.objects.get()
+
+        self.assertEqual(conversation.tutor, tutor)
+        self.assertEqual(conversation.student, student)
+        self.assertEqual(message.conversation, conversation)
+        self.assertEqual(message.sender, tutor_user)
+        self.assertIn('Ustalmy pierwszy termin', message.body)
+
+    def test_tutor_messages_page_renders_existing_thread(self):
+        auth_user = User.objects.create_user(
+            username='thread-tutor',
+            email='thread-tutor@example.com',
+            password='secret123',
+        )
+        tutor_user = TutorUser.objects.create(
+            imie='Karol',
+            nazwisko='Tutor',
+            email='thread-tutor@example.com',
+            haslo='sekret',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(uzytkownik=tutor_user, followers_count=1)
+        student = TutorUser.objects.create(
+            imie='Ola',
+            nazwisko='Student',
+            email='ola-student@example.com',
+            haslo='sekret',
+            typ='uczen',
+        )
+        Obserwacja.objects.create(uzytkownik=student, tutor=tutor)
+        conversation = TutorConversation.objects.create(tutor=tutor, student=student)
+        TutorMessage.objects.create(
+            conversation=conversation,
+            sender=tutor_user,
+            body='Pierwsza wiadomosc do ucznia.',
+        )
+
+        self.client.force_login(auth_user)
+        response = self.client.get(
+            f'{reverse("tutor_messages")}?{urlencode({"conversation": conversation.pk})}'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'main/pages/tutor_messages/index.html')
+        self.assertContains(response, 'Aktywne rozmowy')
+        self.assertContains(response, 'Ola Student')
+        self.assertContains(response, 'Pierwsza wiadomosc do ucznia.')
 
     def test_portal_posts_returns_serialized_entries(self):
         tutor_user = TutorUser.objects.create(
@@ -627,6 +892,88 @@ class MainViewsTests(TestCase):
         self.assertEqual(payload['exactMatches'][0]['name'], 'Jan Kowalski')
         self.assertEqual(len(payload['suggestedTutors']), 1)
         self.assertEqual(payload['suggestedTutors'][0]['name'], 'Anna Nowak')
+
+    def test_tutor_search_requires_matching_topic_for_exact_match(self):
+        tutor_user = TutorUser.objects.create(
+            imie='Jan',
+            nazwisko='Kowalski',
+            email='topic-mismatch@example.com',
+            haslo='sekret',
+        )
+        tutor = Tutor.objects.create(
+            uzytkownik=tutor_user,
+            stawka_godzinowa='120.00',
+            rating=4.8,
+        )
+        tutor.przedmioty.add(
+            Przedmiot.objects.create(
+                nazwa='Matematyka',
+                temat='Geometria',
+                poziom='Szkola srednia',
+            )
+        )
+        Dostepnosc.objects.create(
+            tutor=tutor,
+            dzien_tygodnia=2,
+            godzina_od=time(19, 0),
+            godzina_do=time(20, 0),
+        )
+
+        response = self.client.get(
+            reverse('tutor_search'),
+            {
+                'subject': 'Matematyka',
+                'topic': 'Algebra',
+                'level': 'Szkola srednia',
+                'hour': '19:00-20:00',
+                'date': '2026-03-11',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        self.assertEqual(payload['exactMatches'], [])
+        self.assertEqual(len(payload['suggestedTutors']), 1)
+        self.assertEqual(payload['suggestedTutors'][0]['name'], 'Jan Kowalski')
+
+    def test_tutor_search_returns_fallback_suggestions_when_exact_match_is_missing(self):
+        tutor_user = TutorUser.objects.create(
+            imie='Piotr',
+            nazwisko='Mazur',
+            email='piotr@example.com',
+            haslo='sekret',
+        )
+        fallback_tutor = Tutor.objects.create(
+            uzytkownik=tutor_user,
+            stawka_godzinowa='85.00',
+            rating=4.2,
+        )
+        fallback_tutor.przedmioty.add(
+            Przedmiot.objects.create(
+                nazwa='Matematyka',
+                temat='Geometria',
+                poziom='Studia',
+            )
+        )
+
+        response = self.client.get(
+            reverse('tutor_search'),
+            {
+                'subject': 'Matematyka',
+                'topic': 'Algebra',
+                'level': 'Szkola srednia',
+                'hour': '19:00-20:00',
+                'date': '2026-03-11',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        self.assertEqual(payload['exactMatches'], [])
+        self.assertEqual(len(payload['suggestedTutors']), 1)
+        self.assertEqual(payload['suggestedTutors'][0]['name'], 'Piotr Mazur')
 
     def test_tutor_search_rejects_missing_filters(self):
         response = self.client.get(reverse('tutor_search'), {'subject': 'Matematyka'})

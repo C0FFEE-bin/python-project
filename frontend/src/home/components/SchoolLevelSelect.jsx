@@ -7,14 +7,14 @@ const EMPTY_LEVELS = [];
 const LEVELS = [
     {
         id: "podstawowa",
-        value: "Podstawowka",
-        title: "Podstawowka",
+        value: "Podstawówka",
+        title: "Podstawówka",
         imageSrc: "/static/main/img/primary.png",
     },
     {
         id: "srednia",
-        value: "Szkola srednia",
-        title: "Szkola srednia",
+        value: "Szkola średnia",
+        title: "Szkola średnia",
         imageSrc: "/static/main/img/high.png",
     },
     {

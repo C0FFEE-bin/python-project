@@ -1,0 +1,309 @@
+{% extends 'main/layouts/base_public.html' %}
+{% load static %}
+
+{% block title %}Profil tutora{% endblock %}
+{% block body_class %}tutor-profile-settings-body{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'main/css/pages/tutor_profile.css' %}?v=20260408a">
+{% endblock %}
+
+{% block content %}
+<div class="tutor-profile-settings-page" id="ustawienia">
+    <div class="tutor-profile-settings-page__backdrop tutor-profile-settings-page__backdrop--top" aria-hidden="true"></div>
+    <div class="tutor-profile-settings-page__backdrop tutor-profile-settings-page__backdrop--bottom" aria-hidden="true"></div>
+
+    <main class="tutor-profile-settings-shell">
+        <header class="tutor-profile-settings-hero">
+            <div class="tutor-profile-settings-hero__copy">
+                <p class="tutor-profile-settings__eyebrow">Panel tutora</p>
+                <h1>{{ page_title }}</h1>
+                <p>
+                    {{ page_description }}
+                </p>
+            </div>
+
+            <div class="tutor-profile-settings-hero__actions">
+                <a class="tutor-profile-settings__ghost-link" href="{{ back_url }}">
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    Wroc na glowna
+                </a>
+                <a class="tutor-profile-settings__primary-link" href="{{ dashboard_url }}">
+                    <i class="fa-solid fa-chart-column" aria-hidden="true"></i>
+                    Otworz dashboard
+                </a>
+            </div>
+        </header>
+
+        {% if messages %}
+            <div class="tutor-profile-settings-alerts" aria-live="polite">
+                {% for message in messages %}
+                    <div class="tutor-profile-settings-alert tutor-profile-settings-alert--{{ message.tags|default:'info' }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <nav class="tutor-profile-settings-tabs" aria-label="Zakladki panelu tutora">
+            {% for tab in panel_tabs %}
+                <a
+                    class="tutor-profile-settings-tabs__item{% if tab.is_active %} is-active{% endif %}"
+                    href="{{ tab.href }}"
+                    {% if tab.is_active %}aria-current="page"{% endif %}
+                >
+                    {{ tab.label }}
+                </a>
+            {% endfor %}
+        </nav>
+
+        <section class="tutor-profile-settings-layout">
+            <form class="tutor-profile-settings-form" method="post" novalidate>
+                {% csrf_token %}
+
+                <section class="tutor-profile-settings-section" id="konto">
+                    <div class="tutor-profile-settings-section__head">
+                        <p class="tutor-profile-settings__eyebrow">Dane konta</p>
+                        <h2>Podstawowe informacje</h2>
+                    </div>
+
+                    {% if form.non_field_errors %}
+                        <div class="tutor-profile-settings-error-list">
+                            {% for error in form.non_field_errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <div class="tutor-profile-settings-grid tutor-profile-settings-grid--two">
+                        <label class="tutor-profile-settings-field">
+                            <span>{{ form.full_name.label }}</span>
+                            {{ form.full_name }}
+                            {% for error in form.full_name.errors %}
+                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
+                            {% endfor %}
+                        </label>
+
+                        <label class="tutor-profile-settings-field">
+                            <span>Email</span>
+                            <input class="tutor-profile-settings__input is-readonly" type="text" value="{{ request.user.email }}" readonly>
+                        </label>
+
+                        <label class="tutor-profile-settings-field">
+                            <span>{{ form.phone.label }}</span>
+                            {{ form.phone }}
+                            {% for error in form.phone.errors %}
+                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
+                            {% endfor %}
+                        </label>
+
+                        <label class="tutor-profile-settings-field">
+                            <span>{{ form.age.label }}</span>
+                            {{ form.age }}
+                            {% for error in form.age.errors %}
+                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
+                            {% endfor %}
+                        </label>
+                    </div>
+                </section>
+
+                <section class="tutor-profile-settings-section">
+                    <div class="tutor-profile-settings-section__head">
+                        <p class="tutor-profile-settings__eyebrow">Oferta</p>
+                        <h2>Jak pokazujesz sie uczniom</h2>
+                    </div>
+
+                    <div class="tutor-profile-settings-grid tutor-profile-settings-grid--two">
+                        <label class="tutor-profile-settings-field">
+                            <span>{{ form.hourly_rate.label }}</span>
+                            {{ form.hourly_rate }}
+                            {% for error in form.hourly_rate.errors %}
+                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
+                            {% endfor %}
+                        </label>
+
+                        <label class="tutor-profile-settings-field">
+                            <span>{{ form.experience_label.label }}</span>
+                            {{ form.experience_label }}
+                            {% for error in form.experience_label.errors %}
+                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
+                            {% endfor %}
+                        </label>
+                    </div>
+
+                    <label class="tutor-profile-settings-field">
+                        <span>{{ form.about.label }}</span>
+                        {{ form.about }}
+                        {% for error in form.about.errors %}
+                            <small class="tutor-profile-settings-field__error">{{ error }}</small>
+                        {% endfor %}
+                    </label>
+                </section>
+
+                <section class="tutor-profile-settings-section">
+                    <div class="tutor-profile-settings-section__head">
+                        <p class="tutor-profile-settings__eyebrow">Specjalizacja</p>
+                        <h2>Przedmioty i poziomy</h2>
+                    </div>
+
+                    <div class="tutor-profile-settings-grid tutor-profile-settings-grid--two">
+                        <div class="tutor-profile-settings-field">
+                            <span>{{ form.subjects.label }}</span>
+                            <div class="tutor-profile-settings-choice-grid">
+                                {% for checkbox in form.subjects %}
+                                    <label class="tutor-profile-settings-choice">
+                                        {{ checkbox.tag }}
+                                        <span>{{ checkbox.choice_label }}</span>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                            {% for error in form.subjects.errors %}
+                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
+                            {% endfor %}
+                        </div>
+
+                        <div class="tutor-profile-settings-field">
+                            <span>{{ form.levels.label }}</span>
+                            <div class="tutor-profile-settings-choice-grid">
+                                {% for checkbox in form.levels %}
+                                    <label class="tutor-profile-settings-choice">
+                                        {{ checkbox.tag }}
+                                        <span>{{ checkbox.choice_label }}</span>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                            {% for error in form.levels.errors %}
+                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </section>
+
+                <section class="tutor-profile-settings-section">
+                    <div class="tutor-profile-settings-section__head">
+                        <p class="tutor-profile-settings__eyebrow">Wyglad profilu</p>
+                        <h2>Avatar i wyroznienia</h2>
+                    </div>
+
+                    <div class="tutor-profile-settings-grid tutor-profile-settings-grid--two">
+                        <div class="tutor-profile-settings-field">
+                            <span>{{ form.avatar_tone.label }}</span>
+                            <div class="tutor-profile-settings-tone-grid">
+                                {% for radio in form.avatar_tone %}
+                                    <label class="tutor-profile-settings-tone">
+                                        {{ radio.tag }}
+                                        <span>{{ radio.choice_label }}</span>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                            {% for error in form.avatar_tone.errors %}
+                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
+                            {% endfor %}
+                        </div>
+
+                        <label class="tutor-profile-settings-field">
+                            <span>{{ form.status_badges.label }}</span>
+                            {{ form.status_badges }}
+                            <small class="tutor-profile-settings-field__hint">
+                                Oddziel kolejne wyroznienia przecinkami.
+                            </small>
+                            {% for error in form.status_badges.errors %}
+                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
+                            {% endfor %}
+                        </label>
+                    </div>
+                </section>
+
+                <footer class="tutor-profile-settings-actions">
+                    <button class="tutor-profile-settings__submit" type="submit">
+                        <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                        Zapisz profil
+                    </button>
+                    <p>
+                        Zmiany zapisza sie od razu w profilu tutora i beda widoczne w wyszukiwarce.
+                    </p>
+                </footer>
+            </form>
+
+            <aside class="tutor-profile-settings-sidebar">
+                <section class="tutor-profile-settings-preview">
+                    <p class="tutor-profile-settings__eyebrow">Podglad</p>
+                    <div class="tutor-profile-settings-preview__card">
+                        <div class="tutor-profile-settings-preview__avatar is-{{ profile_avatar_tone }}">
+                            {{ profile_initials }}
+                        </div>
+                        <h2>{{ profile_name }}</h2>
+                        <p class="tutor-profile-settings-preview__meta">{{ profile_experience }}</p>
+
+                        <div class="tutor-profile-settings-preview__chips">
+                            {% for badge in profile_badges %}
+                                <span>{{ badge }}</span>
+                            {% endfor %}
+                        </div>
+
+                        <p class="tutor-profile-settings-preview__copy">
+                            {% if profile_about %}
+                                {{ profile_about }}
+                            {% else %}
+                                Uzupelnij opis, aby uczniowie od razu widzieli, jak prowadzisz zajecia.
+                            {% endif %}
+                        </p>
+
+                        <div class="tutor-profile-settings-preview__taxonomy">
+                            <div>
+                                <strong>Przedmioty</strong>
+                                <span>
+                                    {% if profile_subjects %}
+                                        {{ profile_subjects|join:", " }}
+                                    {% else %}
+                                        Jeszcze nie wybrano.
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div>
+                                <strong>Poziomy</strong>
+                                <span>
+                                    {% if profile_levels %}
+                                        {{ profile_levels|join:", " }}
+                                    {% else %}
+                                        Jeszcze nie wybrano.
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="tutor-profile-settings-stats">
+                    <article>
+                        <strong>{{ followers_count }}</strong>
+                        <span>obserwujacych</span>
+                    </article>
+                    <article>
+                        <strong>{{ opinions_count }}</strong>
+                        <span>opinii</span>
+                    </article>
+                    <article>
+                        <strong>{{ posts_count }}</strong>
+                        <span>wpisow w portalu</span>
+                    </article>
+                    <article>
+                        <strong>{{ available_slots_count }}</strong>
+                        <span>aktywnych slotow</span>
+                    </article>
+                </section>
+
+                <section class="tutor-profile-settings-note">
+                    <p class="tutor-profile-settings__eyebrow">Dalej</p>
+                    <h3>Po zapisie profilu</h3>
+                    <p>
+                        Jesli chcesz dopracowac swoja obecnosc jeszcze bardziej, przejdz do dashboardu tutora i
+                        zaktualizuj harmonogram oraz materialy publikowane w portalu.
+                    </p>
+                    <a href="{{ dashboard_url }}">Przejdz do dashboardu</a>
+                </section>
+            </aside>
+        </section>
+    </main>
+</div>
+{% endblock %}

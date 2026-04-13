@@ -20,6 +20,12 @@
     overflow: hidden;
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    padding: 0;
+    width: 100%;
+    text-align: left;
+    appearance: none;
+    -webkit-appearance: none;
 }
 
 .student-level-card:hover {
