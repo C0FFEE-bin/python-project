@@ -240,7 +240,6 @@ def _ensure_reviewer_users():
             defaults={
                 "imie": f"Recenzent{index}",
                 "nazwisko": "Seed",
-                "haslo": "reviewer-seed-password",
                 "typ": "uczen",
             },
         )
@@ -273,7 +272,6 @@ class Command(BaseCommand):
                 defaults={
                     "imie": first_name,
                     "nazwisko": last_name,
-                    "haslo": DEFAULT_PASSWORD,
                     "typ": "tutor",
                 },
             )

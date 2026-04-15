@@ -26,7 +26,50 @@ if (!existsSync(managePyPath)) {
   process.exit(1);
 }
 
-const djangoArgs = [managePyPath, ...process.argv.slice(2)];
+function withDefaultTestLabel(args) {
+  if (args[0] !== "test") {
+    return args;
+  }
+
+  const optionsWithValues = new Set([
+    "-k",
+    "-p",
+    "-t",
+    "-v",
+    "--exclude-tag",
+    "--parallel",
+    "--pattern",
+    "--settings",
+    "--shuffle",
+    "--tag",
+    "--testrunner",
+    "--top-level-directory",
+    "--verbosity",
+  ]);
+
+  let hasExplicitLabel = false;
+
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index];
+
+    if (!arg.startsWith("-")) {
+      hasExplicitLabel = true;
+      break;
+    }
+
+    if (optionsWithValues.has(arg)) {
+      index += 1;
+    }
+  }
+
+  if (hasExplicitLabel) {
+    return args;
+  }
+
+  return [...args, "main"];
+}
+
+const djangoArgs = [managePyPath, ...withDefaultTestLabel(process.argv.slice(2))];
 
 const child = spawn(pythonPath, djangoArgs, {
   cwd: managePyDir,

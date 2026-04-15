@@ -221,7 +221,7 @@ class MainViewsTests(TestCase):
         created_user = User.objects.get(username='normalized-user')
         self.assertEqual(created_user.email, 'mixedcase@example.com')
 
-    def test_register_does_not_store_plaintext_password_in_custom_user(self):
+    def test_register_creates_custom_user_without_password_field(self):
         self.client.post(
             reverse('register_user'),
             {
@@ -234,8 +234,8 @@ class MainViewsTests(TestCase):
 
         custom_user = TutorUser.objects.get(email='safe-user@example.com')
 
-        self.assertEqual(custom_user.haslo, '')
-        self.assertNotEqual(custom_user.haslo, 'secret123')
+        self.assertEqual(custom_user.email, 'safe-user@example.com')
+        self.assertNotIn('haslo', [field.name for field in TutorUser._meta.fields])
 
     def test_api_register_requires_csrf_token(self):
         csrf_client = Client(enforce_csrf_checks=True)
@@ -254,7 +254,7 @@ class MainViewsTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertFalse(User.objects.filter(username='csrf-user').exists())
 
-    def test_api_register_does_not_store_plaintext_password_in_custom_user(self):
+    def test_api_register_creates_custom_user_without_password_field(self):
         response = self.client.post(
             reverse('api_register'),
             data=json.dumps(
@@ -269,8 +269,8 @@ class MainViewsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         custom_user = TutorUser.objects.get(email='api-user@example.com')
-        self.assertEqual(custom_user.haslo, '')
-        self.assertNotEqual(custom_user.haslo, 'secret123')
+        self.assertEqual(custom_user.email, 'api-user@example.com')
+        self.assertNotIn('haslo', [field.name for field in TutorUser._meta.fields])
 
     def test_login_redirects_to_safe_next_target(self):
         User.objects.create_user(username='tester', password='secret123')
@@ -380,7 +380,6 @@ class MainViewsTests(TestCase):
             imie='Ela',
             nazwisko='Maj',
             email='dashboard-tutor@example.com',
-            haslo='sekret',
             typ='tutor',
         )
         tutor = Tutor.objects.create(
@@ -447,7 +446,6 @@ class MainViewsTests(TestCase):
             imie='Ela',
             nazwisko='Maj',
             email='edit-tutor@example.com',
-            haslo='sekret',
             typ='tutor',
             tel_num='111222333',
         )
@@ -539,7 +537,6 @@ class MainViewsTests(TestCase):
             imie='Alicja',
             nazwisko='Nowak',
             email='message-tutor@example.com',
-            haslo='sekret',
             typ='tutor',
         )
         tutor = Tutor.objects.create(uzytkownik=tutor_user, followers_count=1)
@@ -547,7 +544,6 @@ class MainViewsTests(TestCase):
             imie='Jan',
             nazwisko='Uczen',
             email='student-thread@example.com',
-            haslo='sekret',
             typ='uczen',
         )
         Obserwacja.objects.create(uzytkownik=student, tutor=tutor)
@@ -586,7 +582,6 @@ class MainViewsTests(TestCase):
             imie='Karol',
             nazwisko='Tutor',
             email='thread-tutor@example.com',
-            haslo='sekret',
             typ='tutor',
         )
         tutor = Tutor.objects.create(uzytkownik=tutor_user, followers_count=1)
@@ -594,7 +589,6 @@ class MainViewsTests(TestCase):
             imie='Ola',
             nazwisko='Student',
             email='ola-student@example.com',
-            haslo='sekret',
             typ='uczen',
         )
         Obserwacja.objects.create(uzytkownik=student, tutor=tutor)
@@ -621,7 +615,6 @@ class MainViewsTests(TestCase):
             imie='Ola',
             nazwisko='Maj',
             email='ola-portal@example.com',
-            haslo='sekret',
             typ='tutor',
         )
         tutor = Tutor.objects.create(
@@ -664,7 +657,6 @@ class MainViewsTests(TestCase):
             imie='Ola',
             nazwisko='Tutor',
             email='portal-tutor@example.com',
-            haslo='sekret',
             typ='tutor',
         )
         Tutor.objects.create(uzytkownik=tutor_user, followers_count=120)
@@ -699,7 +691,6 @@ class MainViewsTests(TestCase):
             imie='Adam',
             nazwisko='Uczen',
             email='portal-student@example.com',
-            haslo='sekret',
             typ='uczen',
         )
 
@@ -729,14 +720,12 @@ class MainViewsTests(TestCase):
             imie='Ola',
             nazwisko='Notatka',
             email='observation-user@example.com',
-            haslo='sekret',
             typ='uczen',
         )
         tutor_user = TutorUser.objects.create(
             imie='Patryk',
             nazwisko='Tutor',
             email='patryk-tutor@example.com',
-            haslo='sekret',
             typ='tutor',
         )
         tutor = Tutor.objects.create(uzytkownik=tutor_user, followers_count=1)
@@ -774,14 +763,12 @@ class MainViewsTests(TestCase):
             imie='Adam',
             nazwisko='Uczen',
             email='observation-create@example.com',
-            haslo='sekret',
             typ='uczen',
         )
         tutor_user = TutorUser.objects.create(
             imie='Kasia',
             nazwisko='Mentorka',
             email='kasia-mentor@example.com',
-            haslo='sekret',
             typ='tutor',
         )
         tutor = Tutor.objects.create(uzytkownik=tutor_user)
@@ -812,7 +799,6 @@ class MainViewsTests(TestCase):
             imie='Jan',
             nazwisko='Kowalski',
             email='jan@example.com',
-            haslo='sekret',
         )
         exact_tutor = Tutor.objects.create(
             uzytkownik=exact_user,
@@ -837,7 +823,6 @@ class MainViewsTests(TestCase):
             imie='Anna',
             nazwisko='Nowak',
             email='anna@example.com',
-            haslo='sekret',
         )
         suggested_tutor = Tutor.objects.create(
             uzytkownik=suggested_user,
@@ -882,7 +867,6 @@ class MainViewsTests(TestCase):
             imie='Jan',
             nazwisko='Kowalski',
             email='topic-mismatch@example.com',
-            haslo='sekret',
         )
         tutor = Tutor.objects.create(
             uzytkownik=tutor_user,
@@ -926,7 +910,6 @@ class MainViewsTests(TestCase):
             imie='Piotr',
             nazwisko='Mazur',
             email='piotr@example.com',
-            haslo='sekret',
         )
         fallback_tutor = Tutor.objects.create(
             uzytkownik=tutor_user,
@@ -1018,3 +1001,15 @@ class SeedTutorsCommandTests(TestCase):
         self.assertEqual(TutorUser.objects.count(), user_count)
         self.assertEqual(Przedmiot.objects.count(), subject_count)
         self.assertEqual(Dostepnosc.objects.count(), availability_count)
+
+    def test_seed_tutors_keep_passwords_only_in_auth_model(self):
+        call_command('seed_tutors', verbosity=0)
+
+        auth_user = User.objects.get(username='lukasz-gamon')
+        seeded_tutor = TutorUser.objects.get(email='lukasz-gamon@rentnerd.local')
+        seeded_reviewer = TutorUser.objects.get(email='reviewer1@rentnerd.local')
+
+        self.assertTrue(auth_user.check_password('Tutor123!'))
+        self.assertEqual(seeded_tutor.email, 'lukasz-gamon@rentnerd.local')
+        self.assertEqual(seeded_reviewer.email, 'reviewer1@rentnerd.local')
+        self.assertNotIn('haslo', [field.name for field in TutorUser._meta.fields])

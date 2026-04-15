@@ -7,7 +7,6 @@ class User(models.Model):
     nazwisko = models.CharField(max_length=50)
     email = models.EmailField(unique=True, max_length=120)
     tel_num = models.CharField(max_length=20, blank=True, null=True)
-    haslo = models.CharField(max_length=128)
     typ = models.CharField(max_length=20, default="uczen")
     data_utworzenia = models.DateTimeField(auto_now_add=True)
 

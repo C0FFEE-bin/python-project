@@ -105,8 +105,6 @@ def _create_auth_and_custom_user(username, normalized_email, password):
             imie=username,
             nazwisko="",
             email=normalized_email,
-            # Passwords are stored only in Django's auth model.
-            haslo="",
         )
 
     return user
@@ -139,7 +137,6 @@ def _get_or_create_custom_user_for_auth_user(auth_user):
         imie=first_name or auth_user.get_username(),
         nazwisko=last_name,
         email=normalized_email,
-        haslo="",
         typ="uczen",
     )
 
@@ -1818,7 +1815,6 @@ def tutor_onboarding_save(request):
                 defaults={
                     "imie": first_name or auth_user.get_username(),
                     "nazwisko": last_name,
-                    "haslo": "",
                     "typ": "tutor",
                 },
             )
