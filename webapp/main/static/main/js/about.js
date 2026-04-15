@@ -4,27 +4,23 @@ document.addEventListener("DOMContentLoaded", () => {
     const folderStage = document.querySelector(".js-folder-stage");
     const folderToggle = folderStage?.querySelector(".creator-folder");
     const folderHint = folderStage?.querySelector(".about-creators__hint");
-    const folderCards = folderStage ? Array.from(folderStage.querySelectorAll(".creator-card")) : [];
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const lastCardIndex = folderCards.length - 1;
-    let activeCardIndex = -1;
-    let folderLocked = false;
+    const canPreviewOnHover = !reduceMotion && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    let folderOpen = false;
+    let folderPreview = false;
 
-    const getFolderHintText = (activeIndex) => {
-        if (activeIndex < 0) {
-            return "Kliknij, zeby otworzyc teczke dokumentow.";
+    const getFolderHintText = () => {
+        if (folderOpen) {
+            return "Kliknij ponownie, aby schowac dokumenty do teczki.";
         }
 
-        if (activeIndex >= lastCardIndex) {
-            return "Kliknij jeszcze raz, a ostatnia kartka opadnie i teczka sie zamknie.";
+        if (folderPreview) {
+            return "Kliknij, aby rozlozyc dokumenty wokol teczki.";
         }
 
-        const nextCard = folderCards[activeIndex + 1];
-        const nextTitle = nextCard?.querySelector("h3")?.textContent?.trim();
-
-        return nextTitle
-            ? `Kliknij ponownie, a ta kartka opadnie i wskoczy: ${nextTitle}.`
-            : "Kliknij ponownie, a wskoczy kolejna kartka.";
+        return canPreviewOnHover
+            ? "Najedz na teczke, aby wysunac dokumenty. Kliknij, aby rozlozyc je wokol teczki."
+            : "Kliknij, aby rozlozyc dokumenty wokol teczki.";
     };
 
     const updateFolderUi = () => {
@@ -32,123 +28,42 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const isOpen = activeCardIndex >= 0;
-        const hintText = getFolderHintText(activeCardIndex);
+        const hintText = getFolderHintText();
 
-        folderStage.dataset.folderIndex = String(activeCardIndex);
-        folderStage.classList.toggle("is-open", isOpen);
-        folderToggle.setAttribute("aria-expanded", String(isOpen));
+        folderStage.dataset.folderState = folderOpen ? "open" : folderPreview ? "preview" : "closed";
+        folderStage.classList.toggle("is-open", folderOpen);
+        folderStage.classList.toggle("is-preview", !folderOpen && folderPreview);
+        folderToggle.setAttribute("aria-expanded", String(folderOpen));
         folderToggle.setAttribute("aria-label", hintText);
-
-        folderCards.forEach((card, index) => {
-            card.classList.toggle("is-active", index === activeCardIndex);
-        });
 
         if (folderHint) {
             folderHint.textContent = hintText;
         }
     };
 
-    const clearCardEffects = () => {
-        folderCards.forEach((card) => {
-            card.classList.remove("is-active", "is-falling");
-        });
+    const setFolderPreview = (value) => {
+        if (!folderStage || !folderToggle || !canPreviewOnHover || folderOpen) {
+            return;
+        }
+
+        folderPreview = value;
+        updateFolderUi();
     };
 
-    const unlockFolderLater = (delay) => {
-        window.setTimeout(() => {
-            folderLocked = false;
-        }, delay);
-    };
-
-    const openFolder = () => {
+    const toggleFolder = () => {
         if (!folderStage || !folderToggle) {
             return;
         }
 
-        folderLocked = true;
-        activeCardIndex = -1;
-        clearCardEffects();
+        folderOpen = !folderOpen;
+
+        if (folderOpen) {
+            folderPreview = false;
+        } else if (canPreviewOnHover) {
+            folderPreview = folderToggle.matches(":hover");
+        }
+
         updateFolderUi();
-
-        const revealDelay = reduceMotion ? 0 : 360;
-
-        if (folderHint) {
-            folderHint.textContent = "Teczka sie otwiera i pokazuje pierwsza kartke.";
-        }
-
-        folderStage.classList.add("is-open");
-        folderToggle.setAttribute("aria-expanded", "true");
-        folderToggle.setAttribute("aria-label", "Teczka sie otwiera.");
-
-        window.setTimeout(() => {
-            activeCardIndex = 0;
-            updateFolderUi();
-            unlockFolderLater(reduceMotion ? 0 : 260);
-        }, revealDelay);
-    };
-
-    const dropCurrentCard = (onComplete) => {
-        const currentCard = folderCards[activeCardIndex];
-
-        if (!currentCard) {
-            onComplete();
-            return;
-        }
-
-        if (reduceMotion) {
-            currentCard.classList.remove("is-active", "is-falling");
-            onComplete();
-            return;
-        }
-
-        currentCard.classList.add("is-falling");
-
-        window.setTimeout(() => {
-            currentCard.classList.remove("is-active", "is-falling");
-            onComplete();
-        }, 420);
-    };
-
-    const advanceFolder = () => {
-        if (!folderStage || folderLocked) {
-            return;
-        }
-
-        if (activeCardIndex < 0) {
-            openFolder();
-            return;
-        }
-
-        folderLocked = true;
-
-        if (activeCardIndex >= lastCardIndex) {
-            if (folderHint) {
-                folderHint.textContent = "Ostatnia kartka opada i teczka wraca do poczatku.";
-            }
-
-            dropCurrentCard(() => {
-                activeCardIndex = -1;
-                updateFolderUi();
-                unlockFolderLater(reduceMotion ? 0 : 260);
-            });
-            return;
-        }
-
-        const nextIndex = activeCardIndex + 1;
-        const nextTitle = folderCards[nextIndex]?.querySelector("h3")?.textContent?.trim();
-
-        if (folderHint) {
-            folderHint.textContent = nextTitle
-                ? `Kartka opada. Za chwile zobaczysz: ${nextTitle}.`
-                : "Kartka opada. Za chwile zobaczysz kolejna.";
-        }
-
-        dropCurrentCard(() => {
-            activeCardIndex = nextIndex;
-            updateFolderUi();
-            unlockFolderLater(reduceMotion ? 0 : 240);
-        });
     };
 
     if (reduceMotion) {
@@ -175,12 +90,30 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (folderStage && folderToggle) {
-        clearCardEffects();
         updateFolderUi();
 
-        folderStage.addEventListener("click", () => {
-            advanceFolder();
+        folderToggle.addEventListener("click", (event) => {
+            event.preventDefault();
+            toggleFolder();
         });
+
+        if (canPreviewOnHover) {
+            folderToggle.addEventListener("pointerenter", () => {
+                setFolderPreview(true);
+            });
+
+            folderStage.addEventListener("pointerleave", () => {
+                setFolderPreview(false);
+            });
+
+            folderToggle.addEventListener("focus", () => {
+                setFolderPreview(true);
+            });
+
+            folderToggle.addEventListener("blur", () => {
+                setFolderPreview(false);
+            });
+        }
     }
 
     if (reduceMotion) {

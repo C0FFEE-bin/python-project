@@ -48,11 +48,13 @@ function useObjectUrl(file) {
 export default function TutorProfileSetup({
     avatarFile = null,
     bannerFile = null,
+    initialAbout = "",
     initialLevel = "",
     initialLevels = EMPTY_VALUES,
     initialInterests = EMPTY_VALUES,
     initialSubjects = EMPTY_VALUES,
     onAvatarChange,
+    onAboutChange,
     onBack,
     onBannerChange,
     onComplete,
@@ -62,7 +64,7 @@ export default function TutorProfileSetup({
     const avatarPreviewUrl = useObjectUrl(avatarFile);
     const bannerPreviewUrl = useObjectUrl(bannerFile);
     const [fullName, setFullName] = useState("");
-    const [about, setAbout] = useState("");
+    const [about, setAbout] = useState(initialAbout);
     const [interests, setInterests] = useState(() => [...initialInterests]);
     const [levels, setLevels] = useState(() => (
         Array.isArray(initialLevels) && initialLevels.length
@@ -104,6 +106,10 @@ export default function TutorProfileSetup({
 
         setLevels([]);
     }, [initialLevel, initialLevels]);
+
+    useEffect(() => {
+        setAbout(initialAbout);
+    }, [initialAbout]);
 
     const hasAvailableSlot = useMemo(
         () => schedule.some((row) => row.some((slot) => slot === SLOT_STATUSES.available)),
@@ -268,7 +274,11 @@ export default function TutorProfileSetup({
                     <textarea
                         id="tutor-about"
                         value={about}
-                        onChange={(event) => setAbout(event.target.value)}
+                        onChange={(event) => {
+                            const nextAbout = event.target.value;
+                            setAbout(nextAbout);
+                            onAboutChange?.(nextAbout);
+                        }}
                         placeholder="Kliknij, aby dodac opis..."
                     />
 
