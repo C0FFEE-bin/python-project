@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import {
     createPortalPost,
+    createPortalPostComment,
     fetchPortalObservations,
     fetchPortalPosts,
 } from "../api.js";
@@ -322,6 +323,70 @@ function PortalPostGuide({ canCreatePosts, isAuthenticated, loginUrl, onboarding
     );
 }
 
+function PortalPostComments({
+    commentDraft = "",
+    commentError = "",
+    isAuthenticated,
+    isSubmitting = false,
+    loginUrl,
+    onCommentChange,
+    onCommentSubmit,
+    post,
+}) {
+    return (
+        <section className="portal-post__comments">
+            <div className="portal-post__comments-head">
+                <strong>Komentarze</strong>
+                <span>{post.commentsCount || 0}</span>
+            </div>
+
+            {post.comments?.length ? (
+                <div className="portal-post__comments-list">
+                    {post.comments.map((comment) => (
+                        <article key={comment.id} className="portal-post__comment">
+                            <div className="portal-post__comment-header">
+                                <div className="portal-post__comment-avatar" aria-hidden="true">
+                                    {comment.initials || "U"}
+                                </div>
+                                <div className="portal-post__comment-meta">
+                                    <strong>{comment.author}</strong>
+                                    <span>{comment.dateLabel}</span>
+                                </div>
+                            </div>
+                            <p>{comment.content}</p>
+                        </article>
+                    ))}
+                </div>
+            ) : (
+                <p className="portal-post__comment-empty">Ten wpis nie ma jeszcze komentarzy.</p>
+            )}
+
+            {isAuthenticated ? (
+                <form className="portal-post__comment-form" onSubmit={onCommentSubmit}>
+                    <label className="portal-post__comment-label">
+                        <span>Dodaj komentarz</span>
+                        <textarea
+                            value={commentDraft}
+                            onChange={onCommentChange}
+                            placeholder="Napisz krotki komentarz do wpisu tutora."
+                        />
+                    </label>
+                    <div className="portal-post__comment-actions">
+                        <button type="submit" className="button button--primary" disabled={isSubmitting}>
+                            {isSubmitting ? "Zapisywanie..." : "Dodaj komentarz"}
+                        </button>
+                    </div>
+                    {commentError ? <p className="portal-post__comment-error">{commentError}</p> : null}
+                </form>
+            ) : (
+                <p className="portal-post__comment-empty">
+                    <a href={loginUrl}>Zaloguj sie</a>, aby dodawac komentarze do wpisow.
+                </p>
+            )}
+        </section>
+    );
+}
+
 function PortalObservationsPanel({
     hasLoaded,
     isAuthenticated,
@@ -370,6 +435,9 @@ function PortalObservationsPanel({
 }
 
 function PortalPostsView({
+    commentDrafts,
+    commentErrors,
+    commentSubmittingPostId,
     currentUser,
     formValues,
     hasAnyPosts,
@@ -379,6 +447,8 @@ function PortalPostsView({
     loginUrl,
     onboardingUrl,
     onContentChange,
+    onCommentChange,
+    onCommentSubmit,
     onSubmit,
     onTitleChange,
     posts,
@@ -496,6 +566,17 @@ function PortalPostsView({
                                     </ul>
                                 ) : null}
                             </div>
+
+                            <PortalPostComments
+                                commentDraft={commentDrafts[post.id] || ""}
+                                commentError={commentErrors[post.id] || ""}
+                                isAuthenticated={isAuthenticated && Boolean(post.canComment)}
+                                isSubmitting={commentSubmittingPostId === post.id}
+                                loginUrl={loginUrl}
+                                onCommentChange={onCommentChange(post.id)}
+                                onCommentSubmit={onCommentSubmit(post.id)}
+                                post={post}
+                            />
                         </article>
                     ))}
                 </div>
@@ -680,6 +761,9 @@ export default function PortalSection({
     const [submitError, setSubmitError] = useState("");
     const [submitSuccess, setSubmitSuccess] = useState("");
     const [postForm, setPostForm] = useState(EMPTY_POST_FORM);
+    const [commentDrafts, setCommentDrafts] = useState({});
+    const [commentErrors, setCommentErrors] = useState({});
+    const [commentSubmittingPostId, setCommentSubmittingPostId] = useState(null);
     const [observations, setObservations] = useState([]);
     const [hasLoadedObservations, setHasLoadedObservations] = useState(false);
     const [observationsError, setObservationsError] = useState("");
@@ -687,6 +771,7 @@ export default function PortalSection({
     const normalizedSearch = searchValue.trim().toLowerCase();
     const postsUrl = urls.portalPosts ?? "/api/portal-posts";
     const observationsUrl = urls.observations ?? "/api/portal-observations";
+    const commentsUrl = urls.portalPostComments ?? "/api/portal-post-comments";
     const databaseErrorUrl = urls.databaseError ?? "/database-error";
     const loginUrl = urls.login ?? "/login";
     const onboardingUrl = urls.onboarding ?? "/onboarding";
@@ -834,6 +919,68 @@ export default function PortalSection({
         };
     }
 
+    function handleCommentChange(postId) {
+        return (event) => {
+            const nextValue = event.target.value;
+            setCommentDrafts((currentDrafts) => ({
+                ...currentDrafts,
+                [postId]: nextValue,
+            }));
+            setCommentErrors((currentErrors) => ({
+                ...currentErrors,
+                [postId]: "",
+            }));
+        };
+    }
+
+    function handleCreateComment(postId) {
+        return async (event) => {
+            event.preventDefault();
+            if (commentSubmittingPostId === postId) {
+                return;
+            }
+
+            setCommentSubmittingPostId(postId);
+            setCommentErrors((currentErrors) => ({
+                ...currentErrors,
+                [postId]: "",
+            }));
+
+            try {
+                const responsePayload = await createPortalPostComment({
+                    payload: {
+                        postId,
+                        content: commentDrafts[postId] || "",
+                    },
+                    commentsUrl,
+                    csrfToken,
+                    databaseErrorUrl,
+                });
+
+                setPortalPosts((currentPosts) => currentPosts.map((post) => (
+                    post.id === postId
+                        ? {
+                            ...post,
+                            comments: responsePayload.comments,
+                            commentsCount: responsePayload.commentsCount,
+                        }
+                        : post
+                )));
+                setCommentDrafts((currentDrafts) => ({
+                    ...currentDrafts,
+                    [postId]: "",
+                }));
+            } catch (error) {
+                setCommentErrors((currentErrors) => ({
+                    ...currentErrors,
+                    [postId]: error?.message || "Nie udalo sie zapisac komentarza.",
+                }));
+            } finally {
+                setCommentSubmittingPostId(null);
+            }
+        };
+    }
+
     return (
         <Reveal as="section" id="portal" className="portal-hub landing-section">
             <div className="portal-hub__inner">
@@ -909,6 +1056,9 @@ export default function PortalSection({
                         <ScientificClubsView clubs={filteredClubs} searchValue={searchValue} />
                     ) : (
                         <PortalPostsView
+                            commentDrafts={commentDrafts}
+                            commentErrors={commentErrors}
+                            commentSubmittingPostId={commentSubmittingPostId}
                             currentUser={currentUser}
                             formValues={postForm}
                             hasAnyPosts={portalPosts.length > 0}
@@ -918,6 +1068,8 @@ export default function PortalSection({
                             loginUrl={loginUrl}
                             onboardingUrl={onboardingUrl}
                             onContentChange={handleFieldChange("content")}
+                            onCommentChange={handleCommentChange}
+                            onCommentSubmit={handleCreateComment}
                             onSubmit={handleCreatePost}
                             onTitleChange={handleFieldChange("title")}
                             posts={filteredPosts}

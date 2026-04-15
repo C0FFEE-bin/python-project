@@ -11,7 +11,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
-from django.db.models import Count
+from django.db.models import Avg, Count
 from django.http import Http404, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
@@ -28,8 +28,10 @@ from .forms import (
 
 # Importujemy Twój customowy model User pod aliasem, żeby nie nadpisał domyślnego User z Django
 from .models import (
+    Comment,
     Dostepnosc,
     Obserwacja,
+    Opinia,
     Post,
     Przedmiot,
     Tutor,
@@ -285,6 +287,7 @@ def _get_home_props(request):
             "logout": reverse("logout_user"),
             "observations": reverse("portal_observations"),
             "onboarding": reverse("onboarding_account_type"),
+            "portalPostComments": reverse("portal_post_comments"),
             "portalPosts": reverse("portal_posts"),
             "register": reverse("register_user"),
             "databaseError": reverse("database_error_page"),
@@ -302,6 +305,7 @@ def _get_home_props(request):
             "tutorOnboardingSave": reverse("tutor_onboarding_save"),
             "tutorDashboardData": reverse("tutor_dashboard_data"),
             "tutorProfileBase": reverse("tutor_profile_base"),
+            "tutorReviews": reverse("tutor_reviews"),
             "tutorSearch": reverse("tutor_search"),
         },
         "onboardingMode": None,
@@ -741,6 +745,69 @@ def _build_review_payload(tutor, rating):
     }
 
 
+def _serialize_review(review, custom_user=None):
+    author_name = _build_custom_user_display_name(review.autor)
+
+    return {
+        "id": review.pk,
+        "author": author_name or DEFAULT_REVIEW_AUTHOR,
+        "dateLabel": timezone.localtime(review.data_dodania).strftime("%d.%m.%Y"),
+        "rating": float(review.rating) if review.rating is not None else 0.0,
+        "content": review.tresc or DEFAULT_REVIEW_TEXT,
+        "initials": _get_user_initials(author_name or DEFAULT_REVIEW_AUTHOR),
+        "isOwn": custom_user is not None and review.autor_id == custom_user.pk,
+    }
+
+
+def _build_reviews_payload(tutor, custom_user=None, limit=8):
+    reviews = (
+        tutor.opinie_dla.select_related("autor")
+        .order_by("-data_dodania", "-pk")[:limit]
+    )
+    return [_serialize_review(review, custom_user=custom_user) for review in reviews]
+
+
+def _serialize_comment(comment, custom_user=None):
+    author_name = _build_custom_user_display_name(comment.uzytkownik)
+    localized_created_at = timezone.localtime(comment.data_utworzenia)
+
+    return {
+        "id": comment.pk,
+        "author": author_name or "Uzytkownik",
+        "content": comment.tresc,
+        "dateLabel": localized_created_at.strftime("%d.%m.%Y o %H:%M"),
+        "createdAt": localized_created_at.isoformat(),
+        "initials": _get_user_initials(author_name or "Uzytkownik"),
+        "isOwn": custom_user is not None and comment.uzytkownik_id == custom_user.pk,
+    }
+
+
+def _build_post_comments_payload(post, custom_user=None, limit=12):
+    comments = (
+        post.komentarze.select_related("uzytkownik")
+        .order_by("data_utworzenia", "pk")[:limit]
+    )
+    return [_serialize_comment(comment, custom_user=custom_user) for comment in comments]
+
+
+def _can_review_tutor(tutor, custom_user):
+    if custom_user is None or tutor is None:
+        return False
+
+    return tutor.uzytkownik_id != custom_user.pk
+
+
+def _refresh_tutor_rating(tutor):
+    aggregated_rating = tutor.opinie_dla.aggregate(avg_rating=Avg("rating")).get("avg_rating")
+    next_rating = float(aggregated_rating) if aggregated_rating is not None else 0.0
+
+    if tutor.rating != next_rating:
+        tutor.rating = next_rating
+        tutor.save(update_fields=["rating"])
+
+    return next_rating
+
+
 def _serialize_tutor_profile(tutor, selected_date, custom_user=None):
     przedmioty = list(tutor.przedmioty.all())
     taxonomy = _collect_tutor_taxonomy(przedmioty)
@@ -770,7 +837,9 @@ def _serialize_tutor_profile(tutor, selected_date, custom_user=None):
         "topics": taxonomy["topics"],
         "tags": _build_tags(przedmioty),
         "aboutParagraphs": _build_about_paragraphs(tutor, przedmioty),
+        "canReview": _can_review_tutor(tutor, custom_user),
         "review": _build_review_payload(tutor, rating),
+        "reviews": _build_reviews_payload(tutor, custom_user=custom_user),
         "schedule": _build_tutor_schedule(tutor, selected_date),
     }
 
@@ -1006,6 +1075,9 @@ def _serialize_portal_post(post, custom_user=None):
         "tags": _build_tags(tutor.przedmioty.all()),
         "paragraphs": content_parts["paragraphs"],
         "checklist": content_parts["checklist"],
+        "canComment": custom_user is not None,
+        "comments": _build_post_comments_payload(post, custom_user=custom_user),
+        "commentsCount": post.komentarze.count(),
     }
 
 
@@ -1519,6 +1591,85 @@ def tutor_profile(request, tutor_id):
 
 
 @login_required
+def tutor_reviews(request):
+    if request.method != "POST":
+        return JsonResponse({"detail": "Zla metoda."}, status=405)
+
+    custom_user = _get_or_create_custom_user_for_auth_user(request.user)
+    if custom_user is None:
+        return JsonResponse({"detail": "Nie udalo sie pobrac danych Twojego konta."}, status=400)
+
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"detail": "Niepoprawne dane JSON."}, status=400)
+
+    tutor_id = payload.get("tutorId")
+    try:
+        tutor_id = int(tutor_id)
+    except (TypeError, ValueError):
+        return JsonResponse({"detail": "Brakuje poprawnego identyfikatora tutora."}, status=400)
+
+    tutor = (
+        Tutor.objects.filter(pk=tutor_id)
+        .select_related("uzytkownik")
+        .first()
+    )
+    if tutor is None:
+        return JsonResponse({"detail": "Nie znaleziono tutora."}, status=404)
+
+    if not _can_review_tutor(tutor, custom_user):
+        return JsonResponse({"detail": "Nie mozesz dodac opinii do wlasnego profilu."}, status=400)
+
+    try:
+        rating = float(payload.get("rating"))
+    except (TypeError, ValueError):
+        return JsonResponse({"detail": "Podaj ocene od 1 do 5."}, status=400)
+
+    if rating < 1 or rating > 5:
+        return JsonResponse({"detail": "Ocena musi byc z zakresu od 1 do 5."}, status=400)
+
+    content = (payload.get("content") or "").strip()
+    if len(content) < 12:
+        return JsonResponse({"detail": "Opinia musi miec co najmniej 12 znakow."}, status=400)
+
+    try:
+        with transaction.atomic():
+            review, created = Opinia.objects.update_or_create(
+                autor=custom_user,
+                tutor=tutor,
+                defaults={
+                    "rating": rating,
+                    "tresc": content,
+                },
+            )
+            rating_value = _refresh_tutor_rating(tutor)
+    except IntegrityError as exc:
+        logger.exception("Database integrity error during tutor review save: %s", exc)
+        raise
+
+    review = Opinia.objects.select_related("autor").get(pk=review.pk)
+    tutor = (
+        Tutor.objects.filter(pk=tutor.pk)
+        .select_related("uzytkownik")
+        .prefetch_related("opinie_dla__autor")
+        .annotate(opinions_count=Count("opinie_dla", distinct=True))
+        .get()
+    )
+
+    return JsonResponse(
+        {
+            "message": "Opinia zapisana." if created else "Opinia zaktualizowana.",
+            "review": _build_review_payload(tutor, rating_value),
+            "reviews": _build_reviews_payload(tutor, custom_user=custom_user),
+            "rating": rating_value,
+            "opinions": getattr(tutor, "opinions_count", tutor.opinie_dla.count()),
+        },
+        status=201 if created else 200,
+    )
+
+
+@login_required
 def tutor_dashboard_data(request):
     tutor = _get_tutor_for_auth_user(request.user)
 
@@ -1536,7 +1687,7 @@ def portal_posts(request):
         custom_user = _get_custom_user_for_auth_user(request.user)
         posts = (
             Post.objects.select_related("tutor__uzytkownik")
-            .prefetch_related("tutor__przedmioty")
+            .prefetch_related("tutor__przedmioty", "komentarze__uzytkownik")
             .order_by("-data_utworzenia", "-pk")[:24]
         )
 
@@ -1580,7 +1731,7 @@ def portal_posts(request):
     )
     post = (
         Post.objects.select_related("tutor__uzytkownik")
-        .prefetch_related("tutor__przedmioty")
+        .prefetch_related("tutor__przedmioty", "komentarze__uzytkownik")
         .get(pk=post.pk)
     )
 
@@ -1588,6 +1739,70 @@ def portal_posts(request):
         {
             "message": "Wpis zostal opublikowany.",
             "post": _serialize_portal_post(post, custom_user=tutor.uzytkownik),
+        },
+        status=201,
+    )
+
+
+@login_required
+def portal_post_comments(request):
+    if request.method != "POST":
+        return JsonResponse({"detail": "Zla metoda."}, status=405)
+
+    custom_user = _get_or_create_custom_user_for_auth_user(request.user)
+    if custom_user is None:
+        return JsonResponse({"detail": "Nie udalo sie pobrac danych Twojego konta."}, status=400)
+
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"detail": "Niepoprawne dane JSON."}, status=400)
+
+    post_id = payload.get("postId")
+    try:
+        post_id = int(post_id)
+    except (TypeError, ValueError):
+        return JsonResponse({"detail": "Brakuje poprawnego identyfikatora wpisu."}, status=400)
+
+    content = (payload.get("content") or "").strip()
+    if len(content) < 3:
+        return JsonResponse({"detail": "Komentarz musi miec co najmniej 3 znaki."}, status=400)
+
+    post = (
+        Post.objects.filter(pk=post_id)
+        .select_related("tutor__uzytkownik")
+        .prefetch_related("tutor__przedmioty", "komentarze__uzytkownik")
+        .first()
+    )
+    if post is None:
+        return JsonResponse({"detail": "Nie znaleziono wpisu."}, status=404)
+
+    try:
+        with transaction.atomic():
+            comment = Comment.objects.create(
+                post=post,
+                uzytkownik=custom_user,
+                tresc=content,
+            )
+    except IntegrityError as exc:
+        logger.exception("Database integrity error during portal comment save: %s", exc)
+        raise
+
+    comment = Comment.objects.select_related("uzytkownik").get(pk=comment.pk)
+    post = (
+        Post.objects.filter(pk=post.pk)
+        .select_related("tutor__uzytkownik")
+        .prefetch_related("tutor__przedmioty", "komentarze__uzytkownik")
+        .get()
+    )
+
+    return JsonResponse(
+        {
+            "message": "Komentarz dodany.",
+            "postId": post.pk,
+            "comment": _serialize_comment(comment, custom_user=custom_user),
+            "comments": _build_post_comments_payload(post, custom_user=custom_user),
+            "commentsCount": post.komentarze.count(),
         },
         status=201,
     )

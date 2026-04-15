@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { toggleTutorObservation } from "../api.js";
+import { createTutorReview, toggleTutorObservation } from "../api.js";
 
 const PROFILE_TABS = [
     { id: "info", label: "Informacje" },
@@ -32,6 +32,7 @@ const SIDEBAR_SECTIONS = [
 ];
 
 const BOOKABLE_SLOT_STATUSES = new Set(["available", "highlighted"]);
+const REVIEW_SCORE_OPTIONS = [5, 4, 3, 2, 1];
 
 function safeArray(values) {
     return Array.isArray(values) ? values : [];
@@ -212,6 +213,15 @@ export default function TutorProfile({
     const [followError, setFollowError] = useState("");
     const [isFollowSubmitting, setIsFollowSubmitting] = useState(false);
     const [message, setMessage] = useState("");
+    const [reviews, setReviews] = useState(() => safeArray(tutor?.reviews));
+    const [featuredReview, setFeaturedReview] = useState(() => tutor?.review || {});
+    const [ratingValue, setRatingValue] = useState(Number(tutor?.rating || 0));
+    const [opinionsCount, setOpinionsCount] = useState(Number(tutor?.opinions || 0));
+    const [reviewScore, setReviewScore] = useState(5);
+    const [reviewContent, setReviewContent] = useState("");
+    const [reviewError, setReviewError] = useState("");
+    const [reviewSuccess, setReviewSuccess] = useState("");
+    const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
 
     const subjectOptions = useMemo(() => buildSubjectOptions(tutor, requestFilters), [requestFilters, tutor]);
     const levelOptions = useMemo(() => safeArray(tutor?.levels).slice(0, 3), [tutor?.levels]);
@@ -235,17 +245,41 @@ export default function TutorProfile({
     useEffect(() => {
         setIsFollowing(Boolean(tutor?.isFollowed));
         setFollowersCount(Number(tutor?.followersCount || 0));
+        setReviews(safeArray(tutor?.reviews));
+        setFeaturedReview(tutor?.review || {});
+        setRatingValue(Number(tutor?.rating || 0));
+        setOpinionsCount(Number(tutor?.opinions || 0));
         setFollowError("");
         setMessage("");
+        setReviewError("");
+        setReviewSuccess("");
         setActiveTab("info");
-    }, [tutor?.followersCount, tutor?.id, tutor?.isFollowed]);
+    }, [tutor?.followersCount, tutor?.id, tutor?.isFollowed, tutor?.opinions, tutor?.rating, tutor?.review, tutor?.reviews]);
+
+    const ownReview = useMemo(
+        () => reviews.find((reviewItem) => reviewItem?.isOwn) || null,
+        [reviews],
+    );
+    const secondaryReviews = useMemo(
+        () => reviews.filter((reviewItem) => !(
+            reviewItem?.author === featuredReview?.author
+            && reviewItem?.dateLabel === featuredReview?.dateLabel
+            && reviewItem?.content === featuredReview?.content
+        )),
+        [featuredReview, reviews],
+    );
+
+    useEffect(() => {
+        setReviewScore(Number(ownReview?.rating || 5));
+        setReviewContent(ownReview?.content || "");
+    }, [ownReview, tutor?.id]);
 
     if (!tutor) {
         return null;
     }
 
     const selectedSlot = bookableSlots.find((slot) => slot.id === selectedSlotId) || null;
-    const review = tutor.review || {};
+    const review = featuredReview || {};
     const summaryDateLabel = selectedSlot?.fullDateLabel || formatLongDateLabel(requestDate, "Termin do ustalenia");
     const summaryTimeLabel = selectedSlot?.timeRangeLabel || requestFilters?.hour || "Do ustalenia";
     const summarySubjectLabel = selectedSubject || subjectOptions[0] || "Przedmiot do ustalenia";
@@ -279,6 +313,40 @@ export default function TutorProfile({
             setFollowError(error?.message || "Nie udalo sie zapisac obserwacji tutora.");
         } finally {
             setIsFollowSubmitting(false);
+        }
+    }
+
+    async function handleReviewSubmit(event) {
+        event.preventDefault();
+        if (!tutor?.id || !tutor?.canReview || isReviewSubmitting) {
+            return;
+        }
+
+        setIsReviewSubmitting(true);
+        setReviewError("");
+        setReviewSuccess("");
+
+        try {
+            const responsePayload = await createTutorReview({
+                payload: {
+                    tutorId: tutor.id,
+                    rating: reviewScore,
+                    content: reviewContent,
+                },
+                reviewsUrl: urls.tutorReviews ?? "/api/tutor-reviews",
+                csrfToken,
+                databaseErrorUrl: urls.databaseError ?? "/database-error",
+            });
+
+            setFeaturedReview(responsePayload.review || {});
+            setReviews(safeArray(responsePayload.reviews));
+            setRatingValue(Number(responsePayload.rating || 0));
+            setOpinionsCount(Number(responsePayload.opinions || 0));
+            setReviewSuccess(responsePayload.message || "Opinia zapisana.");
+        } catch (error) {
+            setReviewError(error?.message || "Nie udalo sie zapisac opinii.");
+        } finally {
+            setIsReviewSubmitting(false);
         }
     }
 
@@ -411,15 +479,15 @@ export default function TutorProfile({
                                             ) : null}
                                         </div>
                                     </div>
-                                    <div className="tutor-profile__facts">
-                                        <span className="tutor-profile__fact">
-                                            <i className="fa-solid fa-star" aria-hidden="true"></i>
-                                            {Number(tutor.rating || 0).toFixed(1)}/5
-                                        </span>
-                                        <span className="tutor-profile__fact">
-                                            <i className="fa-solid fa-comments" aria-hidden="true"></i>
-                                            {tutor.opinions} opinii
-                                        </span>
+                                        <div className="tutor-profile__facts">
+                                            <span className="tutor-profile__fact">
+                                                <i className="fa-solid fa-star" aria-hidden="true"></i>
+                                            {Number(ratingValue || 0).toFixed(1)}/5
+                                            </span>
+                                            <span className="tutor-profile__fact">
+                                                <i className="fa-solid fa-comments" aria-hidden="true"></i>
+                                            {opinionsCount} opinii
+                                            </span>
                                         {safeArray(tutor.statusBadges).slice(0, 3).map((badge) => (
                                             <span key={badge} className="tutor-profile__fact">
                                                 <i className="fa-solid fa-circle-check" aria-hidden="true"></i>
@@ -502,12 +570,14 @@ export default function TutorProfile({
                                     <div className="tutor-profile__review-layout">
                                         <div className="tutor-profile__rating-box">
                                             <div className="tutor-profile__rating-value">
-                                                {Number(tutor.rating || 0).toFixed(1)}
+                                                {Number(ratingValue || 0).toFixed(1)}
                                                 <small>/5</small>
                                             </div>
-                                            <RatingStars rating={Number(tutor.rating || 0)} />
-                                            <span className="tutor-profile__followers">{tutor.opinions} opinii z profilu</span>
-                                            <button className="tutor-profile__cta" type="button">Zobacz opinie</button>
+                                            <RatingStars rating={Number(ratingValue || 0)} />
+                                            <span className="tutor-profile__followers">{opinionsCount} opinii z profilu</span>
+                                            <span className="tutor-profile__followers">
+                                                {ownReview ? "Mozesz edytowac swoja opinie." : "Nowe opinie od razu aktualizuja ocene profilu."}
+                                            </span>
                                         </div>
 
                                         <article className="tutor-profile__review-card">
@@ -520,12 +590,78 @@ export default function TutorProfile({
                                                     <span>{review.dateLabel || "Brak daty"}</span>
                                                 </div>
                                             </div>
-                                            <RatingStars rating={Number(review.rating || tutor.rating || 0)} />
+                                            <RatingStars rating={Number(review.rating || ratingValue || 0)} />
                                             <p className="tutor-profile__review-text">
                                                 {review.content || "Profil zostal przygotowany pod pierwsze zajecia."}
                                             </p>
                                         </article>
                                     </div>
+
+                                    <div className="tutor-profile__about">
+                                        {secondaryReviews.length ? (
+                                            secondaryReviews.map((reviewItem) => (
+                                                <article key={reviewItem.id} className="tutor-profile__review-card">
+                                                    <div className="tutor-profile__review-header">
+                                                        <div className="tutor-profile__review-avatar" aria-hidden="true">
+                                                            {reviewItem.initials || "U"}
+                                                        </div>
+                                                        <div className="tutor-profile__review-meta">
+                                                            <strong>{reviewItem.author}</strong>
+                                                            <span>{reviewItem.dateLabel}</span>
+                                                        </div>
+                                                    </div>
+                                                    <RatingStars rating={Number(reviewItem.rating || 0)} />
+                                                    <p className="tutor-profile__review-text">{reviewItem.content}</p>
+                                                </article>
+                                            ))
+                                        ) : !reviews.length ? (
+                                            <p className="tutor-profile__placeholder">
+                                                Ten profil nie ma jeszcze zadnych opinii od uzytkownikow.
+                                            </p>
+                                        ) : null}
+                                    </div>
+
+                                    {tutor.canReview ? (
+                                        <article className="tutor-profile__review-card">
+                                            <form className="tutor-profile__field" onSubmit={handleReviewSubmit}>
+                                                <span className="tutor-profile__field-label">Twoja ocena</span>
+                                                <div className="tutor-profile__booking-subjects">
+                                                    {REVIEW_SCORE_OPTIONS.map((score) => (
+                                                        <button
+                                                            key={score}
+                                                            className={`tutor-profile__choice${reviewScore === score ? " is-selected" : ""}`}
+                                                            type="button"
+                                                            onClick={() => setReviewScore(score)}
+                                                        >
+                                                            {score}/5
+                                                        </button>
+                                                    ))}
+                                                </div>
+
+                                                <label className="tutor-profile__booking-message">
+                                                    <span className="tutor-profile__field-label">Twoja opinia</span>
+                                                    <textarea
+                                                        value={reviewContent}
+                                                        onChange={(event) => setReviewContent(event.target.value)}
+                                                        placeholder="Napisz, jak wygladaly zajecia i co bylo najbardziej pomocne."
+                                                    />
+                                                </label>
+
+                                                <div className="tutor-profile__booking-actions">
+                                                    <button className="tutor-profile__cta" type="submit" disabled={isReviewSubmitting}>
+                                                        {isReviewSubmitting ? "Zapisywanie..." : (ownReview ? "Zaktualizuj opinie" : "Dodaj opinie")}
+                                                    </button>
+                                                </div>
+
+                                                {reviewError ? <p className="tutor-profile__followers">{reviewError}</p> : null}
+                                                {reviewSuccess ? <p className="tutor-profile__followers">{reviewSuccess}</p> : null}
+                                            </form>
+                                        </article>
+                                    ) : (
+                                        <p className="tutor-profile__placeholder">
+                                            Opinie mozesz dodawac do innych tutorow po zalogowaniu na konto w aplikacji.
+                                        </p>
+                                    )}
                                 </section>
 
                                 <section className="tutor-profile__panel">

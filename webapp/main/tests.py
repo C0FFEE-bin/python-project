@@ -14,8 +14,10 @@ from django.urls import reverse
 
 from main.middleware import DatabaseErrorPageMiddleware
 from main.models import (
+    Comment,
     Dostepnosc,
     Obserwacja,
+    Opinia,
     Post,
     Przedmiot,
     Tutor,
@@ -598,6 +600,124 @@ class MainViewsTests(TestCase):
             ],
         )
 
+    def test_tutor_profile_returns_reviews_list(self):
+        auth_user = User.objects.create_user(
+            username='review-viewer',
+            email='review-viewer@example.com',
+            password='secret123',
+        )
+        reviewer = TutorUser.objects.create(
+            username='review-viewer',
+            imie='Anna',
+            nazwisko='Student',
+            email='review-viewer@example.com',
+            typ='uczen',
+        )
+        tutor_user = TutorUser.objects.create(
+            username='reviewed-profile',
+            imie='Michal',
+            nazwisko='Tutor',
+            email='reviewed-profile@example.com',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(uzytkownik=tutor_user, rating=4.0)
+        Opinia.objects.create(
+            autor=reviewer,
+            tutor=tutor,
+            rating=5,
+            tresc='Super prowadzone zajecia i szybki kontakt po kazdym spotkaniu.',
+        )
+
+        self.client.force_login(auth_user)
+        response = self.client.get(reverse('tutor_profile', kwargs={'tutor_id': tutor.pk}))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['canReview'])
+        self.assertEqual(len(payload['reviews']), 1)
+        self.assertEqual(payload['reviews'][0]['author'], 'Anna Student')
+        self.assertTrue(payload['reviews'][0]['isOwn'])
+        self.assertEqual(payload['review']['author'], 'Anna Student')
+
+    def test_tutor_reviews_create_persists_review_and_updates_rating(self):
+        auth_user = User.objects.create_user(
+            username='review-author',
+            email='review-author@example.com',
+            password='secret123',
+        )
+        author = TutorUser.objects.create(
+            username='review-author',
+            imie='Piotr',
+            nazwisko='Uczen',
+            email='review-author@example.com',
+            typ='uczen',
+        )
+        tutor_user = TutorUser.objects.create(
+            username='rated-tutor',
+            imie='Kasia',
+            nazwisko='Mentorka',
+            email='rated-tutor@example.com',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(uzytkownik=tutor_user, rating=0)
+
+        self.client.force_login(auth_user)
+        response = self.client.post(
+            reverse('tutor_reviews'),
+            data=json.dumps(
+                {
+                    'tutorId': tutor.pk,
+                    'rating': 4,
+                    'content': 'Bardzo konkretne zajecia i duzo przydatnych wskazowek do nauki.',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Opinia.objects.count(), 1)
+        review = Opinia.objects.get()
+        tutor.refresh_from_db()
+        payload = response.json()
+
+        self.assertEqual(review.autor, author)
+        self.assertEqual(review.tutor, tutor)
+        self.assertEqual(float(tutor.rating), 4.0)
+        self.assertEqual(payload['opinions'], 1)
+        self.assertEqual(payload['rating'], 4.0)
+        self.assertEqual(payload['reviews'][0]['author'], 'Piotr Uczen')
+
+    def test_tutor_reviews_reject_own_profile(self):
+        auth_user = User.objects.create_user(
+            username='self-review',
+            email='self-review@example.com',
+            password='secret123',
+        )
+        tutor_user = TutorUser.objects.create(
+            username='self-review',
+            imie='Ola',
+            nazwisko='Tutor',
+            email='self-review@example.com',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(uzytkownik=tutor_user, rating=0)
+
+        self.client.force_login(auth_user)
+        response = self.client.post(
+            reverse('tutor_reviews'),
+            data=json.dumps(
+                {
+                    'tutorId': tutor.pk,
+                    'rating': 5,
+                    'content': 'To nie powinno przejsc dla wlasnego profilu.',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Opinia.objects.count(), 0)
+
     def test_tutor_messages_redirects_non_tutor_to_onboarding(self):
         auth_user = User.objects.create_user(
             username='student-messages',
@@ -738,6 +858,8 @@ class MainViewsTests(TestCase):
         self.assertEqual(payload['posts'][0]['avatarTone'], 'mint')
         self.assertEqual(payload['posts'][0]['tags'], ['Matematyka', 'Matura', 'Szkola srednia'])
         self.assertEqual(payload['posts'][0]['checklist'], ['wtorek 18:00', 'czwartek 19:00'])
+        self.assertEqual(payload['posts'][0]['comments'], [])
+        self.assertEqual(payload['posts'][0]['commentsCount'], 0)
 
     def test_portal_posts_create_persists_post_for_logged_tutor(self):
         auth_user = User.objects.create_user(
@@ -803,6 +925,58 @@ class MainViewsTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(Post.objects.count(), 0)
         self.assertIn('korepetytora', response.json()['detail'])
+
+    def test_portal_post_comments_create_persists_comment_for_logged_user(self):
+        auth_user = User.objects.create_user(
+            username='portal-comment',
+            email='portal-comment@example.com',
+            password='secret123',
+        )
+        commenting_user = TutorUser.objects.create(
+            username='portal-comment',
+            imie='Maja',
+            nazwisko='Komentuje',
+            email='portal-comment@example.com',
+            typ='uczen',
+        )
+        tutor_user = TutorUser.objects.create(
+            username='commented-tutor',
+            imie='Olga',
+            nazwisko='Tutor',
+            email='commented-tutor@example.com',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(uzytkownik=tutor_user, followers_count=5)
+        post = Post.objects.create(
+            tutor=tutor,
+            tytul='Nowe materialy do powtorki',
+            tresc='Wrzucilem dzisiaj zestaw zadan i odpowiedzi do wspolnej analizy.',
+        )
+
+        self.client.force_login(auth_user)
+        response = self.client.post(
+            reverse('portal_post_comments'),
+            data=json.dumps(
+                {
+                    'postId': post.pk,
+                    'content': 'Dzieki, to bardzo pomaga przed kolokwium.',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Comment.objects.count(), 1)
+        created_comment = Comment.objects.get()
+        payload = response.json()
+
+        self.assertEqual(created_comment.post, post)
+        self.assertEqual(created_comment.uzytkownik, commenting_user)
+        self.assertEqual(payload['postId'], post.pk)
+        self.assertEqual(payload['commentsCount'], 1)
+        self.assertEqual(payload['comment']['author'], 'Maja Komentuje')
+        self.assertEqual(payload['comments'][0]['content'], 'Dzieki, to bardzo pomaga przed kolokwium.')
+        self.assertTrue(payload['comments'][0]['isOwn'])
 
     def test_portal_observations_returns_current_user_entries(self):
         auth_user = User.objects.create_user(
