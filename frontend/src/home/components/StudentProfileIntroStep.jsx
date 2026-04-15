@@ -27,11 +27,13 @@ export default function StudentProfileIntroStep({
     avatarFile,
     bannerFile,
     fullName,
+    isSubmitting = false,
     onAvatarChange,
     onBack,
     onBannerChange,
     onFullNameChange,
     onNext,
+    submitError = "",
 }) {
     const avatarInputRef = useRef(null);
     const bannerInputRef = useRef(null);
@@ -124,11 +126,15 @@ export default function StudentProfileIntroStep({
                         type="button"
                         className="student-flow-button is-primary"
                         onClick={onNext}
-                        disabled={!canGoNext}
+                        disabled={!canGoNext || isSubmitting}
                     >
-                        Dalej
+                        {isSubmitting ? "Zapisywanie..." : "Dalej"}
                     </button>
                 </div>
+
+                {submitError ? (
+                    <p className="tutor-profile-submit-error" role="alert">{submitError}</p>
+                ) : null}
             </div>
         </StudentOnboardingFrame>
     );

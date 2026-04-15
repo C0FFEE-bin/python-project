@@ -234,10 +234,12 @@ def _ensure_auth_user(seed_id, first_name, last_name, email):
 def _ensure_reviewer_users():
     reviewers = []
     for index in range(1, 6):
+        username = f"reviewer{index}"
         email = f"reviewer{index}@rentnerd.local"
         reviewer, _ = User.objects.update_or_create(
             email=email,
             defaults={
+                "username": username,
                 "imie": f"Recenzent{index}",
                 "nazwisko": "Seed",
                 "typ": "uczen",
@@ -270,6 +272,7 @@ class Command(BaseCommand):
             custom_user, custom_user_created = User.objects.update_or_create(
                 email=email,
                 defaults={
+                    "username": tutor_data["id"],
                     "imie": first_name,
                     "nazwisko": last_name,
                     "typ": "tutor",

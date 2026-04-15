@@ -131,6 +131,66 @@ class MainViewsTests(TestCase):
         self.assertEqual(home_props['onboardingMode'], 'account-type')
         self.assertEqual(home_props['onboardingNextTarget'], reverse('about'))
 
+    def test_student_onboarding_save_updates_auth_and_custom_user_names(self):
+        auth_user = User.objects.create_user(
+            username='student-save',
+            email='student-save@example.com',
+            password='secret123',
+        )
+        self.client.force_login(auth_user)
+
+        response = self.client.post(
+            reverse('student_onboarding_save'),
+            data=json.dumps(
+                {
+                    'fullName': 'Anna Kowalska',
+                    'schoolLevel': 'Studia',
+                    'subjects': ['Matematyka'],
+                    'interests': ['Programowanie'],
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        auth_user.refresh_from_db()
+        custom_user = TutorUser.objects.get(username='student-save')
+
+        self.assertEqual(auth_user.first_name, 'Anna')
+        self.assertEqual(auth_user.last_name, 'Kowalska')
+        self.assertEqual(custom_user.imie, 'Anna')
+        self.assertEqual(custom_user.nazwisko, 'Kowalska')
+        self.assertEqual(custom_user.typ, 'uczen')
+
+    def test_student_onboarding_save_accepts_name_only_payload(self):
+        auth_user = User.objects.create_user(
+            username='student-name-only',
+            email='student-name-only@example.com',
+            password='secret123',
+        )
+        self.client.force_login(auth_user)
+
+        response = self.client.post(
+            reverse('student_onboarding_save'),
+            data=json.dumps(
+                {
+                    'fullName': 'Maria Nowak',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        auth_user.refresh_from_db()
+        custom_user = TutorUser.objects.get(username='student-name-only')
+
+        self.assertEqual(auth_user.first_name, 'Maria')
+        self.assertEqual(auth_user.last_name, 'Nowak')
+        self.assertEqual(custom_user.imie, 'Maria')
+        self.assertEqual(custom_user.nazwisko, 'Nowak')
+
     def test_about_page_renders_animated_layout(self):
         response = self.client.get(reverse('about'))
         html = response.content.decode()
@@ -235,6 +295,7 @@ class MainViewsTests(TestCase):
         custom_user = TutorUser.objects.get(email='safe-user@example.com')
 
         self.assertEqual(custom_user.email, 'safe-user@example.com')
+        self.assertEqual(custom_user.username, 'safe-user')
         self.assertNotIn('haslo', [field.name for field in TutorUser._meta.fields])
 
     def test_api_register_requires_csrf_token(self):
@@ -270,7 +331,31 @@ class MainViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         custom_user = TutorUser.objects.get(email='api-user@example.com')
         self.assertEqual(custom_user.email, 'api-user@example.com')
+        self.assertEqual(custom_user.username, 'api-user')
         self.assertNotIn('haslo', [field.name for field in TutorUser._meta.fields])
+
+    def test_home_page_resolves_custom_user_by_username(self):
+        auth_user = User.objects.create_user(
+            username='username-link',
+            email='auth-link@example.com',
+            password='secret123',
+        )
+        custom_user = TutorUser.objects.create(
+            username='username-link',
+            imie='Ewa',
+            nazwisko='Tutor',
+            email='custom-link@example.com',
+            typ='tutor',
+        )
+        Tutor.objects.create(uzytkownik=custom_user)
+
+        self.client.force_login(auth_user)
+        response = self.client.get(reverse('home'))
+        home_props = self._extract_home_props(response)
+
+        self.assertTrue(home_props['currentUser']['isTutor'])
+        self.assertEqual(home_props['currentUser']['accountType'], 'tutor')
+        self.assertEqual(home_props['currentUser']['displayName'], 'Ewa Tutor')
 
     def test_login_redirects_to_safe_next_target(self):
         User.objects.create_user(username='tester', password='secret123')
@@ -377,6 +462,7 @@ class MainViewsTests(TestCase):
             password='secret123',
         )
         tutor_user = TutorUser.objects.create(
+            username='dashboard-tutor',
             imie='Ela',
             nazwisko='Maj',
             email='dashboard-tutor@example.com',
@@ -443,6 +529,7 @@ class MainViewsTests(TestCase):
             password='secret123',
         )
         tutor_user = TutorUser.objects.create(
+            username='edit-tutor',
             imie='Ela',
             nazwisko='Maj',
             email='edit-tutor@example.com',
@@ -534,6 +621,7 @@ class MainViewsTests(TestCase):
             password='secret123',
         )
         tutor_user = TutorUser.objects.create(
+            username='message-tutor',
             imie='Alicja',
             nazwisko='Nowak',
             email='message-tutor@example.com',
@@ -541,6 +629,7 @@ class MainViewsTests(TestCase):
         )
         tutor = Tutor.objects.create(uzytkownik=tutor_user, followers_count=1)
         student = TutorUser.objects.create(
+            username='student-thread',
             imie='Jan',
             nazwisko='Uczen',
             email='student-thread@example.com',
@@ -579,6 +668,7 @@ class MainViewsTests(TestCase):
             password='secret123',
         )
         tutor_user = TutorUser.objects.create(
+            username='thread-tutor',
             imie='Karol',
             nazwisko='Tutor',
             email='thread-tutor@example.com',
@@ -586,6 +676,7 @@ class MainViewsTests(TestCase):
         )
         tutor = Tutor.objects.create(uzytkownik=tutor_user, followers_count=1)
         student = TutorUser.objects.create(
+            username='ola-student',
             imie='Ola',
             nazwisko='Student',
             email='ola-student@example.com',
@@ -612,6 +703,7 @@ class MainViewsTests(TestCase):
 
     def test_portal_posts_returns_serialized_entries(self):
         tutor_user = TutorUser.objects.create(
+            username='ola-portal',
             imie='Ola',
             nazwisko='Maj',
             email='ola-portal@example.com',
@@ -654,6 +746,7 @@ class MainViewsTests(TestCase):
             password='secret123',
         )
         tutor_user = TutorUser.objects.create(
+            username='portal-tutor',
             imie='Ola',
             nazwisko='Tutor',
             email='portal-tutor@example.com',
@@ -688,6 +781,7 @@ class MainViewsTests(TestCase):
             password='secret123',
         )
         TutorUser.objects.create(
+            username='portal-student',
             imie='Adam',
             nazwisko='Uczen',
             email='portal-student@example.com',
@@ -717,12 +811,14 @@ class MainViewsTests(TestCase):
             password='secret123',
         )
         custom_user = TutorUser.objects.create(
+            username='observation-user',
             imie='Ola',
             nazwisko='Notatka',
             email='observation-user@example.com',
             typ='uczen',
         )
         tutor_user = TutorUser.objects.create(
+            username='patryk-tutor',
             imie='Patryk',
             nazwisko='Tutor',
             email='patryk-tutor@example.com',
@@ -760,12 +856,14 @@ class MainViewsTests(TestCase):
             password='secret123',
         )
         TutorUser.objects.create(
+            username='observation-create',
             imie='Adam',
             nazwisko='Uczen',
             email='observation-create@example.com',
             typ='uczen',
         )
         tutor_user = TutorUser.objects.create(
+            username='kasia-mentor',
             imie='Kasia',
             nazwisko='Mentorka',
             email='kasia-mentor@example.com',
@@ -796,6 +894,7 @@ class MainViewsTests(TestCase):
 
     def test_tutor_search_returns_exact_and_suggested_results(self):
         exact_user = TutorUser.objects.create(
+            username='jan',
             imie='Jan',
             nazwisko='Kowalski',
             email='jan@example.com',
@@ -820,6 +919,7 @@ class MainViewsTests(TestCase):
         )
 
         suggested_user = TutorUser.objects.create(
+            username='anna',
             imie='Anna',
             nazwisko='Nowak',
             email='anna@example.com',
@@ -864,6 +964,7 @@ class MainViewsTests(TestCase):
 
     def test_tutor_search_requires_matching_topic_for_exact_match(self):
         tutor_user = TutorUser.objects.create(
+            username='topic-mismatch',
             imie='Jan',
             nazwisko='Kowalski',
             email='topic-mismatch@example.com',
@@ -907,6 +1008,7 @@ class MainViewsTests(TestCase):
 
     def test_tutor_search_returns_fallback_suggestions_when_exact_match_is_missing(self):
         tutor_user = TutorUser.objects.create(
+            username='piotr',
             imie='Piotr',
             nazwisko='Mazur',
             email='piotr@example.com',
@@ -1011,5 +1113,7 @@ class SeedTutorsCommandTests(TestCase):
 
         self.assertTrue(auth_user.check_password('Tutor123!'))
         self.assertEqual(seeded_tutor.email, 'lukasz-gamon@rentnerd.local')
+        self.assertEqual(seeded_tutor.username, 'lukasz-gamon')
         self.assertEqual(seeded_reviewer.email, 'reviewer1@rentnerd.local')
+        self.assertEqual(seeded_reviewer.username, 'reviewer1')
         self.assertNotIn('haslo', [field.name for field in TutorUser._meta.fields])

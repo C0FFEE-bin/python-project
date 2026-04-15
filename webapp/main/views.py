@@ -69,6 +69,10 @@ validate_username = UnicodeUsernameValidator()
 logger = logging.getLogger(__name__)
 
 
+def _normalize_auth_username(value):
+    return (value or "").strip()
+
+
 def _validate_registration_data(username, normalized_email, password, password_confirm=None):
     if not username or not normalized_email or not password:
         return "Uzupelnij wszystkie pola formularza."
@@ -89,6 +93,9 @@ def _validate_registration_data(username, normalized_email, password, password_c
     if User.objects.filter(username__iexact=username).exists():
         return "Ta nazwa uzytkownika jest juz zajeta."
 
+    if CustomUser.objects.filter(username__iexact=username).exists():
+        return "Ta nazwa uzytkownika jest juz zajeta."
+
     if (
             User.objects.filter(email__iexact=normalized_email).exists()
             or CustomUser.objects.filter(email__iexact=normalized_email).exists()
@@ -102,6 +109,7 @@ def _create_auth_and_custom_user(username, normalized_email, password):
     with transaction.atomic():
         user = User.objects.create_user(username, normalized_email, password)
         CustomUser.objects.create(
+            username=username,
             imie=username,
             nazwisko="",
             email=normalized_email,
@@ -114,11 +122,34 @@ def _get_custom_user_for_auth_user(auth_user):
     if not getattr(auth_user, "is_authenticated", False):
         return None
 
+    auth_username = _normalize_auth_username(auth_user.get_username())
     normalized_email = User.objects.normalize_email(auth_user.email or "").strip().lower()
-    if not normalized_email:
-        return None
+    custom_user = None
 
-    return CustomUser.objects.filter(email__iexact=normalized_email).first()
+    if auth_username:
+        custom_user = CustomUser.objects.filter(username__iexact=auth_username).first()
+
+    if custom_user is None and normalized_email:
+        custom_user = CustomUser.objects.filter(email__iexact=normalized_email).first()
+
+    if (
+        custom_user is not None
+        and auth_username
+        and (
+            custom_user.username != auth_username
+            or (normalized_email and custom_user.email != normalized_email)
+        )
+    ):
+        update_fields = []
+        if custom_user.username != auth_username:
+            custom_user.username = auth_username
+            update_fields.append("username")
+        if normalized_email and custom_user.email != normalized_email:
+            custom_user.email = normalized_email
+            update_fields.append("email")
+        custom_user.save(update_fields=update_fields)
+
+    return custom_user
 
 
 def _get_or_create_custom_user_for_auth_user(auth_user):
@@ -126,14 +157,16 @@ def _get_or_create_custom_user_for_auth_user(auth_user):
     if custom_user is not None:
         return custom_user
 
+    auth_username = _normalize_auth_username(auth_user.get_username())
     normalized_email = User.objects.normalize_email(auth_user.email or "").strip().lower()
-    if not normalized_email:
+    if not auth_username or not normalized_email:
         return None
 
     first_name = (auth_user.first_name or auth_user.get_username() or "").strip()
     last_name = (auth_user.last_name or "").strip()
 
     return CustomUser.objects.create(
+        username=auth_username,
         imie=first_name or auth_user.get_username(),
         nazwisko=last_name,
         email=normalized_email,
@@ -261,6 +294,7 @@ def _get_home_props(request):
                 "component_preview",
                 kwargs={"component_slug": "school-level-select"},
             ),
+            "studentOnboardingSave": reverse("student_onboarding_save"),
             "subjectSelectPreview": reverse(
                 "component_preview",
                 kwargs={"component_slug": "subject-select"},
@@ -1762,6 +1796,51 @@ def logout_user(request):
 
 # === ENDPOINTY DO REACTA ===
 @login_required
+def student_onboarding_save(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Zla metoda"}, status=405)
+
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Niepoprawne dane JSON."}, status=400)
+
+    full_name = (payload.get("fullName") or "").strip()
+    if len(full_name) < 3:
+        return JsonResponse({"error": "Podaj imie i nazwisko."}, status=400)
+
+    first_name, last_name = _split_full_name(full_name, request.user.get_username())
+
+    try:
+        with transaction.atomic():
+            auth_user = request.user
+            auth_user.first_name = first_name
+            auth_user.last_name = last_name
+            auth_user.save(update_fields=["first_name", "last_name"])
+
+            custom_user = _get_or_create_custom_user_for_auth_user(auth_user)
+            if custom_user is None:
+                return JsonResponse({"error": "Nie udalo sie zapisac danych konta."}, status=400)
+
+            custom_user.username = auth_user.get_username()
+            custom_user.email = User.objects.normalize_email(auth_user.email or "").strip().lower()
+            custom_user.imie = first_name or auth_user.get_username()
+            custom_user.nazwisko = last_name
+            custom_user.typ = "uczen"
+            custom_user.save(update_fields=["username", "email", "imie", "nazwisko", "typ"])
+    except IntegrityError as exc:
+        logger.exception("Database integrity error during student onboarding save: %s", exc)
+        raise
+
+    return JsonResponse(
+        {
+            "message": "Profil ucznia zapisany.",
+            "userId": custom_user.pk,
+        }
+    )
+
+
+@login_required
 def tutor_onboarding_save(request):
     if request.method != "POST":
         return JsonResponse({"error": "Zla metoda"}, status=405)
@@ -1811,17 +1890,20 @@ def tutor_onboarding_save(request):
             auth_user.save(update_fields=["first_name", "last_name"])
 
             custom_user, _ = CustomUser.objects.get_or_create(
-                email=auth_user.email,
+                username=auth_user.get_username(),
                 defaults={
+                    "email": auth_user.email,
                     "imie": first_name or auth_user.get_username(),
                     "nazwisko": last_name,
                     "typ": "tutor",
                 },
             )
+            custom_user.username = auth_user.get_username()
+            custom_user.email = User.objects.normalize_email(auth_user.email or "").strip().lower()
             custom_user.imie = first_name or auth_user.get_username()
             custom_user.nazwisko = last_name
             custom_user.typ = "tutor"
-            custom_user.save(update_fields=["imie", "nazwisko", "typ"])
+            custom_user.save(update_fields=["username", "email", "imie", "nazwisko", "typ"])
 
             tutor, _ = Tutor.objects.get_or_create(uzytkownik=custom_user)
             tutor.opis = about

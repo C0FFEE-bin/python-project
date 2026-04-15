@@ -182,6 +182,33 @@ export async function saveTutorOnboardingProfile({
     return response.json();
 }
 
+export async function saveStudentOnboardingProfile({
+    payload,
+    saveUrl,
+    csrfToken,
+    databaseErrorUrl = "/database-error",
+}) {
+    const response = await fetch(saveUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (shouldRedirectToDatabaseError(response)) {
+        window.location.assign(databaseErrorUrl);
+        throw new Error("Blad bazy danych.");
+    }
+
+    if (!response.ok) {
+        throw new Error(await parseWriteErrorMessage(response));
+    }
+
+    return response.json();
+}
+
 export async function createPortalPost({
     payload,
     postsUrl,

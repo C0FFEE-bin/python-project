@@ -15,6 +15,7 @@ urlpatterns = [
     path("logout", views.logout_user, name="logout_user"),
     path("api/portal-observations", views.portal_observations, name="portal_observations"),
     path("api/portal-posts", views.portal_posts, name="portal_posts"),
+    path("api/student-onboarding/profile", views.student_onboarding_save, name="student_onboarding_save"),
     path("api/tutor-search", views.tutor_search, name="tutor_search"),
     path("api/tutor-onboarding/profile", views.tutor_onboarding_save, name="tutor_onboarding_save"),
     path("api/tutor-dashboard", views.tutor_dashboard_data, name="tutor_dashboard_data"),
