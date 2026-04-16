@@ -33,6 +33,8 @@ const SIDEBAR_SECTIONS = [
 
 const BOOKABLE_SLOT_STATUSES = new Set(["available", "highlighted"]);
 const REVIEW_SCORE_OPTIONS = [5, 4, 3, 2, 1];
+const DEFAULT_BOOKING_NOTE =
+    "Aby twoje zajecia byly na najwyzszym poziomie, podaj tematyke zajec lub czego oczekujesz od korepetytora.";
 
 function safeArray(values) {
     return Array.isArray(values) ? values : [];
@@ -121,10 +123,6 @@ function buildTimeRangeLabel(startLabel) {
     return `${startLabel}-${String((hours + 1) % 24).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
-function parseRequestedHourStart(hourRange) {
-    return String(hourRange || "").split("-")[0].trim();
-}
-
 function buildBookableSlots(schedule) {
     const days = safeArray(schedule?.days);
     const rows = safeArray(schedule?.rows);
@@ -157,18 +155,28 @@ function buildBookableSlots(schedule) {
     return slots;
 }
 
-function getPreferredSlotId(slots, requestDate, requestFilters) {
-    if (!slots.length) {
-        return "";
-    }
+function buildScheduleGrid(schedule) {
+    const days = safeArray(schedule?.days);
+    const rows = safeArray(schedule?.rows);
 
-    const requestedStart = parseRequestedHourStart(requestFilters?.hour);
-    const exactMatch = slots.find((slot) => slot.dateIso === requestDate && slot.timeLabel === requestedStart);
-    if (exactMatch) {
-        return exactMatch.id;
-    }
+    return {
+        days,
+        rows: rows.map((row) => ({
+            timeLabel: row?.timeLabel || "",
+            cells: safeArray(row?.slots).map((status, index) => {
+                const day = days[index];
 
-    return slots.find((slot) => slot.isHighlighted)?.id || slots[0].id;
+                return {
+                    id: `${day?.iso || index}-${row?.timeLabel || index}`,
+                    status: status || "unavailable",
+                    timeRangeLabel: buildTimeRangeLabel(row?.timeLabel || ""),
+                    shortDateLabel: formatShortDateLabel(day?.iso, day?.label || ""),
+                    fullDateLabel: formatLongDateLabel(day?.iso, day?.label || ""),
+                    isBookable: BOOKABLE_SLOT_STATUSES.has(status),
+                };
+            }),
+        })),
+    };
 }
 
 function buildSubjectOptions(tutor, requestFilters) {
@@ -212,7 +220,7 @@ export default function TutorProfile({
     const [followersCount, setFollowersCount] = useState(Number(tutor?.followersCount || 0));
     const [followError, setFollowError] = useState("");
     const [isFollowSubmitting, setIsFollowSubmitting] = useState(false);
-    const [message, setMessage] = useState("");
+    const [message, setMessage] = useState(DEFAULT_BOOKING_NOTE);
     const [reviews, setReviews] = useState(() => safeArray(tutor?.reviews));
     const [featuredReview, setFeaturedReview] = useState(() => tutor?.review || {});
     const [ratingValue, setRatingValue] = useState(Number(tutor?.rating || 0));
@@ -227,20 +235,13 @@ export default function TutorProfile({
     const levelOptions = useMemo(() => safeArray(tutor?.levels).slice(0, 3), [tutor?.levels]);
     const topicOptions = useMemo(() => safeArray(tutor?.topics).slice(0, 3), [tutor?.topics]);
     const bookableSlots = useMemo(() => buildBookableSlots(tutor?.schedule), [tutor?.schedule]);
-    const preferredSlotId = useMemo(
-        () => getPreferredSlotId(bookableSlots, requestDate, requestFilters),
-        [bookableSlots, requestDate, requestFilters],
-    );
+    const scheduleGrid = useMemo(() => buildScheduleGrid(tutor?.schedule), [tutor?.schedule]);
     const [selectedSubject, setSelectedSubject] = useState(() => subjectOptions[0] || String(requestFilters?.subject || "").trim());
-    const [selectedSlotId, setSelectedSlotId] = useState(preferredSlotId);
+    const [selectedSlotId, setSelectedSlotId] = useState("");
 
     useEffect(() => {
         setSelectedSubject(subjectOptions[0] || String(requestFilters?.subject || "").trim());
     }, [requestFilters?.subject, subjectOptions, tutor?.id]);
-
-    useEffect(() => {
-        setSelectedSlotId(preferredSlotId);
-    }, [preferredSlotId, tutor?.id]);
 
     useEffect(() => {
         setIsFollowing(Boolean(tutor?.isFollowed));
@@ -250,7 +251,8 @@ export default function TutorProfile({
         setRatingValue(Number(tutor?.rating || 0));
         setOpinionsCount(Number(tutor?.opinions || 0));
         setFollowError("");
-        setMessage("");
+        setMessage(DEFAULT_BOOKING_NOTE);
+        setSelectedSlotId("");
         setReviewError("");
         setReviewSuccess("");
         setActiveTab("info");
@@ -280,11 +282,15 @@ export default function TutorProfile({
 
     const selectedSlot = bookableSlots.find((slot) => slot.id === selectedSlotId) || null;
     const review = featuredReview || {};
-    const summaryDateLabel = selectedSlot?.fullDateLabel || formatLongDateLabel(requestDate, "Termin do ustalenia");
-    const summaryTimeLabel = selectedSlot?.timeRangeLabel || requestFilters?.hour || "Do ustalenia";
+    const summaryDateLabel = selectedSlot?.fullDateLabel || "Wybierz termin z harmonogramu";
+    const summaryTimeLabel = selectedSlot?.timeRangeLabel || "Wybierz godzine";
     const summarySubjectLabel = selectedSubject || subjectOptions[0] || "Przedmiot do ustalenia";
     const summaryLevelLabel = requestFilters?.level || levelOptions[0] || "Rozne poziomy";
     const summaryTopicLabel = requestFilters?.topic || topicOptions[0] || "";
+    const summaryPriceLabel = Number.isFinite(Number(tutor?.hourlyRate))
+        ? `${Number(tutor.hourlyRate).toFixed(0)} zl/h`
+        : "Cena do ustalenia";
+    const hasBookingSelection = Boolean(selectedSlot);
     const coverStyle = heroImageSrc
         ? { backgroundImage: `linear-gradient(135deg, rgba(57, 70, 104, 0.14), rgba(205, 142, 231, 0.36)), url(${heroImageSrc})` }
         : undefined;
@@ -353,7 +359,97 @@ export default function TutorProfile({
     return (
         <div className="tutor-profile">
             <style>{`
-                .tutor-profile{display:grid;gap:18px}.tutor-profile__layout,.tutor-profile__main,.tutor-profile__surface,.tutor-profile__stack,.tutor-profile__booking-form,.tutor-profile__summary-list{display:grid;gap:18px}.tutor-profile__sidebar{position:sticky;top:108px;gap:18px}.tutor-profile__main{min-width:0}.tutor-profile__top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}.tutor-profile__back,.tutor-profile__badge,.tutor-profile__follow,.tutor-profile__follow-note,.tutor-profile__tab,.tutor-profile__choice,.tutor-profile__slot-pill,.tutor-profile__cta,.tutor-profile__fact,.tutor-profile__subject,.tutor-profile__meta{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;font-weight:700}.tutor-profile__back,.tutor-profile__badge{min-height:46px;padding:0 18px}.tutor-profile__back{border:0;background:#ffffffe8;color:#2f2a35;box-shadow:0 12px 22px #665f731f}.tutor-profile__badge{background:#ffffffe0;border:1px solid #a8a0b41f;color:#756c77}.tutor-profile__surface{padding:18px;border:1px solid #7a74821f;border-radius:30px;background:#f9f7fbf0;box-shadow:0 4px 0 #5f5d6614,0 18px 34px #5f596c1f}.tutor-profile__hero,.tutor-profile__panel{border:1px solid #857f911f;border-radius:26px;background:#fffffff4;box-shadow:inset 0 1px 0 #ffffffe0,0 12px 26px #5e5a6817}.tutor-profile__hero{overflow:hidden}.tutor-profile__cover{min-height:150px;padding:18px;background:radial-gradient(circle at 18% 18%,#ffffff57,transparent 22%),linear-gradient(135deg,#d7c0ea 0%,#9db1d9 100%);background-size:cover;background-position:center}.tutor-profile__cover-badges,.tutor-profile__facts,.tutor-profile__subjects,.tutor-profile__meta-strip,.tutor-profile__tabs,.tutor-profile__booking-subjects,.tutor-profile__slot-list{display:flex;flex-wrap:wrap;gap:10px}.tutor-profile__cover-badge{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:0 14px;border-radius:999px;background:#ffffff3d;color:#fff;font-size:.78rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}.tutor-profile__hero-body{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:end;padding:0 22px 22px;margin-top:-28px}.tutor-profile__avatar{display:grid;place-items:center;width:84px;aspect-ratio:1;border:4px solid #fff;border-radius:50%;background:linear-gradient(135deg,#637392,#c27ddb);color:#fff;font-family:var(--font-display);font-size:1.9rem;font-weight:800;box-shadow:0 14px 24px #5753612e}.tutor-profile__identity,.tutor-profile__about,.tutor-profile__panel-head,.tutor-profile__rating-box,.tutor-profile__review-card,.tutor-profile__booking-summary,.tutor-profile__field,.tutor-profile__sidebar-summary{display:grid;gap:12px}.tutor-profile__identity-main,.tutor-profile__booking-head,.tutor-profile__booking-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}.tutor-profile__name{margin:0;color:#1f1b24;font-family:var(--font-display);font-size:clamp(2rem,3vw,2.5rem);line-height:.94}.tutor-profile__sub{margin:10px 0 0;color:#80757d;font-size:.96rem;font-weight:700}.tutor-profile__follow-wrap{display:grid;justify-items:end;gap:8px}.tutor-profile__follow,.tutor-profile__follow-note{min-height:36px;padding:0 14px;font-size:.86rem}.tutor-profile__follow{border:0;background:linear-gradient(135deg,#d68ceb 0%,#b868d5 100%);color:#fff;box-shadow:0 10px 18px #b467d238}.tutor-profile__follow.is-active{background:#6666761f;color:#5f5b68;box-shadow:none}.tutor-profile__follow-note{background:#ece8f0;color:#736977}.tutor-profile__followers,.tutor-profile__sidebar-copy,.tutor-profile__slot-empty,.tutor-profile__summary-note,.tutor-profile__about p,.tutor-profile__review-text{margin:0;color:#7b7078;font-size:.92rem;line-height:1.6}.tutor-profile__fact,.tutor-profile__meta{min-height:36px;padding:0 14px;background:#eeebf3;color:#6f6571;font-size:.84rem}.tutor-profile__subject{min-height:36px;padding:0 14px;background:#eadcef;color:#7a6286;font-size:.84rem}.tutor-profile__tabs{margin-top:-2px}.tutor-profile__tab,.tutor-profile__choice,.tutor-profile__slot-pill{min-height:38px;padding:0 16px;border:1px solid #cdc5d4d9;background:#fff;color:#7e757d;font-size:.84rem;box-shadow:0 6px 14px #6a637412}.tutor-profile__tab.is-active,.tutor-profile__choice.is-selected,.tutor-profile__slot-pill.is-selected,.tutor-profile__cta{border-color:transparent;background:linear-gradient(135deg,#d68ceb 0%,#b868d5 100%);color:#fff;box-shadow:0 12px 20px #b467d238}.tutor-profile__panel{padding:22px}.tutor-profile__panel-label,.tutor-profile__summary-item span,.tutor-profile__sidebar-card span{margin:0;color:#9d9298;font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.tutor-profile__section-title,.tutor-profile__booking-summary h3{margin:0;color:#2f2936;font-family:var(--font-display);line-height:1}.tutor-profile__section-title{font-size:1.55rem}.tutor-profile__review-layout{display:grid;grid-template-columns:minmax(200px,240px) minmax(0,1fr);gap:18px}.tutor-profile__rating-box,.tutor-profile__review-card{padding:18px;border-radius:22px}.tutor-profile__rating-box{background:linear-gradient(180deg,#f5e6fbf0,#ffffffe6)}.tutor-profile__rating-value{display:flex;align-items:baseline;gap:6px;color:#2f2a35;font-family:var(--font-display);font-size:2.2rem;font-weight:800}.tutor-profile__rating-value small{color:#978c93;font-size:1rem}.tutor-profile__stars{display:flex;gap:4px;color:#f2a23c}.tutor-profile__review-card{background:#f7f5f9}.tutor-profile__review-header{display:flex;align-items:center;gap:12px}.tutor-profile__review-avatar{display:grid;place-items:center;width:44px;aspect-ratio:1;border-radius:50%;background:linear-gradient(135deg,#6b7c98,#bc72d6);color:#fff;font-weight:800}.tutor-profile__review-meta strong{display:block;color:#2f2a35}.tutor-profile__review-meta span{color:#988d94;font-size:.82rem;font-weight:700}.tutor-profile__booking-head{align-items:flex-start}.tutor-profile__booking-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(250px,.9fr);gap:18px;align-items:start;position:relative}.tutor-profile__field-label{color:#3a333e;font-size:.95rem;font-weight:800}.tutor-profile__slot-pill{min-height:42px;padding:0 14px}.tutor-profile__slot-pill-content{display:grid;gap:2px;justify-items:start;text-align:left}.tutor-profile__slot-pill-content strong{font-size:.88rem}.tutor-profile__slot-pill-content span{font-size:.76rem;opacity:.9}.tutor-profile__booking-message{display:grid;gap:10px}.tutor-profile__booking-message textarea{width:100%;min-height:114px;resize:vertical;padding:16px 18px;border:0;border-radius:18px;background:#f0edf3;color:#524954;font-size:.96rem;line-height:1.6;outline:none}.tutor-profile__booking-summary{padding:18px;border-radius:22px;background:linear-gradient(180deg,#f6f3faf0,#fffffff0);border:1px solid #bdb4c733}.tutor-profile__summary-item,.tutor-profile__sidebar-card{padding:12px 14px;border-radius:18px;background:#ffffffe0}.tutor-profile__summary-item{display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;align-items:center}.tutor-profile__summary-item i{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:12px;background:#d88ced29;color:#b565d4;font-size:.92rem}.tutor-profile__summary-item strong,.tutor-profile__sidebar-card strong,.tutor-profile__sidebar-card p{display:block;margin-top:4px;color:#332d38;font-size:.95rem;line-height:1.4}.tutor-profile__sidebar-card p{margin:4px 0 0}.tutor-profile__booking-actions{margin-top:4px}.tutor-profile__cta,.tutor-profile__cancel{flex:1;min-height:44px;border:0;border-radius:999px;font-size:.92rem;font-weight:700}.tutor-profile__cancel{background:#8b8c92;color:#fff;box-shadow:0 12px 20px #6b6d741f}.tutor-profile__help{position:absolute;right:16px;bottom:16px;display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border:0;border-radius:50%;background:linear-gradient(135deg,#ff42a0 0%,#5882ff 100%);color:#fff;box-shadow:0 16px 22px #5068bf38}.tutor-profile__sidebar-summary{margin-top:10px}.tutor-profile__placeholder{margin:0;color:#6d6270;font-size:.98rem;line-height:1.65}@media (max-width:1260px){.tutor-profile__booking-layout{grid-template-columns:1fr}.tutor-profile__help{position:static;justify-self:end}}@media (max-width:1100px){.tutor-profile__sidebar{position:static}}@media (max-width:900px){.tutor-profile__hero-body{grid-template-columns:1fr;align-items:start}.tutor-profile__follow-wrap{justify-items:start}.tutor-profile__review-layout{grid-template-columns:1fr}}@media (max-width:680px){.tutor-profile__surface{padding:14px}.tutor-profile__panel{padding:18px}.tutor-profile__tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.tutor-profile__back,.tutor-profile__badge,.tutor-profile__cancel,.tutor-profile__cta,.tutor-profile__tab{width:100%}.tutor-profile__hero-body{padding:0 18px 18px}.tutor-profile__name{font-size:1.8rem}}
+                .tutor-profile{display:grid;gap:18px}
+                .tutor-profile__layout,.tutor-profile__main,.tutor-profile__surface,.tutor-profile__stack,.tutor-profile__booking-form,.tutor-profile__summary-list,.tutor-profile__booking-details,.tutor-profile__booking-card{display:grid;gap:18px}
+                .tutor-profile__sidebar{position:sticky;top:108px;gap:18px}
+                .tutor-profile__main{min-width:0}
+                .tutor-profile__top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}
+                .tutor-profile__back,.tutor-profile__badge,.tutor-profile__follow,.tutor-profile__follow-note,.tutor-profile__tab,.tutor-profile__choice,.tutor-profile__cta,.tutor-profile__fact,.tutor-profile__subject,.tutor-profile__meta,.tutor-profile__legend-chip{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;font-weight:700}
+                .tutor-profile__back,.tutor-profile__badge{min-height:46px;padding:0 18px}
+                .tutor-profile__back{border:0;background:#ffffffe8;color:#2f2a35;box-shadow:0 12px 22px #665f731f}
+                .tutor-profile__badge{background:#ffffffe0;border:1px solid #a8a0b41f;color:#756c77}
+                .tutor-profile__surface{padding:18px;border:1px solid #7a74821f;border-radius:30px;background:#f9f7fbf0;box-shadow:0 4px 0 #5f5d6614,0 18px 34px #5f596c1f}
+                .tutor-profile__hero,.tutor-profile__panel{border:1px solid #857f911f;border-radius:26px;background:#fffffff4;box-shadow:inset 0 1px 0 #ffffffe0,0 12px 26px #5e5a6817}
+                .tutor-profile__hero{overflow:hidden}
+                .tutor-profile__cover{min-height:150px;padding:18px;background:radial-gradient(circle at 18% 18%,#ffffff57,transparent 22%),linear-gradient(135deg,#d7c0ea 0%,#9db1d9 100%);background-size:cover;background-position:center}
+                .tutor-profile__cover-badges,.tutor-profile__facts,.tutor-profile__subjects,.tutor-profile__meta-strip,.tutor-profile__tabs,.tutor-profile__booking-subjects,.tutor-profile__booking-legend{display:flex;flex-wrap:wrap;gap:10px}
+                .tutor-profile__cover-badge{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:0 14px;border-radius:999px;background:#ffffff3d;color:#fff;font-size:.78rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+                .tutor-profile__hero-body{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:end;padding:0 22px 22px;margin-top:-28px}
+                .tutor-profile__avatar{display:grid;place-items:center;width:84px;aspect-ratio:1;border:4px solid #fff;border-radius:50%;background:linear-gradient(135deg,#637392,#c27ddb);color:#fff;font-family:var(--font-display);font-size:1.9rem;font-weight:800;box-shadow:0 14px 24px #5753612e}
+                .tutor-profile__identity,.tutor-profile__about,.tutor-profile__panel-head,.tutor-profile__rating-box,.tutor-profile__review-card,.tutor-profile__booking-summary,.tutor-profile__field,.tutor-profile__sidebar-summary{display:grid;gap:12px}
+                .tutor-profile__identity-main,.tutor-profile__booking-head,.tutor-profile__booking-actions,.tutor-profile__booking-summary-footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}
+                .tutor-profile__name{margin:0;color:#1f1b24;font-family:var(--font-display);font-size:clamp(2rem,3vw,2.5rem);line-height:.94}
+                .tutor-profile__sub{margin:10px 0 0;color:#80757d;font-size:.96rem;font-weight:700}
+                .tutor-profile__follow-wrap{display:grid;justify-items:end;gap:8px}
+                .tutor-profile__follow,.tutor-profile__follow-note{min-height:36px;padding:0 14px;font-size:.86rem}
+                .tutor-profile__follow{border:0;background:linear-gradient(135deg,#d68ceb 0%,#b868d5 100%);color:#fff;box-shadow:0 10px 18px #b467d238}
+                .tutor-profile__follow.is-active{background:#6666761f;color:#5f5b68;box-shadow:none}
+                .tutor-profile__follow-note{background:#ece8f0;color:#736977}
+                .tutor-profile__followers,.tutor-profile__sidebar-copy,.tutor-profile__slot-empty,.tutor-profile__summary-note,.tutor-profile__about p,.tutor-profile__review-text,.tutor-profile__booking-copy{margin:0;color:#7b7078;font-size:.92rem;line-height:1.6}
+                .tutor-profile__fact,.tutor-profile__meta{min-height:36px;padding:0 14px;background:#eeebf3;color:#6f6571;font-size:.84rem}
+                .tutor-profile__subject{min-height:36px;padding:0 14px;background:#eadcef;color:#7a6286;font-size:.84rem}
+                .tutor-profile__tabs{margin-top:-2px}
+                .tutor-profile__tab,.tutor-profile__choice,.tutor-profile__cta{min-height:38px;padding:0 16px;border:1px solid #cdc5d4d9;background:#fff;color:#7e757d;font-size:.84rem;box-shadow:0 6px 14px #6a637412}
+                .tutor-profile__tab.is-active,.tutor-profile__choice.is-selected,.tutor-profile__cta{border-color:transparent;background:linear-gradient(135deg,#d68ceb 0%,#b868d5 100%);color:#fff;box-shadow:0 12px 20px #b467d238}
+                .tutor-profile__panel{padding:22px}
+                .tutor-profile__panel-label,.tutor-profile__summary-item span,.tutor-profile__sidebar-card span,.tutor-profile__booking-step{margin:0;color:#9d9298;font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+                .tutor-profile__section-title,.tutor-profile__booking-summary h3{margin:0;color:#2f2936;font-family:var(--font-display);line-height:1}
+                .tutor-profile__section-title{font-size:1.55rem}
+                .tutor-profile__review-layout{display:grid;grid-template-columns:minmax(200px,240px) minmax(0,1fr);gap:18px}
+                .tutor-profile__rating-box,.tutor-profile__review-card{padding:18px;border-radius:22px}
+                .tutor-profile__rating-box{background:linear-gradient(180deg,#f5e6fbf0,#ffffffe6)}
+                .tutor-profile__rating-value{display:flex;align-items:baseline;gap:6px;color:#2f2a35;font-family:var(--font-display);font-size:2.2rem;font-weight:800}
+                .tutor-profile__rating-value small{color:#978c93;font-size:1rem}
+                .tutor-profile__stars{display:flex;gap:4px;color:#f2a23c}
+                .tutor-profile__review-card{background:#f7f5f9}
+                .tutor-profile__review-header{display:flex;align-items:center;gap:12px}
+                .tutor-profile__review-avatar{display:grid;place-items:center;width:44px;aspect-ratio:1;border-radius:50%;background:linear-gradient(135deg,#6b7c98,#bc72d6);color:#fff;font-weight:800}
+                .tutor-profile__review-meta strong{display:block;color:#2f2a35}
+                .tutor-profile__review-meta span{color:#988d94;font-size:.82rem;font-weight:700}
+                .tutor-profile__booking-head{align-items:flex-start}
+                .tutor-profile__field-label{color:#3a333e;font-size:.95rem;font-weight:800}
+                .tutor-profile__booking-schedule{display:grid;gap:16px;padding:20px;border-radius:24px;background:linear-gradient(180deg,#f4f2f6,#eeebf0);border:1px solid #d8d1e0}
+                .tutor-profile__booking-grid-wrap{overflow:visible}
+                .tutor-profile__booking-grid{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:6px 8px}
+                .tutor-profile__booking-grid th,.tutor-profile__booking-grid td{padding:0;text-align:center}
+                .tutor-profile__booking-axis,.tutor-profile__booking-day,.tutor-profile__booking-time{border-radius:16px;background:#8a8a8f;color:#fff;font-weight:800}
+                .tutor-profile__booking-axis,.tutor-profile__booking-day{height:42px;font-size:.94rem}
+                .tutor-profile__booking-axis{width:86px;font-size:.82rem}
+                .tutor-profile__booking-time{width:86px;height:42px;font-size:.92rem}
+                .tutor-profile__booking-cell{position:relative;width:100%;min-width:0;height:42px;border:0;border-radius:999px;background:#8c8c8c;cursor:not-allowed;transition:transform .18s ease,box-shadow .18s ease,opacity .18s ease}
+                .tutor-profile__booking-cell.is-bookable{cursor:pointer}
+                .tutor-profile__booking-cell.is-bookable:hover{transform:translateY(-1px)}
+                .tutor-profile__booking-cell.is-available{background:#d9d9dc}
+                .tutor-profile__booking-cell.is-highlighted{background:#8c8c8c}
+                .tutor-profile__booking-cell.is-unavailable{background:#8c8c8c;opacity:.95}
+                .tutor-profile__booking-cell.is-blocked{background:#d9d9dc;opacity:.82}
+                .tutor-profile__booking-cell.is-selected,
+                .tutor-profile__booking-cell.is-selected.is-available,
+                .tutor-profile__booking-cell.is-selected.is-highlighted{background:linear-gradient(135deg,#c86ae0 0%,#a856cf 100%);box-shadow:0 14px 22px #b467d238;opacity:1}
+                .tutor-profile__booking-legend{justify-content:flex-end}
+                .tutor-profile__legend-chip{min-height:34px;padding:0 14px;background:#fff;color:#665f6b;font-size:.84rem;border:1px solid #d6cedf}
+                .tutor-profile__legend-dot{display:inline-flex;width:18px;height:18px;border-radius:50%}
+                .tutor-profile__legend-dot.is-selected{background:#b661d5}
+                .tutor-profile__legend-dot.is-available{background:#d9d9dc}
+                .tutor-profile__legend-dot.is-unavailable{background:#8c8c8c}
+                .tutor-profile__booking-details{margin-top:4px}
+                .tutor-profile__booking-card{padding:18px;border-radius:22px;background:linear-gradient(180deg,#f8f5fa,#ffffff);border:1px solid #d9d1e2}
+                .tutor-profile__booking-message{display:grid;gap:10px}
+                .tutor-profile__booking-message textarea{width:100%;min-height:124px;resize:vertical;padding:18px;border:0;border-radius:20px;background:#efedf0;color:#524954;font-size:1rem;line-height:1.6;outline:none}
+                .tutor-profile__booking-summary{padding:20px;border-radius:22px;background:linear-gradient(180deg,#f6f3faf0,#fffffff0);border:1px solid #bdb4c733}
+                .tutor-profile__summary-item,.tutor-profile__sidebar-card{padding:12px 14px;border-radius:18px;background:#ffffffe0}
+                .tutor-profile__summary-item{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;align-items:center}
+                .tutor-profile__summary-item strong,.tutor-profile__sidebar-card strong,.tutor-profile__sidebar-card p{display:block;margin-top:4px;color:#332d38;font-size:1rem;line-height:1.4}
+                .tutor-profile__sidebar-card p{margin:4px 0 0}
+                .tutor-profile__booking-actions{margin-top:4px}
+                .tutor-profile__cta,.tutor-profile__cancel{flex:1;min-height:48px;border:0;border-radius:999px;font-size:.98rem;font-weight:700}
+                .tutor-profile__cancel{background:#8b8c92;color:#fff;box-shadow:0 12px 20px #6b6d741f}
+                .tutor-profile__sidebar-summary{margin-top:10px}
+                .tutor-profile__placeholder{margin:0;color:#6d6270;font-size:.98rem;line-height:1.65}
+                @media (max-width:1100px){.tutor-profile__sidebar{position:static}}
+                @media (max-width:900px){.tutor-profile__hero-body{grid-template-columns:1fr;align-items:start}.tutor-profile__follow-wrap{justify-items:start}.tutor-profile__review-layout{grid-template-columns:1fr}.tutor-profile__booking-legend{justify-content:flex-start}}
+                @media (max-width:900px){.tutor-profile__booking-grid{border-spacing:4px 6px}.tutor-profile__booking-axis,.tutor-profile__booking-time{width:72px}.tutor-profile__booking-axis,.tutor-profile__booking-day,.tutor-profile__booking-time,.tutor-profile__booking-cell{height:38px}.tutor-profile__booking-day,.tutor-profile__booking-time{font-size:.84rem}}
+                @media (max-width:680px){.tutor-profile__surface{padding:14px}.tutor-profile__panel{padding:18px}.tutor-profile__tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.tutor-profile__back,.tutor-profile__badge,.tutor-profile__cancel,.tutor-profile__cta,.tutor-profile__tab,.tutor-profile__choice{width:100%}.tutor-profile__hero-body{padding:0 18px 18px}.tutor-profile__name{font-size:1.8rem}.tutor-profile__booking-schedule{padding:14px}.tutor-profile__booking-grid{border-spacing:3px 5px}.tutor-profile__booking-axis,.tutor-profile__booking-time{width:62px}.tutor-profile__booking-axis{font-size:.72rem}.tutor-profile__booking-day,.tutor-profile__booking-time{font-size:.76rem}.tutor-profile__booking-axis,.tutor-profile__booking-day,.tutor-profile__booking-time,.tutor-profile__booking-cell{height:34px}}
             `}</style>
 
             <div className="portal-hub__inner tutor-profile__layout">
@@ -418,7 +514,9 @@ export default function TutorProfile({
                         <p className="portal-sidebar__heading">Twoje operacje</p>
                         <p className="tutor-profile__sidebar-copy">
                             {bookableSlots.length
-                                ? "Termin jest juz wybrany z wynikow wyszukiwania. Teraz mozesz dopracowac rezerwacje."
+                                ? hasBookingSelection
+                                    ? "Masz juz wybrany termin. Nizej mozesz dopisac notatke i przejsc do platnosci."
+                                    : "Najpierw wybierz przedmiot i kliknij wolny termin w harmonogramie."
                                 : "Tutor nie ma jeszcze wolnego slotu w tym widoku, ale ekran zapisu jest juz gotowy."}
                         </p>
                     </div>
@@ -668,110 +766,147 @@ export default function TutorProfile({
                                     <div className="tutor-profile__booking-head">
                                         <div className="tutor-profile__panel-head">
                                             <p className="tutor-profile__panel-label">Zarezerwuj zajecia</p>
-                                            <h2 className="tutor-profile__section-title">Wybierz przedmiot</h2>
+                                            <h2 className="tutor-profile__section-title">Zarezerwuj swoje zajecia</h2>
                                         </div>
-                                        <span className="tutor-profile__badge">
-                                            {formatLongDateLabel(requestDate, "Termin do ustalenia")}
-                                        </span>
                                     </div>
 
-                                    <div className="tutor-profile__booking-layout">
-                                        <div className="tutor-profile__booking-form">
-                                            <div className="tutor-profile__field">
-                                                <span className="tutor-profile__field-label">Przedmiot</span>
-                                                <div className="tutor-profile__booking-subjects">
-                                                    {subjectOptions.map((subject) => (
-                                                        <button
-                                                            key={subject}
-                                                            className={`tutor-profile__choice${selectedSubject === subject ? " is-selected" : ""}`}
-                                                            type="button"
-                                                            onClick={() => setSelectedSubject(subject)}
-                                                        >
-                                                            {subject}
-                                                        </button>
-                                                    ))}
-                                                </div>
+                                    <div className="tutor-profile__booking-form">
+                                        <div className="tutor-profile__field">
+                                            <span className="tutor-profile__booking-step">1. Wybierz przedmiot:</span>
+                                            <div className="tutor-profile__booking-subjects">
+                                                {subjectOptions.map((subject) => (
+                                                    <button
+                                                        key={subject}
+                                                        className={`tutor-profile__choice${selectedSubject === subject ? " is-selected" : ""}`}
+                                                        type="button"
+                                                        onClick={() => setSelectedSubject(subject)}
+                                                    >
+                                                        {subject}
+                                                    </button>
+                                                ))}
                                             </div>
-
-                                            <div className="tutor-profile__field">
-                                                <span className="tutor-profile__field-label">Termin</span>
-                                                {bookableSlots.length ? (
-                                                    <div className="tutor-profile__slot-list">
-                                                        {bookableSlots.slice(0, 6).map((slot) => (
-                                                            <button
-                                                                key={slot.id}
-                                                                className={`tutor-profile__slot-pill${selectedSlotId === slot.id ? " is-selected" : ""}`}
-                                                                type="button"
-                                                                onClick={() => setSelectedSlotId(slot.id)}
-                                                            >
-                                                                <span className="tutor-profile__slot-pill-content">
-                                                                    <strong>{slot.timeRangeLabel}</strong>
-                                                                    <span>{slot.weekdayLabel}, {slot.shortDateLabel}</span>
-                                                                </span>
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <p className="tutor-profile__slot-empty">
-                                                        Brak gotowego slotu w tym tygodniu. Podsumowanie nadal pokazuje
-                                                        termin z wyszukiwania.
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            <label className="tutor-profile__booking-message">
-                                                <span className="tutor-profile__field-label">Wiadomosc do korepetytora</span>
-                                                <textarea
-                                                    value={message}
-                                                    onChange={(event) => setMessage(event.target.value)}
-                                                    placeholder="Chcesz cos przekazac korepetytorowi? Mozesz to zrobic tutaj."
-                                                />
-                                            </label>
                                         </div>
 
-                                        <aside className="tutor-profile__booking-summary">
-                                            <h3>Podsumowanie</h3>
-                                            <div className="tutor-profile__summary-list">
-                                                <div className="tutor-profile__summary-item">
-                                                    <i className="fa-regular fa-calendar" aria-hidden="true"></i>
-                                                    <div>
-                                                        <span>Data</span>
-                                                        <strong>{summaryDateLabel}</strong>
-                                                    </div>
-                                                </div>
-                                                <div className="tutor-profile__summary-item">
-                                                    <i className="fa-regular fa-clock" aria-hidden="true"></i>
-                                                    <div>
-                                                        <span>Termin</span>
-                                                        <strong>{summaryTimeLabel}</strong>
-                                                    </div>
-                                                </div>
-                                                <div className="tutor-profile__summary-item">
-                                                    <i className="fa-solid fa-book-open" aria-hidden="true"></i>
-                                                    <div>
-                                                        <span>Przedmiot</span>
-                                                        <strong>{summarySubjectLabel}</strong>
-                                                    </div>
+                                        <div className="tutor-profile__booking-schedule">
+                                            <div className="tutor-profile__booking-head">
+                                                <span className="tutor-profile__booking-step">2. Wybierz date i godzine:</span>
+                                                <div className="tutor-profile__booking-legend" aria-label="Legenda harmonogramu">
+                                                    <span className="tutor-profile__legend-chip">
+                                                        <span className="tutor-profile__legend-dot is-selected" aria-hidden="true"></span>
+                                                        Wybrane zajecia
+                                                    </span>
+                                                    <span className="tutor-profile__legend-chip">
+                                                        <span className="tutor-profile__legend-dot is-available" aria-hidden="true"></span>
+                                                        Dostepne zajecia
+                                                    </span>
+                                                    <span className="tutor-profile__legend-chip">
+                                                        <span className="tutor-profile__legend-dot is-unavailable" aria-hidden="true"></span>
+                                                        Niedostepne zajecia
+                                                    </span>
                                                 </div>
                                             </div>
 
-                                            {summaryTopicLabel ? (
-                                                <p className="tutor-profile__summary-note">
-                                                    Temat z wyszukiwania: <strong>{summaryTopicLabel}</strong>
+                                            {scheduleGrid.days.length && scheduleGrid.rows.length ? (
+                                                <div className="tutor-profile__booking-grid-wrap">
+                                                    <table className="tutor-profile__booking-grid">
+                                                        <thead>
+                                                            <tr>
+                                                                <th className="tutor-profile__booking-axis">Godz./Data</th>
+                                                                {scheduleGrid.days.map((day) => (
+                                                                    <th key={day.iso} className="tutor-profile__booking-day">{day.label}</th>
+                                                                ))}
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {scheduleGrid.rows.map((row) => (
+                                                                <tr key={row.timeLabel}>
+                                                                    <td className="tutor-profile__booking-time">{row.timeLabel}</td>
+                                                                    {row.cells.map((cell) => {
+                                                                        const isSelected = selectedSlotId === cell.id;
+                                                                        const className = [
+                                                                            "tutor-profile__booking-cell",
+                                                                            `is-${cell.status}`,
+                                                                            cell.isBookable ? "is-bookable" : "",
+                                                                            isSelected ? "is-selected" : "",
+                                                                        ].filter(Boolean).join(" ");
+
+                                                                        return (
+                                                                            <td key={cell.id}>
+                                                                                <button
+                                                                                    className={className}
+                                                                                    type="button"
+                                                                                    disabled={!cell.isBookable}
+                                                                                    aria-label={`${cell.timeRangeLabel} ${cell.shortDateLabel}`}
+                                                                                    onClick={() => setSelectedSlotId(cell.id)}
+                                                                                />
+                                                                            </td>
+                                                                        );
+                                                                    })}
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <p className="tutor-profile__slot-empty">
+                                                    Brak gotowego harmonogramu dla tego tutora.
                                                 </p>
-                                            ) : null}
+                                            )}
+                                        </div>
 
-                                            <div className="tutor-profile__booking-actions">
-                                                <button className="tutor-profile__cancel" type="button" onClick={onBack}>
-                                                    Anuluj
-                                                </button>
-                                                <button className="tutor-profile__cta" type="button">Dalej</button>
+                                        {hasBookingSelection ? (
+                                            <div className="tutor-profile__booking-details">
+                                                <label className="tutor-profile__booking-card tutor-profile__booking-message">
+                                                    <span className="tutor-profile__booking-step">3. Dodatkowe informacje</span>
+                                                    <textarea
+                                                        value={message}
+                                                        onChange={(event) => setMessage(event.target.value)}
+                                                    />
+                                                </label>
+
+                                                <aside className="tutor-profile__booking-summary">
+                                                    <h3>4. Podsumowanie</h3>
+                                                    <div className="tutor-profile__summary-list">
+                                                        <div className="tutor-profile__summary-item">
+                                                            <span>Data</span>
+                                                            <strong>{summaryDateLabel}</strong>
+                                                        </div>
+                                                        <div className="tutor-profile__summary-item">
+                                                            <span>Godzina</span>
+                                                            <strong>{summaryTimeLabel}</strong>
+                                                        </div>
+                                                        <div className="tutor-profile__summary-item">
+                                                            <span>Przedmiot</span>
+                                                            <strong>{summarySubjectLabel}</strong>
+                                                        </div>
+                                                        <div className="tutor-profile__summary-item">
+                                                            <span>Cena zajec</span>
+                                                            <strong>{summaryPriceLabel}</strong>
+                                                        </div>
+                                                    </div>
+
+                                                    {summaryTopicLabel ? (
+                                                        <p className="tutor-profile__summary-note">
+                                                            Temat z wyszukiwania: <strong>{summaryTopicLabel}</strong>
+                                                        </p>
+                                                    ) : null}
+
+                                                    <div className="tutor-profile__booking-summary-footer">
+                                                        <button className="tutor-profile__cancel" type="button" onClick={onBack}>
+                                                            Anuluj
+                                                        </button>
+                                                        <button className="tutor-profile__cta" type="button">
+                                                            Przejdz do platnosci
+                                                        </button>
+                                                    </div>
+                                                </aside>
                                             </div>
-                                        </aside>
-
-                                        <button className="tutor-profile__help" type="button" aria-label="Szybka pomoc">
-                                            <i className="fa-solid fa-bolt" aria-hidden="true"></i>
-                                        </button>
+                                        ) : (
+                                            <p className="tutor-profile__booking-copy">
+                                                Na poczatku widac tylko wybor przedmiotu i harmonogram. Po kliknieciu terminu
+                                                pojawia sie notatka, podsumowanie i przycisk platnosci.
+                                            </p>
+                                        )}
                                     </div>
                                 </section>
                             </div>
