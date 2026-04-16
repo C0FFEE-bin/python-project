@@ -15,8 +15,14 @@ if not exist "%MANAGE_PY%" (
   exit /b 1
 )
 
+
 pushd "%DJANGO_DIR%"
-"%PYTHON_EXE%" manage.py runserver %*
+if "%~1"=="" (
+  "%PYTHON_EXE%" manage.py runserver
+) else (
+  "%PYTHON_EXE%" manage.py %*
+)
 set "EXIT_CODE=%ERRORLEVEL%"
 popd
 exit /b %EXIT_CODE%
+

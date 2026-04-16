@@ -14,6 +14,9 @@ function normalizePortalPost(post) {
         ...post,
         avatarTone: post?.avatarTone || "slate",
         checklist: Array.isArray(post?.checklist) ? post.checklist : [],
+        comments: Array.isArray(post?.comments) ? post.comments : [],
+        commentsCount: typeof post?.commentsCount === "number" ? post.commentsCount : 0,
+        canComment: Boolean(post?.canComment),
         initials: post?.initials || "T",
         paragraphs: Array.isArray(post?.paragraphs) ? post.paragraphs : [],
         tags: Array.isArray(post?.tags) ? post.tags : [],
@@ -182,6 +185,33 @@ export async function saveTutorOnboardingProfile({
     return response.json();
 }
 
+export async function saveStudentOnboardingProfile({
+    payload,
+    saveUrl,
+    csrfToken,
+    databaseErrorUrl = "/database-error",
+}) {
+    const response = await fetch(saveUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (shouldRedirectToDatabaseError(response)) {
+        window.location.assign(databaseErrorUrl);
+        throw new Error("Blad bazy danych.");
+    }
+
+    if (!response.ok) {
+        throw new Error(await parseWriteErrorMessage(response));
+    }
+
+    return response.json();
+}
+
 export async function createPortalPost({
     payload,
     postsUrl,
@@ -211,6 +241,64 @@ export async function createPortalPost({
         ...responsePayload,
         post: responsePayload?.post ? normalizePortalPost(responsePayload.post) : null,
     };
+}
+
+export async function createPortalPostComment({
+    payload,
+    commentsUrl,
+    csrfToken,
+    databaseErrorUrl = "/database-error",
+}) {
+    const response = await fetch(commentsUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (shouldRedirectToDatabaseError(response)) {
+        window.location.assign(databaseErrorUrl);
+        throw new Error("Blad bazy danych.");
+    }
+
+    if (!response.ok) {
+        throw new Error(await parseWriteErrorMessage(response));
+    }
+
+    const responsePayload = await response.json();
+    return {
+        ...responsePayload,
+        comments: Array.isArray(responsePayload?.comments) ? responsePayload.comments : [],
+    };
+}
+
+export async function createTutorReview({
+    payload,
+    reviewsUrl,
+    csrfToken,
+    databaseErrorUrl = "/database-error",
+}) {
+    const response = await fetch(reviewsUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (shouldRedirectToDatabaseError(response)) {
+        window.location.assign(databaseErrorUrl);
+        throw new Error("Blad bazy danych.");
+    }
+
+    if (!response.ok) {
+        throw new Error(await parseWriteErrorMessage(response));
+    }
+
+    return response.json();
 }
 
 export async function toggleTutorObservation({

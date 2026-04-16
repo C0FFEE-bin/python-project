@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { saveTutorOnboardingProfile } from "../api.js";
+import { saveStudentOnboardingProfile, saveTutorOnboardingProfile } from "../api.js";
 import AccountTypeSelect from "../components/AccountTypeSelect.jsx";
 import InterestSelect from "../components/InterestSelect.jsx";
 import SchoolLevelSelect from "../components/SchoolLevelSelect.jsx";
@@ -59,16 +59,21 @@ export default function RegistrationOnboardingPage({ csrfToken = "", nextTarget 
     const [accountType, setAccountType] = useState("");
     const [studentStep, setStudentStep] = useState(STUDENT_STEPS.profileIntro);
     const [studentData, setStudentData] = useState(() => createInitialStudentData());
+    const [studentSaveError, setStudentSaveError] = useState("");
+    const [isSavingStudentProfileIntro, setIsSavingStudentProfileIntro] = useState(false);
     const [tutorStep, setTutorStep] = useState(TUTOR_STEPS.schoolLevel);
     const [tutorData, setTutorData] = useState(() => createInitialTutorData());
 
     const completionTarget = useMemo(() => nextTarget || urls.home || "/", [nextTarget, urls.home]);
+    const studentOnboardingSaveUrl = urls.studentOnboardingSave ?? "/api/student-onboarding/profile";
     const tutorOnboardingSaveUrl = urls.tutorOnboardingSave ?? "/api/tutor-onboarding/profile";
     const databaseErrorUrl = urls.databaseError ?? "/database-error";
 
     const resetStudentFlow = () => {
         setStudentStep(STUDENT_STEPS.profileIntro);
         setStudentData(createInitialStudentData());
+        setStudentSaveError("");
+        setIsSavingStudentProfileIntro(false);
     };
 
     const resetTutorFlow = () => {
@@ -87,6 +92,27 @@ export default function RegistrationOnboardingPage({ csrfToken = "", nextTarget 
         }
     };
 
+    const handleStudentProfileIntroNext = async () => {
+        setStudentSaveError("");
+        setIsSavingStudentProfileIntro(true);
+
+        try {
+            await saveStudentOnboardingProfile({
+                payload: {
+                    fullName: studentData.fullName,
+                },
+                saveUrl: studentOnboardingSaveUrl,
+                csrfToken,
+                databaseErrorUrl,
+            });
+            setStudentStep(STUDENT_STEPS.schoolLevel);
+        } catch (error) {
+            setStudentSaveError(error?.message || "Nie udalo sie zapisac imienia i nazwiska.");
+        } finally {
+            setIsSavingStudentProfileIntro(false);
+        }
+    };
+
     if (!accountType) {
         return <AccountTypeSelect onSelect={handleAccountTypeSelect} />;
     }
@@ -98,6 +124,7 @@ export default function RegistrationOnboardingPage({ csrfToken = "", nextTarget 
                     avatarFile={studentData.avatarFile}
                     bannerFile={studentData.bannerFile}
                     fullName={studentData.fullName}
+                    isSubmitting={isSavingStudentProfileIntro}
                     onAvatarChange={(file) => {
                         setStudentData((current) => ({
                             ...current,
@@ -120,7 +147,8 @@ export default function RegistrationOnboardingPage({ csrfToken = "", nextTarget 
                             fullName: nextFullName,
                         }));
                     }}
-                    onNext={() => setStudentStep(STUDENT_STEPS.schoolLevel)}
+                    onNext={handleStudentProfileIntroNext}
+                    submitError={studentSaveError}
                 />
             );
         }
@@ -159,11 +187,22 @@ export default function RegistrationOnboardingPage({ csrfToken = "", nextTarget 
                             interests: [...interests],
                         }));
                     }}
-                    onNext={(interests) => {
+                    onNext={async (interests) => {
                         setStudentData((current) => ({
                             ...current,
                             interests: [...interests],
                         }));
+                        await saveStudentOnboardingProfile({
+                            payload: {
+                                fullName: studentData.fullName,
+                                schoolLevel: studentData.schoolLevel,
+                                subjects: studentData.subjects,
+                                interests,
+                            },
+                            saveUrl: studentOnboardingSaveUrl,
+                            csrfToken,
+                            databaseErrorUrl,
+                        });
                         redirectToTarget(completionTarget);
                     }}
                 />

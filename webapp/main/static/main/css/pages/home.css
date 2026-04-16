@@ -2073,6 +2073,126 @@ button {
     font-weight: 700;
 }
 
+.portal-post__comments {
+    display: grid;
+    gap: 14px;
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(122, 113, 128, 0.14);
+}
+
+.portal-post__comments-head,
+.portal-post__comment-header,
+.portal-post__comment-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.portal-post__comments-head strong {
+    color: #2f2936;
+    font-size: 0.95rem;
+}
+
+.portal-post__comments-head span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(231, 223, 236, 0.92);
+    color: #74697a;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.portal-post__comments-list,
+.portal-post__comment-form,
+.portal-post__comment-label {
+    display: grid;
+    gap: 12px;
+}
+
+.portal-post__comment {
+    display: grid;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 20px;
+    background: rgba(249, 246, 251, 0.94);
+    border: 1px solid rgba(194, 184, 202, 0.22);
+}
+
+.portal-post__comment-avatar {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6b7c98, #bc72d6);
+    color: #fff;
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.portal-post__comment-meta {
+    display: grid;
+    gap: 2px;
+    flex: 1;
+}
+
+.portal-post__comment-meta strong {
+    color: #2f2936;
+    font-size: 0.92rem;
+}
+
+.portal-post__comment-meta span,
+.portal-post__comment-empty,
+.portal-post__comment-error {
+    margin: 0;
+    color: #7b7078;
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
+.portal-post__comment p {
+    margin: 0;
+    color: #524954;
+    font-size: 0.94rem;
+    line-height: 1.65;
+}
+
+.portal-post__comment-label span {
+    color: #3a333e;
+    font-size: 0.92rem;
+    font-weight: 800;
+}
+
+.portal-post__comment-label textarea {
+    width: 100%;
+    min-height: 92px;
+    resize: vertical;
+    padding: 14px 16px;
+    border: 0;
+    border-radius: 18px;
+    background: rgba(240, 237, 243, 0.96);
+    color: #524954;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    outline: none;
+}
+
+.portal-post__comment-actions .button {
+    min-height: 46px;
+}
+
+.portal-post__comment-error {
+    color: #8b4c65;
+    font-weight: 700;
+}
+
 .portal-empty-state {
     padding: 26px 28px;
     border: 1px dashed rgba(143, 118, 154, 0.32);

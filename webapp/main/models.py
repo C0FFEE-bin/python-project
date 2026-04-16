@@ -2,12 +2,17 @@ from django.db import models
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
+
+def _normalize_email(value):
+    return (value or "").strip().lower()
+
+
 class User(models.Model):
+    username = models.CharField(max_length=150, unique=True)
     imie = models.CharField(max_length=50)
     nazwisko = models.CharField(max_length=50)
     email = models.EmailField(unique=True, max_length=120)
     tel_num = models.CharField(max_length=20, blank=True, null=True)
-    haslo = models.CharField(max_length=128)
     typ = models.CharField(max_length=20, default="uczen")
     data_utworzenia = models.DateTimeField(auto_now_add=True)
 
@@ -16,6 +21,38 @@ class User(models.Model):
 
     def __str__(self):
         return f"{self.imie} {self.nazwisko}"
+
+
+def _find_custom_user(username="", email=""):
+    normalized_username = (username or "").strip()
+    normalized_email = _normalize_email(email)
+
+    if normalized_username:
+        custom_user = User.objects.filter(username__iexact=normalized_username).first()
+        if custom_user is not None:
+            return custom_user
+
+    if normalized_email:
+        return User.objects.filter(email__iexact=normalized_email).first()
+
+    return None
+
+
+def _find_auth_user(username="", email=""):
+    from django.contrib.auth.models import User as AuthUser
+
+    normalized_username = (username or "").strip()
+    normalized_email = _normalize_email(email)
+
+    if normalized_username:
+        auth_user = AuthUser.objects.filter(username__iexact=normalized_username).first()
+        if auth_user is not None:
+            return auth_user
+
+    if normalized_email:
+        return AuthUser.objects.filter(email__iexact=normalized_email).first()
+
+    return None
 
 class Przedmiot(models.Model):
     nazwa = models.CharField(max_length=100)
@@ -160,22 +197,66 @@ class Opinia(models.Model):
         return f"Opinia ({self.rating}) od {self.autor.imie} dla {self.tutor.uzytkownik.imie}"
 
 
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    notification_type = models.CharField(max_length=50, blank=True, null=True)  # np. 'new_message', 'new_follower', etc.
+
+    class Meta:
+        db_table = "notification"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Notification for {self.user.imie}: {self.message[:50]}"
+
 
 @receiver(post_delete, sender='auth.User')
 def delete_custom_user(sender, instance, **kwargs):
-    if instance.email:
-        User.objects.filter(email__iexact=instance.email).delete()
+    custom_user = _find_custom_user(username=instance.username, email=instance.email)
+    if custom_user is not None:
+        custom_user.delete()
 
 @receiver(post_delete, sender=User)
 def delete_auth_user(sender, instance, **kwargs):
-    from django.contrib.auth.models import User as AuthUser
-    if instance.email:
-        AuthUser.objects.filter(email__iexact=instance.email).delete()
+    auth_user = _find_auth_user(username=instance.username, email=instance.email)
+    if auth_user is not None:
+        auth_user.delete()
 
 @receiver(post_save, sender='auth.User')
-def sync_user_email(sender, instance, created, **kwargs):
-    if not created and instance.email:
-        User.objects.filter(imie=instance.username).update(email=instance.email)
+def sync_custom_user_identity(sender, instance, created, **kwargs):
+    if created:
+        return
+
+    custom_user = _find_custom_user(username=instance.username, email=instance.email)
+    if custom_user is None:
+        return
+
+    normalized_email = _normalize_email(instance.email)
+    update_fields = []
+
+    if custom_user.username != instance.username:
+        custom_user.username = instance.username
+        update_fields.append("username")
+
+    if normalized_email and custom_user.email != normalized_email:
+        custom_user.email = normalized_email
+        update_fields.append("email")
+
+    desired_first_name = (instance.first_name or custom_user.imie or instance.username).strip()
+    desired_last_name = (instance.last_name or custom_user.nazwisko or "").strip()
+
+    if custom_user.imie != desired_first_name:
+        custom_user.imie = desired_first_name
+        update_fields.append("imie")
+
+    if custom_user.nazwisko != desired_last_name:
+        custom_user.nazwisko = desired_last_name
+        update_fields.append("nazwisko")
+
+    if update_fields:
+        custom_user.save(update_fields=update_fields)
 
 """
 import logging
