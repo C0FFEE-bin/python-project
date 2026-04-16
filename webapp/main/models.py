@@ -102,6 +102,36 @@ class Dostepnosc(models.Model):
     def __str__(self):
         return f"{self.tutor} - dzien {self.dzien_tygodnia} ({self.godzina_od} - {self.godzina_do})"
 
+
+class Booking(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Oczekuje na akceptację'),
+        ('accepted', 'Zaakceptowane'),
+        ('declined', 'Odrzucone'),
+        ('cancelled', 'Anulowane'),
+    ]
+
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="bookings")
+    tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name="bookings")
+    availability = models.ForeignKey(Dostepnosc, on_delete=models.CASCADE, related_name="bookings")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    requested_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = "booking"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "availability"],
+                name="unique_student_booking_per_slot",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Booking: {self.student} -> {self.tutor} ({self.availability})"
+
+
 class Post(models.Model):
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name="posty")
     tytul = models.CharField(max_length=200)
@@ -340,6 +370,34 @@ def calculate_match_score(tutor, student_requirements):
     
     return min(score, 100)
 """
+
+
+# Signals for notifications
+@receiver(post_save, sender=Booking)
+def notify_booking_status_change(sender, instance, created, **kwargs):
+    """Notify student when booking status changes to accepted."""
+    if not created and instance.status == 'accepted' and instance.responded_at:
+        # Only notify if status changed to accepted
+        Notification.objects.create(
+            user=instance.student,
+            message=f"Twój termin z korepetytorem {instance.tutor.uzytkownik.imie} {instance.tutor.uzytkownik.nazwisko} został zaakceptowany na {instance.availability.data or 'nadchodzący termin'}.",
+            notification_type='booking_accepted'
+        )
+
+
+@receiver(post_save, sender=Dostepnosc)
+def notify_new_availability(sender, instance, created, **kwargs):
+    """Notify followers when tutor adds new availability."""
+    if created:
+        # Get all users following this tutor
+        followers = Obserwacja.objects.filter(tutor=instance.tutor).select_related('uzytkownik')
+        for observation in followers:
+            Notification.objects.create(
+                user=observation.uzytkownik,
+                message=f"Obserwowany korepetytor {instance.tutor.uzytkownik.imie} {instance.tutor.uzytkownik.nazwisko} ma teraz dostępny nowy termin.",
+                notification_type='new_availability'
+            )
+
 
 
 

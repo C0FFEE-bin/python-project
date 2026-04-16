@@ -307,6 +307,7 @@ def _get_home_props(request):
             "tutorProfileBase": reverse("tutor_profile_base"),
             "tutorReviews": reverse("tutor_reviews"),
             "tutorSearch": reverse("tutor_search"),
+            "notifications": reverse("api_notifications"),
         },
         "onboardingMode": None,
         "onboardingNextTarget": "",
@@ -2238,3 +2239,56 @@ def api_current_user(request):
             'email': request.user.email,
         })
     return JsonResponse({'is_logged_in': False}, status=401)
+
+
+@login_required
+def api_notifications(request):
+    if request.method == "GET":
+        try:
+            # Pobierz custom user
+            custom_user = CustomUser.objects.get(username=request.user.username)
+            
+            notifications = Notification.objects.filter(user=custom_user).order_by('-created_at')[:20]
+            
+            notifications_data = []
+            for notification in notifications:
+                notifications_data.append({
+                    'id': notification.id,
+                    'message': notification.message,
+                    'is_read': notification.is_read,
+                    'created_at': notification.created_at.isoformat(),
+                    'notification_type': notification.notification_type,
+                })
+            
+            return JsonResponse({
+                'notifications': notifications_data,
+                'unread_count': notifications.filter(is_read=False).count(),
+            })
+        except CustomUser.DoesNotExist:
+            return JsonResponse({'error': 'Użytkownik nie znaleziony'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    elif request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            notification_ids = data.get('mark_as_read', [])
+            
+            if notification_ids:
+                custom_user = CustomUser.objects.get(username=request.user.username)
+                Notification.objects.filter(
+                    user=custom_user,
+                    id__in=notification_ids
+                ).update(is_read=True)
+                
+                return JsonResponse({'message': 'Powiadomienia oznaczone jako przeczytane'})
+            else:
+                return JsonResponse({'error': 'Brak IDs powiadomień'}, status=400)
+        except CustomUser.DoesNotExist:
+            return JsonResponse({'error': 'Użytkownik nie znaleziony'}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Niepoprawne dane JSON'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'Zła metoda'}, status=405)

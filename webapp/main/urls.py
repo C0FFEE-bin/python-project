@@ -25,4 +25,5 @@ urlpatterns = [
     path("api/tutor-reviews", views.tutor_reviews, name="tutor_reviews"),
     path("api/register/", views.api_register, name="api_register"),
     path("api/user/", views.api_current_user, name="api_current_user"),
+    path("api/notifications/", views.api_notifications, name="api_notifications"),
 ]

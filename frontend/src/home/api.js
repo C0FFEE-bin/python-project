@@ -332,3 +332,52 @@ export async function toggleTutorObservation({
     };
 }
 
+export async function fetchNotifications({ notificationsUrl, databaseErrorUrl = "/database-error" }) {
+    const response = await fetch(notificationsUrl, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": document.querySelector('[name="csrfmiddlewaretoken"]')?.value || "",
+        },
+    });
+
+    if (shouldRedirectToDatabaseError(response)) {
+        window.location.assign(databaseErrorUrl);
+        throw new Error("Blad bazy danych.");
+    }
+
+    if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+    }
+
+    const responsePayload = await response.json();
+    return {
+        notifications: Array.isArray(responsePayload?.notifications) ? responsePayload.notifications : [],
+        unreadCount: typeof responsePayload?.unread_count === "number" ? responsePayload.unread_count : 0,
+    };
+}
+
+export async function markNotificationsAsRead({ notificationsUrl, notificationIds, databaseErrorUrl = "/database-error" }) {
+    const response = await fetch(notificationsUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": document.querySelector('[name="csrfmiddlewaretoken"]')?.value || "",
+        },
+        body: JSON.stringify({
+            mark_as_read: notificationIds,
+        }),
+    });
+
+    if (shouldRedirectToDatabaseError(response)) {
+        window.location.assign(databaseErrorUrl);
+        throw new Error("Blad bazy danych.");
+    }
+
+    if (!response.ok) {
+        throw new Error(await parseWriteErrorMessage(response));
+    }
+
+    return await response.json();
+}
+

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
-import { headerNotifications, navLinks } from "../content.js";
+import { fetchNotifications, markNotificationsAsRead } from "../api.js";
+import { navLinks } from "../content.js";
 import joinClasses from "../utils/joinClasses.js";
 import AuthAction from "../components/AuthAction.jsx";
 
@@ -17,9 +18,38 @@ export default function HomeHeader({
     urls,
 }) {
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-    const [notifications, setNotifications] = useState(() => [...headerNotifications]);
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
     const notificationsPanelRef = useRef(null);
-    const notificationsCount = isAuthenticated ? notifications.length : 0;
+
+    // Fetch notifications when authenticated
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setNotifications([]);
+            setUnreadCount(0);
+            return;
+        }
+
+        const loadNotifications = async () => {
+            setIsLoadingNotifications(true);
+            try {
+                const result = await fetchNotifications({
+                    notificationsUrl: urls.notifications,
+                });
+                setNotifications(result.notifications);
+                setUnreadCount(result.unreadCount);
+            } catch (error) {
+                console.error("Failed to load notifications:", error);
+                setNotifications([]);
+                setUnreadCount(0);
+            } finally {
+                setIsLoadingNotifications(false);
+            }
+        };
+
+        loadNotifications();
+    }, [isAuthenticated, urls.notifications]);
 
     useEffect(() => {
         if (!isNotificationsOpen) {
@@ -49,10 +79,31 @@ export default function HomeHeader({
         };
     }, [isNotificationsOpen]);
 
-    const handleRemoveNotification = (notificationId) => {
-        setNotifications((currentNotifications) => (
-            currentNotifications.filter((notification) => notification.id !== notificationId)
-        ));
+    const formatNotificationDate = (dateString) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffHours = diffMs / (1000 * 60 * 60);
+        
+        if (diffHours < 1) {
+            const diffMinutes = Math.floor(diffMs / (1000 * 60));
+            return `${diffMinutes} min temu`;
+        } else if (diffHours < 24) {
+            return `${Math.floor(diffHours)} godz. temu`;
+        } else {
+            return date.toLocaleDateString('pl-PL');
+        }
+    };
+
+    const getNotificationIcon = (type) => {
+        switch (type) {
+            case 'booking_accepted':
+                return 'fa-solid fa-calendar-check';
+            case 'new_availability':
+                return 'fa-solid fa-clock';
+            default:
+                return 'fa-solid fa-bell';
+        }
     };
 
     return (
@@ -101,14 +152,14 @@ export default function HomeHeader({
                                 isNotificationsOpen && "is-active",
                             )}
                             type="button"
-                            aria-label={notificationsCount ? `Powiadomienia (${notificationsCount})` : "Powiadomienia"}
+                            aria-label={unreadCount ? `Powiadomienia (${unreadCount})` : "Powiadomienia"}
                             aria-expanded={isNotificationsOpen}
                             aria-controls="header-notifications-panel"
                             onClick={() => setIsNotificationsOpen((currentValue) => !currentValue)}
                         >
                             <i className="fa-regular fa-bell" aria-hidden="true"></i>
-                            {isAuthenticated && notificationsCount ? (
-                                <span className="quick-actions__badge" aria-hidden="true">{notificationsCount}</span>
+                            {isAuthenticated && unreadCount ? (
+                                <span className="quick-actions__badge" aria-hidden="true">{unreadCount}</span>
                             ) : null}
                         </button>
 
@@ -124,25 +175,25 @@ export default function HomeHeader({
                                     <span className="notifications-panel__eyebrow">Centrum</span>
                                     <h2 id="header-notifications-heading">Powiadomienia</h2>
                                 </div>
-                                <span className="notifications-panel__count">{isAuthenticated ? notificationsCount : 0}</span>
+                                <span className="notifications-panel__count">{isAuthenticated ? unreadCount : 0}</span>
                             </div>
 
                             {isAuthenticated ? (
-                                notificationsCount ? (
+                                unreadCount ? (
                                     <div className="notifications-panel__list">
                                         {notifications.map((notification) => (
                                             <article key={notification.id} className="notifications-panel__item">
                                                 <span className="notifications-panel__icon" aria-hidden="true">
-                                                    <i className={notification.icon}></i>
+                                                    <i className={getNotificationIcon(notification.notification_type)}></i>
                                                 </span>
                                                 <div className="notifications-panel__copy">
-                                                    <p>{notification.title}</p>
-                                                    <span>{notification.meta}</span>
+                                                    <p>{notification.message}</p>
+                                                    <span>{formatNotificationDate(notification.created_at)}</span>
                                                 </div>
                                                 <button
                                                     className="notifications-panel__dismiss"
                                                     type="button"
-                                                    aria-label={`Usun powiadomienie: ${notification.title}`}
+                                                    aria-label={`Oznacz jako przeczytane: ${notification.message}`}
                                                     onClick={() => handleRemoveNotification(notification.id)}
                                                 >
                                                     <i className="fa-solid fa-xmark" aria-hidden="true"></i>
