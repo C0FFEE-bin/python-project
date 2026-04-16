@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node ./scripts/run-dev.mjs",
+    "dev:frontend": "vite",
+    "dev:backend": "node ./scripts/run-django.mjs runserver",
     "build": "vite build",
     "django": "node ./scripts/run-django.mjs runserver"
   },

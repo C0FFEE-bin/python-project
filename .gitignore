@@ -105,6 +105,8 @@ celerybeat-schedule.*
 
 # Environments
 .env
+.env.*
+!.env.example
 .venv
 env/
 venv/
@@ -112,6 +114,8 @@ ENV/
 env.bak/
 venv.bak/
 node_modules/
+.vite/
+backups/
 
 # mkdocs documentation
 /site

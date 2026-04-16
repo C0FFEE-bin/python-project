@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from decimal import Decimal
 
@@ -7,7 +8,6 @@ from django.db import transaction
 
 from main.models import Dostepnosc, Opinia, Przedmiot, Tutor, User
 
-DEFAULT_PASSWORD = "Tutor123!"
 DEFAULT_RATE = Decimal("95.00")
 
 SEED_TUTORS = [
@@ -195,6 +195,10 @@ def _rate_for_index(index):
     return DEFAULT_RATE + Decimal(index * 4)
 
 
+def _get_seed_password():
+    return (os.environ.get("SEED_TUTOR_PASSWORD") or "").strip()
+
+
 def _build_opis(tutor_data):
     subjects_label = ", ".join(tutor_data["subjects"]).lower()
     levels_label = ", ".join(tutor_data["levels"]).lower()
@@ -226,7 +230,11 @@ def _ensure_auth_user(seed_id, first_name, last_name, email):
     auth_user.email = email
     auth_user.first_name = first_name
     auth_user.last_name = last_name
-    auth_user.set_password(DEFAULT_PASSWORD)
+    seed_password = _get_seed_password()
+    if seed_password:
+        auth_user.set_password(seed_password)
+    else:
+        auth_user.set_unusable_password()
     auth_user.save()
     return created
 
@@ -240,7 +248,7 @@ def _ensure_reviewer_users():
             defaults={
                 "imie": f"Recenzent{index}",
                 "nazwisko": "Seed",
-                "haslo": "reviewer-seed-password",
+                "haslo": "",
                 "typ": "uczen",
             },
         )
@@ -273,7 +281,7 @@ class Command(BaseCommand):
                 defaults={
                     "imie": first_name,
                     "nazwisko": last_name,
-                    "haslo": DEFAULT_PASSWORD,
+                    "haslo": "",
                     "typ": "tutor",
                 },
             )
@@ -347,3 +355,9 @@ class Command(BaseCommand):
                 f"{created_opinions} opinii."
             )
         )
+        if not _get_seed_password():
+            self.stdout.write(
+                self.style.WARNING(
+                    "Nie ustawiono SEED_TUTOR_PASSWORD, dlatego seedowe konta auth maja wylaczone logowanie."
+                )
+            )

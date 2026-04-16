@@ -433,6 +433,7 @@ export default function HomeApp({
                             <TutorProfile
                                 csrfToken={csrfToken}
                                 heroImageSrc={images.hero}
+                                isAuthenticated={isAuthenticated}
                                 requestDate={pageState.date}
                                 requestFilters={pageState.filters}
                                 tutor={selectedTutor}

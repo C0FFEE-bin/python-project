@@ -616,6 +616,86 @@ class MainViewsTests(TestCase):
         self.assertContains(response, 'Ola Student')
         self.assertContains(response, 'Pierwsza wiadomosc do ucznia.')
 
+    def test_tutor_booking_request_creates_conversation_and_message(self):
+        auth_user = User.objects.create_user(
+            username='student-booking',
+            email='student-booking@example.com',
+            password='secret123',
+        )
+        student_user = TutorUser.objects.create(
+            imie='Jan',
+            nazwisko='Uczen',
+            email='student-booking@example.com',
+            haslo='',
+            typ='uczen',
+        )
+        tutor_user = TutorUser.objects.create(
+            imie='Alicja',
+            nazwisko='Nowak',
+            email='booking-tutor@example.com',
+            haslo='',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(uzytkownik=tutor_user, followers_count=4)
+
+        self.client.force_login(auth_user)
+        response = self.client.post(
+            reverse('tutor_booking_request'),
+            data=json.dumps(
+                {
+                    'tutorId': tutor.pk,
+                    'subject': 'Matematyka',
+                    'date': '2026-03-11',
+                    'timeLabel': '19:00-20:00',
+                    'message': 'Chce omowic material do matury rozszerzonej.',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(TutorConversation.objects.count(), 1)
+        self.assertEqual(TutorMessage.objects.count(), 1)
+
+        conversation = TutorConversation.objects.get()
+        message = TutorMessage.objects.get()
+
+        self.assertEqual(conversation.tutor, tutor)
+        self.assertEqual(conversation.student, student_user)
+        self.assertEqual(message.conversation, conversation)
+        self.assertEqual(message.sender, student_user)
+        self.assertIn('Przedmiot: Matematyka', message.body)
+        self.assertIn('Data: 2026-03-11', message.body)
+        self.assertIn('Godzina: 19:00-20:00', message.body)
+        self.assertIn('matury rozszerzonej', message.body)
+
+    def test_tutor_booking_request_requires_authentication(self):
+        tutor_user = TutorUser.objects.create(
+            imie='Alicja',
+            nazwisko='Nowak',
+            email='booking-tutor-guest@example.com',
+            haslo='',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(uzytkownik=tutor_user)
+
+        response = self.client.post(
+            reverse('tutor_booking_request'),
+            data=json.dumps(
+                {
+                    'tutorId': tutor.pk,
+                    'subject': 'Matematyka',
+                    'date': '2026-03-11',
+                    'timeLabel': '19:00-20:00',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(TutorConversation.objects.count(), 0)
+        self.assertEqual(TutorMessage.objects.count(), 0)
+
     def test_portal_posts_returns_serialized_entries(self):
         tutor_user = TutorUser.objects.create(
             imie='Ola',
@@ -1018,3 +1098,8 @@ class SeedTutorsCommandTests(TestCase):
         self.assertEqual(TutorUser.objects.count(), user_count)
         self.assertEqual(Przedmiot.objects.count(), subject_count)
         self.assertEqual(Dostepnosc.objects.count(), availability_count)
+
+    def test_seed_tutors_does_not_store_plaintext_password_in_custom_user(self):
+        call_command('seed_tutors', verbosity=0)
+
+        self.assertFalse(TutorUser.objects.exclude(haslo="").exists())

@@ -1,21 +1,45 @@
-# RAN
+# Rent a Nerd
 
-## Requirements
+Rent a Nerd to aplikacja webowa w Django z frontem React/Vite do wyszukiwania korepetytorow, przegladania ich profili, obserwowania aktywnych tutorow oraz prowadzenia podstawowego przeplywu kontaktu uczen-tutor.
 
-- Python 3.12+
-- Node.js 20+
+## Najwazniejsze funkcjonalnosci
+
+- rejestracja, logowanie i wylogowanie uzytkownikow,
+- onboarding konta ucznia lub korepetytora,
+- wyszukiwarka tutorow po przedmiocie, temacie, poziomie, dacie i godzinie,
+- profil korepetytora z dostepnymi terminami i wysylka zapytania o zajecia,
+- portal z wpisami tutorow oraz lista obserwowanych profili,
+- dashboard korepetytora,
+- widok wiadomosci dla korepetytora,
+- strona `About` i obsluga bledu bazy danych.
+
+## Technologie
+
+- Python 3.12
+- Django 5.1.6
+- SQLite 3
+- JavaScript (ES modules)
+- React 19
+- Vite 8
+- npm / package-lock do zarzadzania zaleznosciami frontendu
+
+## Wymagania systemowe
+
+- Python `3.12+`
+- Node.js `20+`
+- npm `10+`
 - Git
 
-## Setup
+## Instalacja
+
+### 1. Sklonowanie repozytorium
 
 ```powershell
-git clone <repo-url> RAN
-cd RAN
+git clone <repo-url>
+cd django-blueprint-app
 ```
 
-## Install backend
-
-Create and activate a virtual environment, then install Python dependencies.
+### 2. Srodowisko wirtualne i backend
 
 Windows PowerShell:
 
@@ -25,7 +49,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-macOS/Linux:
+macOS / Linux:
 
 ```bash
 python3 -m venv .venv
@@ -33,91 +57,141 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Install frontend
-
-From the repository root:
+### 3. Frontend
 
 ```powershell
 npm install
 ```
 
-If PowerShell blocks `npm`, use:
+## Konfiguracja srodowiska
+
+Projekt odczytuje zmienne z pliku `.env` w katalogu glownym repozytorium. Przykladowa konfiguracja znajduje sie w pliku [`.env.example`](./.env.example).
+
+Najwazniejsze zmienne:
+
+- `DJANGO_SECRET_KEY` - klucz Django,
+- `DJANGO_DEBUG` - tryb developerski (`True` / `False`),
+- `DJANGO_ALLOWED_HOSTS` - lista hostow rozdzielona przecinkami,
+- `DJANGO_DB_PATH` - opcjonalna sciezka do lokalnej bazy SQLite,
+- `VITE_DEV_SERVER_URL` - adres serwera Vite dla developmentu,
+- `SEED_TUTOR_PASSWORD` - opcjonalne haslo dla seedowych kont tutorow.
+
+Przyklad minimalnego `.env` dla developmentu:
+
+```env
+DJANGO_SECRET_KEY=dev-secret-key-change-me
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
+```
+
+## Migracje bazy danych
+
+Z poziomu katalogu glownego repozytorium:
 
 ```powershell
-npm.cmd run dev
-python webapp/manage.py runserver
+node .\scripts\run-django.mjs migrate
 ```
 
+## Dane testowe
 
-The app will be available at `http://127.0.0.1:8000/`.
-
-## Run Django + Vite dev server
-
-Use this mode if you want live frontend changes while editing React files.
-
-Terminal 1:
+Aby wypelnic aplikacje przykladowymi tutorami, przedmiotami, opiniami i terminami:
 
 ```powershell
-npm run dev
+node .\scripts\run-django.mjs seed_tutors
 ```
 
-If `npm` is blocked in PowerShell:
+Wazne:
+
+- jezeli `SEED_TUTOR_PASSWORD` nie jest ustawione, seedowe konta auth dostana hasla nieaktywne i nie bedzie mozna sie na nie zalogowac,
+- w takim przypadku konto testowe najlepiej utworzyc przez formularz rejestracji pod adresem `/register`,
+- seed tworzy dane do wyszukiwarki i portalu niezaleznie od logowania seedowymi kontami.
+
+Przyklad z aktywnym haslem dla seedow:
 
 ```powershell
-npm.cmd run dev
+$env:SEED_TUTOR_PASSWORD="Tutor123!"
+node .\scripts\run-django.mjs seed_tutors
 ```
 
-Terminal 2, Windows PowerShell:
+## Uruchomienie aplikacji
 
-```powershell
-$env:VITE_DEV_SERVER_URL='http://127.0.0.1:5173'
-.\run-django.cmd
-```
+### Wariant 1: Django + zbudowane assety frontendu
 
-Terminal 2, macOS/Linux:
-
-```bash
-export VITE_DEV_SERVER_URL='http://127.0.0.1:5173'
-node ./scripts/run-django.mjs runserver
-```
-
-Then open:
-
-- Django: `http://127.0.0.1:8000/`
-- Vite dev server: `http://127.0.0.1:5173/`
-
-If `VITE_DEV_SERVER_URL` is not set, Django serves the built frontend bundle from `webapp/main/static/main/frontend/`.
-
-## Build frontend assets
-
-Build the production frontend bundle from the repository root:
+Najpierw zbuduj frontend:
 
 ```powershell
 npm run build
 ```
 
-If needed in PowerShell:
+Nastepnie uruchom Django:
 
 ```powershell
-npm.cmd run build
+node .\scripts\run-django.mjs runserver
 ```
 
-## Useful commands
+Aplikacja bedzie dostepna pod adresem `http://127.0.0.1:8000/`.
 
-Run Django checks:
+### Wariant 2: Django + Vite dev server
+
+Jednym poleceniem uruchomisz frontend i backend:
 
 ```powershell
-node ./scripts/run-django.mjs check
+npm run dev
 ```
 
-Run Django tests:
+Skrypt startuje Vite i Django rownolegle. Domyslnie oba procesy uzywaja `http://127.0.0.1:5173`, ale jezeli nadpiszesz `VITE_DEV_SERVER_URL`, frontend wystartuje na tym samym hoscie i porcie, a backend dostanie zgodny adres dev servera.
+
+Jesli chcesz uruchomic je osobno, nadal sa dostepne:
 
 ```powershell
-node ./scripts/run-django.mjs test
+npm run dev:frontend
+npm run dev:backend
 ```
 
-Run another Django management command from the repository root:
+Adresy:
+
+- Django: `http://127.0.0.1:8000/`
+- Vite: `http://127.0.0.1:5173/`
+
+## Testy i walidacja projektu
+
+Sprawdzenie konfiguracji Django:
 
 ```powershell
-node ./scripts/run-django.mjs <command>
+node .\scripts\run-django.mjs check
 ```
+
+Uruchomienie testow:
+
+```powershell
+node .\scripts\run-django.mjs test
+```
+
+## Struktura projektu
+
+```text
+django-blueprint-app/
+|-- frontend/                 # kod frontendu React/Vite
+|   `-- src/home/             # glowny interfejs aplikacji
+|-- scripts/                  # helpery uruchamiania Django z poziomu repo
+|-- webapp/
+|   |-- main/                 # glowna aplikacja Django: modele, widoki, formularze, testy
+|   |-- webapp/               # konfiguracja projektu Django (settings, urls, wsgi, asgi)
+|   `-- manage.py
+|-- requirements.txt          # zaleznosci Pythona
+|-- package.json              # zaleznosci frontendu
+`-- run-django.cmd            # windowsowy helper do uruchomienia serwera
+```
+
+## Testowanie reczne po instalacji
+
+1. Zarejestruj konto ucznia lub korepetytora.
+2. Wejdz do wyszukiwarki i znajdz korepetytora.
+3. Otworz profil tutora i wyslij zapytanie o zajecia.
+4. Dla konta korepetytora sprawdz dashboard, portal i widok wiadomosci.
+
+## Uwagi organizacyjne przed oddaniem
+
+- repozytorium powinno byc publiczne albo udostepnione prowadzacej,
+- nalezy dodac `ukenSvitlanaDidkivska` jako collaborator,
+- przed oddaniem warto uruchomic `check`, `test`, `build` oraz sprawdzic, czy lokalna baza `db.sqlite3` nie jest sledzona przez Git.

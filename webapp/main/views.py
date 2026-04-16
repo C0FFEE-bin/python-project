@@ -259,6 +259,7 @@ def _get_home_props(request):
             "register": reverse("register_user"),
             "databaseError": reverse("database_error_page"),
             "tutorMessages": reverse("tutor_messages"),
+            "tutorBookingRequest": reverse("tutor_booking_request"),
             "tutorProfileSettings": reverse("tutor_profile_settings"),
             "schoolLevelSelectPreview": reverse(
                 "component_preview",
@@ -1654,6 +1655,80 @@ def portal_observations(request):
             "observation": _serialize_observation(observation),
             "tutorId": tutor.pk,
             "followersCount": followers_count,
+        },
+        status=201,
+    )
+
+
+def tutor_booking_request(request):
+    if request.method != "POST":
+        return JsonResponse({"detail": "Zla metoda."}, status=405)
+
+    if not request.user.is_authenticated:
+        return JsonResponse({"detail": "Zaloguj sie, aby wyslac zapytanie do tutora."}, status=401)
+
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"detail": "Niepoprawne dane JSON."}, status=400)
+
+    tutor_id = payload.get("tutorId")
+    subject = (payload.get("subject") or "").strip()
+    selected_date = (payload.get("date") or "").strip()
+    time_label = (payload.get("timeLabel") or "").strip()
+    note = (payload.get("message") or "").strip()
+
+    try:
+        tutor_id = int(tutor_id)
+    except (TypeError, ValueError):
+        return JsonResponse({"detail": "Brakuje poprawnego identyfikatora tutora."}, status=400)
+
+    if not subject:
+        return JsonResponse({"detail": "Wybierz przedmiot przed wyslaniem zapytania."}, status=400)
+
+    custom_user = _get_or_create_custom_user_for_auth_user(request.user)
+    if custom_user is None:
+        return JsonResponse({"detail": "Konto nie ma poprawnego adresu e-mail."}, status=400)
+
+    tutor = (
+        Tutor.objects.filter(pk=tutor_id)
+        .select_related("uzytkownik")
+        .first()
+    )
+    if tutor is None:
+        return JsonResponse({"detail": "Nie znaleziono tutora."}, status=404)
+
+    if tutor.uzytkownik_id == custom_user.pk:
+        return JsonResponse({"detail": "Nie mozesz wyslac zapytania do wlasnego profilu."}, status=400)
+
+    conversation, _ = TutorConversation.objects.get_or_create(
+        tutor=tutor,
+        student=custom_user,
+    )
+
+    message_lines = [
+        "Nowe zapytanie o zajecia.",
+        f"Przedmiot: {subject}",
+    ]
+    if selected_date:
+        message_lines.append(f"Data: {selected_date}")
+    if time_label:
+        message_lines.append(f"Godzina: {time_label}")
+    if note:
+        message_lines.extend(["", note])
+
+    TutorMessage.objects.create(
+        conversation=conversation,
+        sender=custom_user,
+        body="\n".join(message_lines),
+    )
+    conversation.updated_at = timezone.now()
+    conversation.save(update_fields=["updated_at"])
+
+    return JsonResponse(
+        {
+            "message": "Zapytanie zostalo wyslane do korepetytora.",
+            "conversationId": conversation.pk,
         },
         status=201,
     )
