@@ -11,16 +11,57 @@
     padding: 0;
     border: 3px solid rgba(255, 255, 255, 0.94);
     border-radius: 50%;
-    background:
-        linear-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.08)),
-        url("../../img/profile1.png") center / cover no-repeat;
+    background: linear-gradient(135deg, #677389, #8fa0bc);
     box-shadow: 0 14px 26px rgba(99, 84, 109, 0.18);
-    color: transparent;
-    font-size: 0;
-    line-height: 0;
-    text-indent: -9999px;
+    color: #ffffff;
+    line-height: 1;
     white-space: nowrap;
     overflow: hidden;
+}
+
+.quick-actions__user-icon {
+    font-size: 1.72rem;
+    line-height: 1;
+}
+
+.quick-actions__user--violet {
+    background: linear-gradient(135deg, #6f738d, #b46ecb);
+}
+
+.quick-actions__user--stone {
+    background: linear-gradient(135deg, #95858c, #c6a8b8);
+}
+
+.quick-actions__user--gold {
+    background: linear-gradient(135deg, #96805c, #d1af67);
+}
+
+.quick-actions__user--slate {
+    background: linear-gradient(135deg, #677389, #8fa0bc);
+}
+
+.quick-actions__user--rose {
+    background: linear-gradient(135deg, #b1738e, #df9fb8);
+}
+
+.quick-actions__user--mint {
+    background: linear-gradient(135deg, #5b8c78, #84b8a0);
+}
+
+.quick-actions__user--ocean {
+    background: linear-gradient(135deg, #4a79a4, #77add4);
+}
+
+.quick-actions__user--coral {
+    background: linear-gradient(135deg, #c16e64, #e5a08f);
+}
+
+.quick-actions__user--indigo {
+    background: linear-gradient(135deg, #5b64a6, #8e98d7);
+}
+
+.quick-actions__user--forest {
+    background: linear-gradient(135deg, #507451, #8ab07d);
 }
 
 .quick-actions__account {

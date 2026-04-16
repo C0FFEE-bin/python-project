@@ -100,7 +100,8 @@ export default function HomeApp({
     const isPreview = Boolean(previewComponent);
     const isOnboarding = onboardingMode === "account-type";
     const isStandaloneView = isPreview || isOnboarding;
-    const isTutorAccount = Boolean(currentUser?.isTutor);
+    const [currentUserState, setCurrentUserState] = useState(currentUser);
+    const isTutorAccount = Boolean(currentUserState?.isTutor);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const [activeSection, setActiveSection] = useState("home");
@@ -112,6 +113,10 @@ export default function HomeApp({
     const [isTutorDashboardLoading, setIsTutorDashboardLoading] = useState(false);
     const [tutorDashboardError, setTutorDashboardError] = useState("");
     const hasTutorView = Boolean(pageState.tutorId);
+
+    useEffect(() => {
+        setCurrentUserState(currentUser);
+    }, [currentUser]);
 
     useEffect(() => {
         if (!pageState.tutorId) {
@@ -181,6 +186,21 @@ export default function HomeApp({
 
                 if (!ignoreResponse) {
                     setTutorDashboard(dashboardPayload);
+                    setCurrentUserState((previousUser) => {
+                        if (!previousUser?.isTutor) {
+                            return previousUser;
+                        }
+
+                        const nextAvatarTone = dashboardPayload?.profile?.avatarTone || previousUser.avatarTone;
+                        if (nextAvatarTone === previousUser.avatarTone) {
+                            return previousUser;
+                        }
+
+                        return {
+                            ...previousUser,
+                            avatarTone: nextAvatarTone,
+                        };
+                    });
                 }
             } catch (error) {
                 if (!ignoreResponse) {
@@ -410,7 +430,7 @@ export default function HomeApp({
             <HomeHeader
                 activeSection={activeSection}
                 csrfToken={csrfToken}
-                currentUser={currentUser}
+                currentUser={currentUserState}
                 isAuthenticated={isAuthenticated}
                 isMenuOpen={isMenuOpen}
                 isScrolled={isScrolled}
@@ -471,7 +491,7 @@ export default function HomeApp({
                 {!hasTutorView && pageState.mode === "portal" ? (
                     <PortalSection
                         csrfToken={csrfToken}
-                        currentUser={currentUser}
+                        currentUser={currentUserState}
                         isAuthenticated={isAuthenticated}
                         urls={urls}
                     />

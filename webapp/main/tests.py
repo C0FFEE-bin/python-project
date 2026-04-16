@@ -68,7 +68,7 @@ class MainViewsTests(TestCase):
         self.assertEqual(home_props['currentUser']['username'], 'tester')
         self.assertEqual(home_props['currentUser']['displayName'], 'tester')
         self.assertEqual(home_props['currentUser']['initials'], 'T')
-        self.assertIn('/static/main/img/profile1.png', home_props['currentUser']['avatarUrl'])
+        self.assertEqual(home_props['currentUser']['avatarTone'], 'slate')
         self.assertFalse(home_props['currentUser']['isTutor'])
         self.assertEqual(home_props['currentUser']['accountType'], 'uczen')
         self.assertEqual(home_props['urls']['observations'], reverse('portal_observations'))
@@ -358,6 +358,7 @@ class MainViewsTests(TestCase):
         self.assertTrue(home_props['currentUser']['isTutor'])
         self.assertEqual(home_props['currentUser']['accountType'], 'tutor')
         self.assertEqual(home_props['currentUser']['displayName'], 'Ewa Tutor')
+        self.assertEqual(home_props['currentUser']['avatarTone'], 'slate')
 
     def test_login_redirects_to_safe_next_target(self):
         User.objects.create_user(username='tester', password='secret123')
