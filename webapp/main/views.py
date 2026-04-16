@@ -824,6 +824,7 @@ def _serialize_tutor_profile(tutor, selected_date, custom_user=None):
         "name": _build_display_name(tutor),
         "initials": _build_initials(tutor.uzytkownik.imie, tutor.uzytkownik.nazwisko),
         "avatarTone": tutor.avatar_tone or AVATAR_TONES[tutor.pk % len(AVATAR_TONES)],
+        "hourlyRate": tutor.stawka_godzinowa,
         "age": tutor.wiek,
         "rating": rating,
         "opinions": opinions_count,
@@ -2237,4 +2238,3 @@ def api_current_user(request):
             'email': request.user.email,
         })
     return JsonResponse({'is_logged_in': False}, status=401)
-
