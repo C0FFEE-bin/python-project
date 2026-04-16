@@ -32,7 +32,7 @@ const SIDEBAR_SECTIONS = [
 ];
 
 const BOOKABLE_SLOT_STATUSES = new Set(["available", "highlighted"]);
-const REVIEW_SCORE_OPTIONS = [5, 4, 3, 2, 1];
+const REVIEW_SCORE_OPTIONS = [1, 2, 3, 4, 5];
 const DEFAULT_BOOKING_NOTE =
     "Aby twoje zajecia byly na najwyzszym poziomie, podaj tematyke zajec lub czego oczekujesz od korepetytora.";
 
@@ -61,6 +61,39 @@ function RatingStars({ rating }) {
             {Array.from({ length: 5 }, (_, index) => (
                 <StarIcon key={index} isFilled={index < filledStars} />
             ))}
+        </div>
+    );
+}
+
+function ReviewScoreStars({
+    value,
+    hoveredValue = 0,
+    onHover,
+    onLeave,
+    onSelect,
+}) {
+    const activeValue = hoveredValue || value;
+
+    return (
+        <div className="tutor-profile__score-stars" onMouseLeave={onLeave} aria-label={`Wybrana ocena ${value} na 5`}>
+            {REVIEW_SCORE_OPTIONS.map((score) => {
+                const isActive = score <= activeValue;
+
+                return (
+                    <button
+                        key={score}
+                        className={`tutor-profile__score-star${isActive ? " is-active" : ""}`}
+                        type="button"
+                        aria-label={`Wybierz ${score} gwiazdek`}
+                        aria-pressed={score === value}
+                        onMouseEnter={() => onHover(score)}
+                        onFocus={() => onHover(score)}
+                        onClick={() => onSelect(score)}
+                    >
+                        <StarIcon isFilled={isActive} />
+                    </button>
+                );
+            })}
         </div>
     );
 }
@@ -230,6 +263,8 @@ export default function TutorProfile({
     const [reviewError, setReviewError] = useState("");
     const [reviewSuccess, setReviewSuccess] = useState("");
     const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
+    const [areAllReviewsVisible, setAreAllReviewsVisible] = useState(false);
+    const [hoveredReviewScore, setHoveredReviewScore] = useState(0);
 
     const subjectOptions = useMemo(() => buildSubjectOptions(tutor, requestFilters), [requestFilters, tutor]);
     const levelOptions = useMemo(() => safeArray(tutor?.levels).slice(0, 3), [tutor?.levels]);
@@ -255,6 +290,8 @@ export default function TutorProfile({
         setSelectedSlotId("");
         setReviewError("");
         setReviewSuccess("");
+        setAreAllReviewsVisible(false);
+        setHoveredReviewScore(0);
         setActiveTab("info");
     }, [tutor?.followersCount, tutor?.id, tutor?.isFollowed, tutor?.opinions, tutor?.rating, tutor?.review, tutor?.reviews]);
 
@@ -274,6 +311,7 @@ export default function TutorProfile({
     useEffect(() => {
         setReviewScore(Number(ownReview?.rating || 5));
         setReviewContent(ownReview?.content || "");
+        setHoveredReviewScore(0);
     }, [ownReview, tutor?.id]);
 
     if (!tutor) {
@@ -291,6 +329,7 @@ export default function TutorProfile({
         ? `${Number(tutor.hourlyRate).toFixed(0)} zl/h`
         : "Cena do ustalenia";
     const hasBookingSelection = Boolean(selectedSlot);
+    const hasExtraReviews = secondaryReviews.length > 0;
     const coverStyle = heroImageSrc
         ? { backgroundImage: `linear-gradient(135deg, rgba(57, 70, 104, 0.14), rgba(205, 142, 231, 0.36)), url(${heroImageSrc})` }
         : undefined;
@@ -376,7 +415,7 @@ export default function TutorProfile({
                 .tutor-profile__cover-badge{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:0 14px;border-radius:999px;background:#ffffff3d;color:#fff;font-size:.78rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
                 .tutor-profile__hero-body{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:end;padding:0 22px 22px;margin-top:-28px}
                 .tutor-profile__avatar{display:grid;place-items:center;width:84px;aspect-ratio:1;border:4px solid #fff;border-radius:50%;background:linear-gradient(135deg,#637392,#c27ddb);color:#fff;font-family:var(--font-display);font-size:1.9rem;font-weight:800;box-shadow:0 14px 24px #5753612e}
-                .tutor-profile__identity,.tutor-profile__about,.tutor-profile__panel-head,.tutor-profile__rating-box,.tutor-profile__review-card,.tutor-profile__booking-summary,.tutor-profile__field,.tutor-profile__sidebar-summary{display:grid;gap:12px}
+                .tutor-profile__identity,.tutor-profile__about,.tutor-profile__panel-head,.tutor-profile__rating-box,.tutor-profile__review-card,.tutor-profile__booking-summary,.tutor-profile__field,.tutor-profile__sidebar-summary,.tutor-profile__review-main{display:grid;gap:12px}
                 .tutor-profile__identity-main,.tutor-profile__booking-head,.tutor-profile__booking-actions,.tutor-profile__booking-summary-footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}
                 .tutor-profile__name{margin:0;color:#1f1b24;font-family:var(--font-display);font-size:clamp(2rem,3vw,2.5rem);line-height:.94}
                 .tutor-profile__sub{margin:10px 0 0;color:#80757d;font-size:.96rem;font-weight:700}
@@ -395,17 +434,29 @@ export default function TutorProfile({
                 .tutor-profile__panel-label,.tutor-profile__summary-item span,.tutor-profile__sidebar-card span,.tutor-profile__booking-step{margin:0;color:#9d9298;font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
                 .tutor-profile__section-title,.tutor-profile__booking-summary h3{margin:0;color:#2f2936;font-family:var(--font-display);line-height:1}
                 .tutor-profile__section-title{font-size:1.55rem}
-                .tutor-profile__review-layout{display:grid;grid-template-columns:minmax(200px,240px) minmax(0,1fr);gap:18px}
-                .tutor-profile__rating-box,.tutor-profile__review-card{padding:18px;border-radius:22px}
-                .tutor-profile__rating-box{background:linear-gradient(180deg,#f5e6fbf0,#ffffffe6)}
+                .tutor-profile__review-layout{display:grid;grid-template-columns:minmax(220px,250px) minmax(0,1fr);gap:20px;align-items:start}
+                .tutor-profile__rating-box,.tutor-profile__review-card{padding:20px;border-radius:24px}
+                .tutor-profile__rating-box{background:linear-gradient(180deg,#f5e6fbf0,#ffffffe6);border:1px solid #ead9f3;box-shadow:inset 0 1px 0 #fffffff0}
+                .tutor-profile__rating-box{align-content:start}
                 .tutor-profile__rating-value{display:flex;align-items:baseline;gap:6px;color:#2f2a35;font-family:var(--font-display);font-size:2.2rem;font-weight:800}
                 .tutor-profile__rating-value small{color:#978c93;font-size:1rem}
                 .tutor-profile__stars{display:flex;gap:4px;color:#f2a23c}
-                .tutor-profile__review-card{background:#f7f5f9}
-                .tutor-profile__review-header{display:flex;align-items:center;gap:12px}
+                .tutor-profile__review-card{background:linear-gradient(180deg,#faf8fc,#f4f0f8);border:1px solid #ece4f3;box-shadow:0 10px 22px #705e8610}
+                .tutor-profile__review-main{min-width:0}
+                .tutor-profile__review-header{display:flex;align-items:flex-start;gap:12px;min-width:0}
                 .tutor-profile__review-avatar{display:grid;place-items:center;width:44px;aspect-ratio:1;border-radius:50%;background:linear-gradient(135deg,#6b7c98,#bc72d6);color:#fff;font-weight:800}
-                .tutor-profile__review-meta strong{display:block;color:#2f2a35}
+                .tutor-profile__review-meta{min-width:0}
+                .tutor-profile__review-meta strong{display:block;color:#2f2a35;line-height:1.2;word-break:break-word;overflow-wrap:anywhere}
                 .tutor-profile__review-meta span{color:#988d94;font-size:.82rem;font-weight:700}
+                .tutor-profile__review-card .tutor-profile__stars{margin-top:2px}
+                .tutor-profile__review-text{max-width:100%;font-size:.98rem;line-height:1.72;word-break:break-word;overflow-wrap:anywhere}
+                .tutor-profile__review-toggle-row{display:flex;justify-content:flex-end;padding-top:2px}
+                .tutor-profile__review-toggle-row .tutor-profile__cta{flex:0 0 auto;min-width:250px}
+                .tutor-profile__score-stars{display:flex;flex-wrap:wrap;gap:8px}
+                .tutor-profile__score-star{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border:1px solid #d9d0e2;border-radius:50%;background:#fff;color:#cfc7d8;box-shadow:0 8px 16px #6a637410;transition:transform .16s ease,box-shadow .16s ease,color .16s ease,border-color .16s ease}
+                .tutor-profile__score-star:hover,.tutor-profile__score-star:focus-visible{transform:translateY(-1px);border-color:#c981e2;box-shadow:0 12px 22px #b467d220;outline:none}
+                .tutor-profile__score-star.is-active{color:#f2a23c;border-color:#e7bb7a;background:linear-gradient(180deg,#fff9ef,#fff)}
+                .tutor-profile__score-star svg{width:24px;height:24px}
                 .tutor-profile__booking-head{align-items:flex-start}
                 .tutor-profile__field-label{color:#3a333e;font-size:.95rem;font-weight:800}
                 .tutor-profile__booking-schedule{display:grid;gap:16px;padding:20px;border-radius:24px;background:linear-gradient(180deg,#f4f2f6,#eeebf0);border:1px solid #d8d1e0}
@@ -441,15 +492,21 @@ export default function TutorProfile({
                 .tutor-profile__summary-item{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;align-items:center}
                 .tutor-profile__summary-item strong,.tutor-profile__sidebar-card strong,.tutor-profile__sidebar-card p{display:block;margin-top:4px;color:#332d38;font-size:1rem;line-height:1.4}
                 .tutor-profile__sidebar-card p{margin:4px 0 0}
-                .tutor-profile__booking-actions{margin-top:4px}
-                .tutor-profile__cta,.tutor-profile__cancel{flex:1;min-height:48px;border:0;border-radius:999px;font-size:.98rem;font-weight:700}
+                .tutor-profile__booking-actions{margin-top:8px;align-items:center}
+                .tutor-profile__cta,.tutor-profile__cancel{flex:1;min-height:52px;border:0;border-radius:999px;font-size:.98rem;font-weight:800}
                 .tutor-profile__cancel{background:#8b8c92;color:#fff;box-shadow:0 12px 20px #6b6d741f}
+                .tutor-profile__booking-actions .tutor-profile__cta{flex:0 0 auto;min-width:240px;padding:0 28px;background:linear-gradient(135deg,#cf7be6 0%,#b861d5 52%,#a751cf 100%);box-shadow:0 16px 30px #b467d22e}
+                .tutor-profile__booking-actions .tutor-profile__cta:hover{transform:translateY(-1px);box-shadow:0 18px 34px #b467d238}
+                .tutor-profile__booking-actions .tutor-profile__cta:active{transform:translateY(0)}
+                .tutor-profile__field > .tutor-profile__booking-actions{margin-top:14px;padding-top:2px}
+                .tutor-profile__field > .tutor-profile__booking-actions .tutor-profile__cta{width:100%;min-width:min(100%,340px)}
+                .tutor-profile__about:has(.tutor-profile__review-card) {gap:14px}
                 .tutor-profile__sidebar-summary{margin-top:10px}
                 .tutor-profile__placeholder{margin:0;color:#6d6270;font-size:.98rem;line-height:1.65}
                 @media (max-width:1100px){.tutor-profile__sidebar{position:static}}
-                @media (max-width:900px){.tutor-profile__hero-body{grid-template-columns:1fr;align-items:start}.tutor-profile__follow-wrap{justify-items:start}.tutor-profile__review-layout{grid-template-columns:1fr}.tutor-profile__booking-legend{justify-content:flex-start}}
+                @media (max-width:900px){.tutor-profile__hero-body{grid-template-columns:1fr;align-items:start}.tutor-profile__follow-wrap{justify-items:start}.tutor-profile__review-layout{grid-template-columns:1fr}.tutor-profile__booking-legend{justify-content:flex-start}.tutor-profile__booking-actions .tutor-profile__cta{min-width:220px}}
                 @media (max-width:900px){.tutor-profile__booking-grid{border-spacing:4px 6px}.tutor-profile__booking-axis,.tutor-profile__booking-time{width:72px}.tutor-profile__booking-axis,.tutor-profile__booking-day,.tutor-profile__booking-time,.tutor-profile__booking-cell{height:38px}.tutor-profile__booking-day,.tutor-profile__booking-time{font-size:.84rem}}
-                @media (max-width:680px){.tutor-profile__surface{padding:14px}.tutor-profile__panel{padding:18px}.tutor-profile__tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.tutor-profile__back,.tutor-profile__badge,.tutor-profile__cancel,.tutor-profile__cta,.tutor-profile__tab,.tutor-profile__choice{width:100%}.tutor-profile__hero-body{padding:0 18px 18px}.tutor-profile__name{font-size:1.8rem}.tutor-profile__booking-schedule{padding:14px}.tutor-profile__booking-grid{border-spacing:3px 5px}.tutor-profile__booking-axis,.tutor-profile__booking-time{width:62px}.tutor-profile__booking-axis{font-size:.72rem}.tutor-profile__booking-day,.tutor-profile__booking-time{font-size:.76rem}.tutor-profile__booking-axis,.tutor-profile__booking-day,.tutor-profile__booking-time,.tutor-profile__booking-cell{height:34px}}
+                @media (max-width:680px){.tutor-profile__surface{padding:14px}.tutor-profile__panel{padding:18px}.tutor-profile__tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.tutor-profile__back,.tutor-profile__badge,.tutor-profile__cancel,.tutor-profile__cta,.tutor-profile__tab,.tutor-profile__choice{width:100%}.tutor-profile__hero-body{padding:0 18px 18px}.tutor-profile__name{font-size:1.8rem}.tutor-profile__booking-schedule{padding:14px}.tutor-profile__booking-grid{border-spacing:3px 5px}.tutor-profile__booking-axis,.tutor-profile__booking-time{width:62px}.tutor-profile__booking-axis{font-size:.72rem}.tutor-profile__booking-day,.tutor-profile__booking-time{font-size:.76rem}.tutor-profile__booking-axis,.tutor-profile__booking-day,.tutor-profile__booking-time,.tutor-profile__booking-cell{height:34px}.tutor-profile__review-layout{gap:16px}.tutor-profile__rating-box,.tutor-profile__review-card{padding:18px}.tutor-profile__booking-actions .tutor-profile__cta{min-width:100%}}
             `}</style>
 
             <div className="portal-hub__inner tutor-profile__layout">
@@ -662,7 +719,7 @@ export default function TutorProfile({
                                 <section className="tutor-profile__panel">
                                     <div className="tutor-profile__panel-head">
                                         <p className="tutor-profile__panel-label">Opinie</p>
-                                        <h2 className="tutor-profile__section-title">Ocena i ostatnia rekomendacja</h2>
+                                        <h2 className="tutor-profile__section-title">Opinie:</h2>
                                     </div>
 
                                     <div className="tutor-profile__review-layout">
@@ -678,25 +735,39 @@ export default function TutorProfile({
                                             </span>
                                         </div>
 
-                                        <article className="tutor-profile__review-card">
-                                            <div className="tutor-profile__review-header">
-                                                <div className="tutor-profile__review-avatar" aria-hidden="true">
-                                                    {(review.author || "R").slice(0, 1)}
+                                        <div className="tutor-profile__review-main">
+                                            <article className="tutor-profile__review-card">
+                                                <div className="tutor-profile__review-header">
+                                                    <div className="tutor-profile__review-avatar" aria-hidden="true">
+                                                        {(review.author || "R").slice(0, 1)}
+                                                    </div>
+                                                    <div className="tutor-profile__review-meta">
+                                                        <strong>{review.author || "Rent Nerd"}</strong>
+                                                        <span>{review.dateLabel || "Brak daty"}</span>
+                                                    </div>
                                                 </div>
-                                                <div className="tutor-profile__review-meta">
-                                                    <strong>{review.author || "Rent Nerd"}</strong>
-                                                    <span>{review.dateLabel || "Brak daty"}</span>
+                                                <RatingStars rating={Number(review.rating || ratingValue || 0)} />
+                                                <p className="tutor-profile__review-text">
+                                                    {review.content || "Profil zostal przygotowany pod pierwsze zajecia."}
+                                                </p>
+                                            </article>
+
+                                            {hasExtraReviews ? (
+                                                <div className="tutor-profile__review-toggle-row">
+                                                    <button
+                                                        className="tutor-profile__cta"
+                                                        type="button"
+                                                        onClick={() => setAreAllReviewsVisible((currentValue) => !currentValue)}
+                                                    >
+                                                        {areAllReviewsVisible ? "Ukryj pozostale opinie" : "Pokaz wszystkie opinie"}
+                                                    </button>
                                                 </div>
-                                            </div>
-                                            <RatingStars rating={Number(review.rating || ratingValue || 0)} />
-                                            <p className="tutor-profile__review-text">
-                                                {review.content || "Profil zostal przygotowany pod pierwsze zajecia."}
-                                            </p>
-                                        </article>
+                                            ) : null}
+                                        </div>
                                     </div>
 
                                     <div className="tutor-profile__about">
-                                        {secondaryReviews.length ? (
+                                        {areAllReviewsVisible && secondaryReviews.length ? (
                                             secondaryReviews.map((reviewItem) => (
                                                 <article key={reviewItem.id} className="tutor-profile__review-card">
                                                     <div className="tutor-profile__review-header">
@@ -723,18 +794,13 @@ export default function TutorProfile({
                                         <article className="tutor-profile__review-card">
                                             <form className="tutor-profile__field" onSubmit={handleReviewSubmit}>
                                                 <span className="tutor-profile__field-label">Twoja ocena</span>
-                                                <div className="tutor-profile__booking-subjects">
-                                                    {REVIEW_SCORE_OPTIONS.map((score) => (
-                                                        <button
-                                                            key={score}
-                                                            className={`tutor-profile__choice${reviewScore === score ? " is-selected" : ""}`}
-                                                            type="button"
-                                                            onClick={() => setReviewScore(score)}
-                                                        >
-                                                            {score}/5
-                                                        </button>
-                                                    ))}
-                                                </div>
+                                                <ReviewScoreStars
+                                                    value={reviewScore}
+                                                    hoveredValue={hoveredReviewScore}
+                                                    onHover={setHoveredReviewScore}
+                                                    onLeave={() => setHoveredReviewScore(0)}
+                                                    onSelect={setReviewScore}
+                                                />
 
                                                 <label className="tutor-profile__booking-message">
                                                     <span className="tutor-profile__field-label">Twoja opinia</span>
