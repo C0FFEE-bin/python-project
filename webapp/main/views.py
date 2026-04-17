@@ -217,6 +217,16 @@ def _get_user_initials(display_name):
     return (fallback[:1] or "U").upper()
 
 
+def _get_avatar_tone_for_user(custom_user, tutor=None):
+    if tutor is not None:
+        return tutor.avatar_tone or AVATAR_TONES[tutor.pk % len(AVATAR_TONES)]
+
+    if custom_user is not None and custom_user.pk:
+        return AVATAR_TONES[custom_user.pk % len(AVATAR_TONES)]
+
+    return "slate"
+
+
 def _is_tutor_followed_by_user(tutor, custom_user):
     if custom_user is None or tutor is None:
         return False
@@ -256,18 +266,18 @@ def _get_home_props(request):
     current_user = None
     if request.user.is_authenticated:
         custom_user = _get_custom_user_for_auth_user(request.user)
-        is_tutor = bool(
-            custom_user
-            and custom_user.typ == "tutor"
-            and Tutor.objects.filter(uzytkownik=custom_user).exists()
-        )
+        tutor = None
+        if custom_user and custom_user.typ == "tutor":
+            tutor = Tutor.objects.filter(uzytkownik=custom_user).first()
+
+        is_tutor = tutor is not None
         display_name = _get_user_display_name(request.user, custom_user=custom_user)
         current_user = {
             "email": request.user.email,
             "username": request.user.get_username(),
             "displayName": display_name,
             "initials": _get_user_initials(display_name),
-            "avatarUrl": static("main/img/profile1.png"),
+            "avatarTone": _get_avatar_tone_for_user(custom_user, tutor=tutor),
             "accountType": custom_user.typ if custom_user and custom_user.typ else "uczen",
             "isTutor": is_tutor,
         }

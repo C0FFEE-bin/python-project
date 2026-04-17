@@ -1,13 +1,16 @@
 export default function AuthAction({ csrfToken, currentUser, isAuthenticated, urls }) {
     if (isAuthenticated) {
+        const avatarTone = currentUser?.avatarTone || "slate";
+
         return (
             <div className="quick-actions__account">
-                {currentUser?.username ? (
+                {currentUser ? (
                     <span
-                        className="quick-actions__user"
-                        title={`Zalogowano jako ${currentUser.username}`}
+                        className={`quick-actions__user quick-actions__user--${avatarTone}`}
+                        title={`Zalogowano jako ${currentUser.displayName || currentUser.username || "uzytkownik"}`}
+                        aria-label={currentUser.displayName || currentUser.username || "uzytkownik"}
                     >
-                        @{currentUser.username}
+                        <i className="fa-solid fa-user quick-actions__user-icon" aria-hidden="true"></i>
                     </span>
                 ) : null}
 

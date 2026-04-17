@@ -71,11 +71,12 @@
 
         var trigger = document.createElement("button");
         trigger.type = "button";
-        trigger.className = "quick-actions__user quick-actions__user-trigger";
+        trigger.className = avatar.className + " quick-actions__user-trigger";
         trigger.title = "Profil " + displayName;
         trigger.setAttribute("aria-label", "Otworz menu profilu");
         trigger.setAttribute("aria-haspopup", "menu");
         trigger.setAttribute("aria-expanded", "false");
+        trigger.innerHTML = avatar.innerHTML;
 
         avatar.replaceWith(trigger);
 
