@@ -5,7 +5,7 @@
 {% block body_class %}tutor-profile-settings-body{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'main/css/pages/tutor_profile.css' %}?v=20260408a">
+<link rel="stylesheet" href="{% static 'main/css/pages/tutor_profile.css' %}?v=20260417a">
 {% endblock %}
 
 {% block content %}
@@ -15,23 +15,63 @@
 
     <main class="tutor-profile-settings-shell">
         <header class="tutor-profile-settings-hero">
-            <div class="tutor-profile-settings-hero__copy">
-                <p class="tutor-profile-settings__eyebrow">Panel tutora</p>
-                <h1>{{ page_title }}</h1>
-                <p>
-                    {{ page_description }}
-                </p>
+            <div
+                class="tutor-profile-settings-hero__cover"
+                {% if profile_cover_image_url %}
+                    style="background-image: linear-gradient(135deg, rgba(214, 189, 231, 0.24) 0%, rgba(135, 173, 210, 0.18) 100%), url('{{ profile_cover_image_url|escapejs }}');"
+                {% endif %}
+            >
+                <div class="tutor-profile-settings-hero__cover-badges">
+                    <span class="tutor-profile-settings-hero__cover-badge">
+                        <i class="fa-regular fa-image" aria-hidden="true"></i>
+                        Tlo profilu
+                    </span>
+                    <span class="tutor-profile-settings-hero__cover-badge">
+                        <i class="fa-regular fa-user" aria-hidden="true"></i>
+                        Avatar i dane
+                    </span>
+                </div>
             </div>
 
-            <div class="tutor-profile-settings-hero__actions">
-                <a class="tutor-profile-settings__ghost-link" href="{{ back_url }}">
-                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-                    Wroc na glowna
-                </a>
-                <a class="tutor-profile-settings__primary-link" href="{{ dashboard_url }}">
-                    <i class="fa-solid fa-chart-column" aria-hidden="true"></i>
-                    Otworz dashboard
-                </a>
+            <div class="tutor-profile-settings-hero__body">
+                <div class="tutor-profile-settings-hero__identity">
+                    <div class="tutor-profile-settings-hero__avatar-frame">
+                        {% if profile_avatar_image_url %}
+                            <img
+                                class="tutor-profile-settings-hero__avatar-image"
+                                src="{{ profile_avatar_image_url }}"
+                                alt="Zdjecie profilowe {{ profile_name }}"
+                            >
+                        {% else %}
+                            <div class="tutor-profile-settings-hero__avatar-fallback is-{{ profile_avatar_tone }}">
+                                {{ profile_initials }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="tutor-profile-settings-hero__identity-copy">
+                        <p class="tutor-profile-settings__eyebrow">Panel tutora</p>
+                        <h1>{{ profile_name }}</h1>
+                        <p class="tutor-profile-settings-hero__meta">{{ profile_experience }}</p>
+
+                        <div class="tutor-profile-settings-hero__stats">
+                            <span>{{ followers_count }} obserwujacych</span>
+                            <span>{{ posts_count }} wpisow</span>
+                            <span>{{ opinions_count }} opinii</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tutor-profile-settings-hero__actions">
+                    <a class="tutor-profile-settings__ghost-link" href="{{ back_url }}">
+                        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                        Wroc na glowna
+                    </a>
+                    <a class="tutor-profile-settings__primary-link" href="{{ dashboard_url }}">
+                        <i class="fa-solid fa-chart-column" aria-hidden="true"></i>
+                        Otworz dashboard
+                    </a>
+                </div>
             </div>
         </header>
 
@@ -63,8 +103,8 @@
 
                 <section class="tutor-profile-settings-section" id="konto">
                     <div class="tutor-profile-settings-section__head">
-                        <p class="tutor-profile-settings__eyebrow">Dane konta</p>
-                        <h2>Podstawowe informacje</h2>
+                        <p class="tutor-profile-settings__eyebrow">Zdjecia i dane</p>
+                        <h2>Edytuj widoczne informacje</h2>
                     </div>
 
                     {% if form.non_field_errors %}
@@ -80,6 +120,28 @@
                             <span>{{ form.full_name.label }}</span>
                             {{ form.full_name }}
                             {% for error in form.full_name.errors %}
+                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
+                            {% endfor %}
+                        </label>
+
+                        <label class="tutor-profile-settings-field">
+                            <span>{{ form.avatar_image_url.label }}</span>
+                            {{ form.avatar_image_url }}
+                            <small class="tutor-profile-settings-field__hint">
+                                Wklej pelny adres http(s) albo sciezke zaczynajaca sie od /.
+                            </small>
+                            {% for error in form.avatar_image_url.errors %}
+                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
+                            {% endfor %}
+                        </label>
+
+                        <label class="tutor-profile-settings-field">
+                            <span>{{ form.cover_image_url.label }}</span>
+                            {{ form.cover_image_url }}
+                            <small class="tutor-profile-settings-field__hint">
+                                To zdjecie pojawia sie w szerokim tle na gorze profilu.
+                            </small>
+                            {% for error in form.cover_image_url.errors %}
                                 <small class="tutor-profile-settings-field__error">{{ error }}</small>
                             {% endfor %}
                         </label>
@@ -142,76 +204,48 @@
 
                 <section class="tutor-profile-settings-section">
                     <div class="tutor-profile-settings-section__head">
-                        <p class="tutor-profile-settings__eyebrow">Specjalizacja</p>
-                        <h2>Przedmioty i poziomy</h2>
+                        <p class="tutor-profile-settings__eyebrow">Zakres profilu</p>
+                        <h2>Przedmioty, poziomy i wyroznienia</h2>
                     </div>
 
-                    <div class="tutor-profile-settings-grid tutor-profile-settings-grid--two">
-                        <div class="tutor-profile-settings-field">
-                            <span>{{ form.subjects.label }}</span>
-                            <div class="tutor-profile-settings-choice-grid">
-                                {% for checkbox in form.subjects %}
-                                    <label class="tutor-profile-settings-choice">
-                                        {{ checkbox.tag }}
-                                        <span>{{ checkbox.choice_label }}</span>
-                                    </label>
+                    <div class="tutor-profile-settings-readonly-grid">
+                        <div class="tutor-profile-settings-readonly-card">
+                            <strong>Wyroznienia</strong>
+                            <div class="tutor-profile-settings-readonly-chips">
+                                {% for badge in profile_badges %}
+                                    <span>{{ badge }}</span>
+                                {% empty %}
+                                    <span class="is-muted">Brak wyroznien do wyswietlenia.</span>
                                 {% endfor %}
                             </div>
-                            {% for error in form.subjects.errors %}
-                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
-                            {% endfor %}
                         </div>
 
-                        <div class="tutor-profile-settings-field">
-                            <span>{{ form.levels.label }}</span>
-                            <div class="tutor-profile-settings-choice-grid">
-                                {% for checkbox in form.levels %}
-                                    <label class="tutor-profile-settings-choice">
-                                        {{ checkbox.tag }}
-                                        <span>{{ checkbox.choice_label }}</span>
-                                    </label>
+                        <div class="tutor-profile-settings-readonly-card">
+                            <strong>Przedmioty</strong>
+                            <div class="tutor-profile-settings-readonly-chips">
+                                {% for subject in profile_subjects %}
+                                    <span>{{ subject }}</span>
+                                {% empty %}
+                                    <span class="is-muted">Brak przypisanych przedmiotow.</span>
                                 {% endfor %}
                             </div>
-                            {% for error in form.levels.errors %}
-                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
-                            {% endfor %}
                         </div>
-                    </div>
-                </section>
 
-                <section class="tutor-profile-settings-section">
-                    <div class="tutor-profile-settings-section__head">
-                        <p class="tutor-profile-settings__eyebrow">Wyglad profilu</p>
-                        <h2>Avatar i wyroznienia</h2>
-                    </div>
-
-                    <div class="tutor-profile-settings-grid tutor-profile-settings-grid--two">
-                        <div class="tutor-profile-settings-field">
-                            <span>{{ form.avatar_tone.label }}</span>
-                            <div class="tutor-profile-settings-tone-grid">
-                                {% for radio in form.avatar_tone %}
-                                    <label class="tutor-profile-settings-tone">
-                                        {{ radio.tag }}
-                                        <span>{{ radio.choice_label }}</span>
-                                    </label>
+                        <div class="tutor-profile-settings-readonly-card">
+                            <strong>Poziomy nauczania</strong>
+                            <div class="tutor-profile-settings-readonly-chips">
+                                {% for level in profile_levels %}
+                                    <span>{{ level }}</span>
+                                {% empty %}
+                                    <span class="is-muted">Brak przypisanych poziomow.</span>
                                 {% endfor %}
                             </div>
-                            {% for error in form.avatar_tone.errors %}
-                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
-                            {% endfor %}
                         </div>
-
-                        <label class="tutor-profile-settings-field">
-                            <span>{{ form.status_badges.label }}</span>
-                            {{ form.status_badges }}
-                            <small class="tutor-profile-settings-field__hint">
-                                Oddziel kolejne wyroznienia przecinkami.
-                            </small>
-                            {% for error in form.status_badges.errors %}
-                                <small class="tutor-profile-settings-field__error">{{ error }}</small>
-                            {% endfor %}
-                        </label>
                     </div>
+
+                    <p class="tutor-profile-settings-readonly-note">
+                        W tym widoku te elementy sa tylko pokazane. Ich konfiguracja pochodzi z onboardingu i aktualnej struktury profilu.
+                    </p>
                 </section>
 
                 <footer class="tutor-profile-settings-actions">
@@ -226,54 +260,6 @@
             </form>
 
             <aside class="tutor-profile-settings-sidebar">
-                <section class="tutor-profile-settings-preview">
-                    <p class="tutor-profile-settings__eyebrow">Podglad</p>
-                    <div class="tutor-profile-settings-preview__card">
-                        <div class="tutor-profile-settings-preview__avatar is-{{ profile_avatar_tone }}">
-                            {{ profile_initials }}
-                        </div>
-                        <h2>{{ profile_name }}</h2>
-                        <p class="tutor-profile-settings-preview__meta">{{ profile_experience }}</p>
-
-                        <div class="tutor-profile-settings-preview__chips">
-                            {% for badge in profile_badges %}
-                                <span>{{ badge }}</span>
-                            {% endfor %}
-                        </div>
-
-                        <p class="tutor-profile-settings-preview__copy">
-                            {% if profile_about %}
-                                {{ profile_about }}
-                            {% else %}
-                                Uzupelnij opis, aby uczniowie od razu widzieli, jak prowadzisz zajecia.
-                            {% endif %}
-                        </p>
-
-                        <div class="tutor-profile-settings-preview__taxonomy">
-                            <div>
-                                <strong>Przedmioty</strong>
-                                <span>
-                                    {% if profile_subjects %}
-                                        {{ profile_subjects|join:", " }}
-                                    {% else %}
-                                        Jeszcze nie wybrano.
-                                    {% endif %}
-                                </span>
-                            </div>
-                            <div>
-                                <strong>Poziomy</strong>
-                                <span>
-                                    {% if profile_levels %}
-                                        {{ profile_levels|join:", " }}
-                                    {% else %}
-                                        Jeszcze nie wybrano.
-                                    {% endif %}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
                 <section class="tutor-profile-settings-stats">
                     <article>
                         <strong>{{ followers_count }}</strong>

@@ -1,7 +1,7 @@
 import os
 import json
 import re
-from datetime import time
+from datetime import date, time
 from unittest.mock import patch
 from urllib.parse import urlencode
 
@@ -18,6 +18,7 @@ from main.middleware import DatabaseErrorPageMiddleware
 from main.models import (
     Comment,
     Dostepnosc,
+    LessonNote,
     Obserwacja,
     Opinia,
     Post,
@@ -74,6 +75,7 @@ class MainViewsTests(TestCase):
         self.assertFalse(home_props['currentUser']['isTutor'])
         self.assertEqual(home_props['currentUser']['accountType'], 'uczen')
         self.assertEqual(home_props['urls']['observations'], reverse('portal_observations'))
+        self.assertEqual(home_props['urls']['portalNotes'], reverse('portal_notes'))
         self.assertEqual(home_props['urls']['portalPosts'], reverse('portal_posts'))
         self.assertEqual(home_props['urls']['tutorSearch'], reverse('tutor_search'))
         self.assertEqual(home_props['urls']['tutorDashboardData'], reverse('tutor_dashboard_data'))
@@ -545,6 +547,9 @@ class MainViewsTests(TestCase):
             opis='Stary opis',
             experience_label='Nowy korepetytor',
             avatar_tone='rose',
+            avatar_image_url='https://example.com/old-avatar.jpg',
+            cover_image_url='https://example.com/old-cover.jpg',
+            status_badges=['sprawny kontakt'],
         )
         tutor.przedmioty.add(
             Przedmiot.objects.create(
@@ -564,6 +569,8 @@ class MainViewsTests(TestCase):
                 'hourly_rate': '110',
                 'age': '29',
                 'experience_label': '5 lat pracy z uczniami',
+                'avatar_image_url': 'https://example.com/new-avatar.jpg',
+                'cover_image_url': 'https://example.com/new-cover.jpg',
                 'avatar_tone': 'ocean',
                 'status_badges': 'sprawny kontakt, zajecia online, matura 2026',
                 'subjects': ['Matematyka', 'Fizyka'],
@@ -587,18 +594,17 @@ class MainViewsTests(TestCase):
         self.assertEqual(float(tutor.stawka_godzinowa), 110.0)
         self.assertEqual(tutor.wiek, 29)
         self.assertEqual(tutor.experience_label, '5 lat pracy z uczniami')
-        self.assertEqual(tutor.avatar_tone, 'ocean')
+        self.assertEqual(tutor.avatar_image_url, 'https://example.com/new-avatar.jpg')
+        self.assertEqual(tutor.cover_image_url, 'https://example.com/new-cover.jpg')
+        self.assertEqual(tutor.avatar_tone, 'rose')
         self.assertEqual(
             tutor.status_badges,
-            ['sprawny kontakt', 'zajecia online', 'matura 2026'],
+            ['sprawny kontakt'],
         )
         self.assertEqual(
             sorted(tutor.przedmioty.values_list('nazwa', 'poziom')),
             [
-                ('Fizyka', 'Studia'),
-                ('Fizyka', 'Szkola srednia'),
-                ('Matematyka', 'Studia'),
-                ('Matematyka', 'Szkola srednia'),
+                ('Matematyka', 'Podstawowka'),
             ],
         )
 
@@ -844,6 +850,13 @@ class MainViewsTests(TestCase):
             typ='tutor',
         )
         tutor = Tutor.objects.create(uzytkownik=tutor_user, followers_count=4)
+        Dostepnosc.objects.create(
+            tutor=tutor,
+            dzien_tygodnia=2,
+            godzina_od=time(19, 0),
+            godzina_do=time(20, 0),
+            data=date(2026, 3, 11),
+        )
 
         self.client.force_login(auth_user)
         response = self.client.post(
@@ -903,6 +916,54 @@ class MainViewsTests(TestCase):
         self.assertEqual(TutorConversation.objects.count(), 0)
         self.assertEqual(TutorMessage.objects.count(), 0)
 
+    def test_tutor_booking_request_rejects_unavailable_slot(self):
+        auth_user = User.objects.create_user(
+            username='student-booking-mismatch',
+            email='student-booking-mismatch@example.com',
+            password='secret123',
+        )
+        TutorUser.objects.create(
+            username='student-booking-mismatch',
+            imie='Jan',
+            nazwisko='Uczen',
+            email='student-booking-mismatch@example.com',
+            typ='uczen',
+        )
+        tutor_user = TutorUser.objects.create(
+            username='booking-slot-check',
+            imie='Alicja',
+            nazwisko='Nowak',
+            email='booking-slot-check@example.com',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(uzytkownik=tutor_user)
+        Dostepnosc.objects.create(
+            tutor=tutor,
+            dzien_tygodnia=2,
+            godzina_od=time(18, 0),
+            godzina_do=time(19, 0),
+            data=date(2026, 3, 11),
+        )
+
+        self.client.force_login(auth_user)
+        response = self.client.post(
+            reverse('tutor_booking_request'),
+            data=json.dumps(
+                {
+                    'tutorId': tutor.pk,
+                    'subject': 'Matematyka',
+                    'date': '2026-03-11',
+                    'timeLabel': '19:00-20:00',
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('nie jest juz dostepny', response.json()['detail'])
+        self.assertEqual(TutorConversation.objects.count(), 0)
+        self.assertEqual(TutorMessage.objects.count(), 0)
+
     def test_portal_posts_returns_serialized_entries(self):
         tutor_user = TutorUser.objects.create(
             username='ola-portal',
@@ -942,6 +1003,37 @@ class MainViewsTests(TestCase):
         self.assertEqual(payload['posts'][0]['checklist'], ['wtorek 18:00', 'czwartek 19:00'])
         self.assertEqual(payload['posts'][0]['comments'], [])
         self.assertEqual(payload['posts'][0]['commentsCount'], 0)
+        self.assertFalse(payload['posts'][0]['canComment'])
+
+    def test_portal_posts_marks_comments_available_for_logged_user_without_custom_profile(self):
+        auth_user = User.objects.create_user(
+            username='portal-reader',
+            email='portal-reader@example.com',
+            password='secret123',
+        )
+        tutor_user = TutorUser.objects.create(
+            username='portal-post-author',
+            imie='Ola',
+            nazwisko='Tutor',
+            email='portal-post-author@example.com',
+            typ='tutor',
+        )
+        tutor = Tutor.objects.create(uzytkownik=tutor_user, followers_count=14)
+        Post.objects.create(
+            tutor=tutor,
+            tytul='Material do powtorki',
+            tresc='Wrzucilem kolejne zadania do przepracowania przed zajeciami.',
+        )
+
+        self.client.force_login(auth_user)
+        response = self.client.get(reverse('portal_posts'))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        self.assertEqual(len(payload['posts']), 1)
+        self.assertTrue(payload['posts'][0]['canComment'])
+        self.assertTrue(TutorUser.objects.filter(username='portal-reader').exists())
 
     def test_portal_posts_create_persists_post_for_logged_tutor(self):
         auth_user = User.objects.create_user(
@@ -1059,6 +1151,128 @@ class MainViewsTests(TestCase):
         self.assertEqual(payload['comment']['author'], 'Maja Komentuje')
         self.assertEqual(payload['comments'][0]['content'], 'Dzieki, to bardzo pomaga przed kolokwium.')
         self.assertTrue(payload['comments'][0]['isOwn'])
+
+    def test_portal_notes_returns_current_user_entries(self):
+        auth_user = User.objects.create_user(
+            username='notes-reader',
+            email='notes-reader@example.com',
+            password='secret123',
+        )
+        note_owner = TutorUser.objects.create(
+            username='notes-reader',
+            imie='Ala',
+            nazwisko='Uczen',
+            email='notes-reader@example.com',
+            typ='uczen',
+        )
+        other_user = TutorUser.objects.create(
+            username='notes-other',
+            imie='Ola',
+            nazwisko='Student',
+            email='notes-other@example.com',
+            typ='uczen',
+        )
+        LessonNote.objects.create(
+            user=other_user,
+            subject='Fizyka',
+            title='Obca notatka',
+            content='Ta notatka nie powinna trafic do zalogowanego uzytkownika.',
+            tags=['obca'],
+        )
+        LessonNote.objects.create(
+            user=note_owner,
+            subject='Matematyka',
+            title='Wlasna notatka',
+            content='Najpierw policz delte, potem miejsca zerowe i sprawdz os symetrii.',
+            tags=['matura', 'algebra'],
+        )
+
+        self.client.force_login(auth_user)
+        response = self.client.get(reverse('portal_notes'))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        self.assertEqual(len(payload['notes']), 1)
+        self.assertEqual(payload['notes'][0]['subject'], 'Matematyka')
+        self.assertEqual(payload['notes'][0]['title'], 'Wlasna notatka')
+        self.assertEqual(payload['notes'][0]['tags'], ['matura', 'algebra'])
+        self.assertIn('Najpierw policz delte', payload['notes'][0]['excerpt'])
+
+    def test_portal_notes_create_persists_note_for_logged_user_without_custom_profile(self):
+        auth_user = User.objects.create_user(
+            username='notes-create',
+            email='notes-create@example.com',
+            password='secret123',
+        )
+
+        self.client.force_login(auth_user)
+        response = self.client.post(
+            reverse('portal_notes'),
+            data=json.dumps(
+                {
+                    'subject': 'Chemia',
+                    'title': 'Stechiometria przed kartkowka',
+                    'content': 'Rozdziel mase, liczbe moli i wynik koncowy w trzech oddzielnych krokach.',
+                    'tags': ['obliczenia', 'powtorka'],
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(LessonNote.objects.count(), 1)
+
+        note = LessonNote.objects.get()
+        self.assertEqual(note.subject, 'Chemia')
+        self.assertEqual(note.title, 'Stechiometria przed kartkowka')
+        self.assertEqual(note.tags, ['obliczenia', 'powtorka'])
+        self.assertEqual(note.user.username, 'notes-create')
+        self.assertTrue(TutorUser.objects.filter(username='notes-create').exists())
+        self.assertEqual(response.json()['note']['title'], 'Stechiometria przed kartkowka')
+
+    def test_portal_notes_update_updates_owned_note(self):
+        auth_user = User.objects.create_user(
+            username='notes-update',
+            email='notes-update@example.com',
+            password='secret123',
+        )
+        note_owner = TutorUser.objects.create(
+            username='notes-update',
+            imie='Jan',
+            nazwisko='Uczen',
+            email='notes-update@example.com',
+            typ='uczen',
+        )
+        note = LessonNote.objects.create(
+            user=note_owner,
+            subject='Historia',
+            title='Pierwsza wersja',
+            content='Krotka wersja notatki do poprawy przed kolejnymi zajeciami.',
+            tags=['esej'],
+        )
+
+        self.client.force_login(auth_user)
+        response = self.client.post(
+            reverse('portal_notes'),
+            data=json.dumps(
+                {
+                    'noteId': note.pk,
+                    'subject': 'Historia',
+                    'title': 'Plan odpowiedzi rozszerzonej',
+                    'content': 'Najpierw zapisz teze, potem dwa argumenty z data i na koncu dopisz skutek.',
+                    'tags': ['matura', 'esej'],
+                }
+            ),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        note.refresh_from_db()
+
+        self.assertEqual(note.title, 'Plan odpowiedzi rozszerzonej')
+        self.assertEqual(note.tags, ['matura', 'esej'])
+        self.assertIn('Najpierw zapisz teze', note.content)
 
     def test_portal_observations_returns_current_user_entries(self):
         auth_user = User.objects.create_user(

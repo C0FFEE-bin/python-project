@@ -110,9 +110,32 @@ class TutorProfileSettingsForm(forms.Form):
             }
         ),
     )
+    avatar_image_url = forms.CharField(
+        required=False,
+        max_length=500,
+        label="Zdjecie profilowe",
+        widget=forms.TextInput(
+            attrs={
+                "class": "tutor-profile-settings__input",
+                "placeholder": "Wklej link do avatara, np. https://...",
+            }
+        ),
+    )
+    cover_image_url = forms.CharField(
+        required=False,
+        max_length=500,
+        label="Tlo profilu",
+        widget=forms.TextInput(
+            attrs={
+                "class": "tutor-profile-settings__input",
+                "placeholder": "Wklej link do tla profilu albo /static/...",
+            }
+        ),
+    )
     avatar_tone = forms.ChoiceField(
         choices=AVATAR_TONE_CHOICES,
         label="Kolor avatara",
+        required=False,
         widget=forms.RadioSelect(),
     )
     status_badges = forms.CharField(
@@ -129,11 +152,13 @@ class TutorProfileSettingsForm(forms.Form):
     subjects = forms.MultipleChoiceField(
         choices=(),
         label="Przedmioty",
+        required=False,
         widget=forms.CheckboxSelectMultiple(),
     )
     levels = forms.MultipleChoiceField(
         choices=(),
         label="Poziomy nauczania",
+        required=False,
         widget=forms.CheckboxSelectMultiple(),
     )
 
@@ -164,3 +189,20 @@ class TutorProfileSettingsForm(forms.Form):
                 badges.append(badge[:40])
 
         return badges[:4]
+
+    def _clean_optional_image_reference(self, field_name):
+        value = (self.cleaned_data.get(field_name) or "").strip()
+        if not value:
+            return ""
+
+        allowed_prefixes = ("http://", "https://", "/")
+        if not value.startswith(allowed_prefixes):
+            raise forms.ValidationError("Podaj pelny adres http(s) albo sciezke zaczynajaca sie od /.")
+
+        return value
+
+    def clean_avatar_image_url(self):
+        return self._clean_optional_image_reference("avatar_image_url")
+
+    def clean_cover_image_url(self):
+        return self._clean_optional_image_reference("cover_image_url")

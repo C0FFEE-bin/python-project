@@ -10,6 +10,8 @@ function normalizeTutorCard(tutor) {
 }
 
 function normalizePortalPost(post) {
+    const tutorId = post?.tutorId;
+
     return {
         ...post,
         avatarTone: post?.avatarTone || "slate",
@@ -19,8 +21,21 @@ function normalizePortalPost(post) {
         canComment: Boolean(post?.canComment),
         initials: post?.initials || "T",
         paragraphs: Array.isArray(post?.paragraphs) ? post.paragraphs : [],
+        profileUrl: post?.profileUrl || (tutorId ? buildTutorProfileHref(tutorId) : ""),
         tags: Array.isArray(post?.tags) ? post.tags : [],
         title: post?.title || "",
+    };
+}
+
+function normalizePortalNote(note) {
+    return {
+        ...note,
+        content: note?.content || "",
+        excerpt: note?.excerpt || "",
+        subject: note?.subject || "",
+        tags: Array.isArray(note?.tags) ? note.tags : [],
+        title: note?.title || "",
+        updatedLabel: note?.updatedLabel || "",
     };
 }
 
@@ -141,6 +156,21 @@ export async function fetchPortalPosts({ postsUrl, databaseErrorUrl = "/database
 
     const payload = await response.json();
     return (payload.posts ?? []).map(normalizePortalPost);
+}
+
+export async function fetchPortalNotes({ notesUrl, databaseErrorUrl = "/database-error" }) {
+    const response = await fetch(notesUrl);
+    if (shouldRedirectToDatabaseError(response)) {
+        window.location.assign(databaseErrorUrl);
+        throw new Error("Blad bazy danych.");
+    }
+
+    if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+    }
+
+    const payload = await response.json();
+    return (payload.notes ?? []).map(normalizePortalNote);
 }
 
 export async function fetchPortalObservations({ observationsUrl, databaseErrorUrl = "/database-error" }) {
@@ -271,6 +301,37 @@ export async function createPortalPostComment({
     return {
         ...responsePayload,
         comments: Array.isArray(responsePayload?.comments) ? responsePayload.comments : [],
+    };
+}
+
+export async function savePortalNote({
+    payload,
+    notesUrl,
+    csrfToken,
+    databaseErrorUrl = "/database-error",
+}) {
+    const response = await fetch(notesUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (shouldRedirectToDatabaseError(response)) {
+        window.location.assign(databaseErrorUrl);
+        throw new Error("Blad bazy danych.");
+    }
+
+    if (!response.ok) {
+        throw new Error(await parseWriteErrorMessage(response));
+    }
+
+    const responsePayload = await response.json();
+    return {
+        ...responsePayload,
+        note: responsePayload?.note ? normalizePortalNote(responsePayload.note) : null,
     };
 }
 

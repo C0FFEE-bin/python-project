@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import {
     createPortalPost,
     createPortalPostComment,
+    fetchPortalNotes,
     fetchPortalObservations,
     fetchPortalPosts,
+    savePortalNote,
 } from "../api.js";
 import Reveal from "../components/Reveal.jsx";
 import joinClasses from "../utils/joinClasses.js";
@@ -464,6 +466,37 @@ const EMPTY_POST_FORM = {
     content: "",
 };
 
+const EMPTY_NOTE_FORM = {
+    subject: "",
+    title: "",
+    tagsText: "",
+    content: "",
+};
+
+function buildNoteFormValues(note = null) {
+    return {
+        subject: note?.subject || "",
+        title: note?.title || "",
+        tagsText: Array.isArray(note?.tags) ? note.tags.join(", ") : "",
+        content: note?.content || "",
+    };
+}
+
+function parseNoteTagsInput(value) {
+    return Array.from(
+        new Set(
+            String(value || "")
+                .split(",")
+                .map((tag) => tag.trim())
+                .filter(Boolean),
+        ),
+    ).slice(0, 6);
+}
+
+function upsertNote(notes, savedNote) {
+    return [savedNote, ...notes.filter((note) => note.id !== savedNote.id)].slice(0, 60);
+}
+
 function matchesSearch(searchValue, entries) {
     if (!searchValue) {
         return true;
@@ -667,41 +700,182 @@ function CalendarView({ lessons, searchValue }) {
     );
 }
 
-function NotesView({ notes, searchValue }) {
+function NotesView({
+    isAuthenticated,
+    isLoading,
+    isSaving,
+    loginUrl,
+    noteForm,
+    notes,
+    notesError,
+    onFieldChange,
+    onNewNote,
+    onNoteSelect,
+    onSave,
+    saveError,
+    saveSuccess,
+    searchValue,
+    selectedNoteId,
+    visibleNotes,
+}) {
+    const activeNote = notes.find((note) => note.id === selectedNoteId) || null;
+    const subjectsCount = new Set(notes.map((note) => note.subject).filter(Boolean)).size;
+    const recentNotesCount = notes.filter((note) => {
+        const updatedTimestamp = Date.parse(note.updatedAt || "");
+        return Number.isFinite(updatedTimestamp) && (Date.now() - updatedTimestamp) <= 48 * 60 * 60 * 1000;
+    }).length;
+
     return (
         <>
             <PortalViewIntro
                 eyebrow="Notatki z zajec"
-                title="Skroty, schematy i szybkie podsumowania po spotkaniach"
-                copy="Notatki zbieraja najwazniejsze rzeczy z konsultacji, tak zeby wrocic do nich bez przewijania czatu i bez szukania w kilku plikach."
+                title="Notatki, do ktorych da sie wrocic i je dalej rozwijac"
+                copy="Kazda notatka otwiera sie w szczegolach i zapisuje do bazy, wiec po kolejnej wizycie wracasz dokladnie do tej wersji, na ktorej skonczyles."
                 stats={[
-                    { value: notes.length, label: "notatek w tym widoku" },
-                    { value: "5", label: "obszarow nauki objetych materialem" },
-                    { value: "2", label: "swieze wpisy z ostatnich 48 godzin" },
+                    { value: notes.length, label: "notatek zapisanych w bazie" },
+                    { value: subjectsCount, label: "przedmiotow z notatkami" },
+                    { value: recentNotesCount, label: "aktualizacji z ostatnich 48 godzin" },
                 ]}
             />
 
-            {notes.length ? (
-                <div className="portal-section-grid">
-                    {notes.map((note) => (
-                        <article key={note.id} className="portal-section-card">
-                            <div className="portal-section-card__topline">
-                                <span className="portal-section-card__eyebrow">{note.subject}</span>
-                                <span className="portal-section-card__chip">{note.updatedLabel}</span>
+            {!isAuthenticated ? (
+                <div className="portal-empty-state">
+                    <a href={loginUrl}>Zaloguj sie</a>, aby otwierac notatki i zapisywac je w bazie.
+                </div>
+            ) : null}
+
+            {isAuthenticated && isLoading ? <div className="portal-empty-state">Ladowanie notatek z bazy...</div> : null}
+            {isAuthenticated && !isLoading && notesError ? <div className="portal-empty-state">{notesError}</div> : null}
+
+            {isAuthenticated && !isLoading && !notesError ? (
+                <div className="portal-help__layout">
+                    <div className="portal-notes__list">
+                        <div className="portal-notes__list-head">
+                            <div>
+                                <p className="portal-section-card__eyebrow">Twoje notatki</p>
+                                <h3>Wejdz do notatki albo zacznij nowa</h3>
                             </div>
-                            <h3>{note.title}</h3>
-                            <p>{note.excerpt}</p>
-                            <div className="portal-section-card__meta">
-                                {note.tags.map((tag) => (
-                                    <span key={tag}>{tag}</span>
+                            <button type="button" className="button button--secondary" onClick={onNewNote}>
+                                Nowa notatka
+                            </button>
+                        </div>
+
+                        {visibleNotes.length ? (
+                            <div className="portal-notes__cards">
+                                {visibleNotes.map((note) => (
+                                    <button
+                                        key={note.id}
+                                        type="button"
+                                        className={joinClasses(
+                                            "portal-section-card",
+                                            "portal-note-card",
+                                            selectedNoteId === note.id && "is-active",
+                                        )}
+                                        onClick={() => onNoteSelect(note.id)}
+                                    >
+                                        <div className="portal-section-card__topline">
+                                            <span className="portal-section-card__eyebrow">{note.subject}</span>
+                                            <span className="portal-section-card__chip">{note.updatedLabel}</span>
+                                        </div>
+                                        <h3>{note.title}</h3>
+                                        <p>{note.excerpt}</p>
+                                        {note.tags.length ? (
+                                            <div className="portal-section-card__meta">
+                                                {note.tags.map((tag) => (
+                                                    <span key={`${note.id}-${tag}`}>{tag}</span>
+                                                ))}
+                                            </div>
+                                        ) : null}
+                                    </button>
                                 ))}
                             </div>
-                        </article>
-                    ))}
+                        ) : searchValue ? (
+                            <PortalSearchEmptyState label="notatek" searchValue={searchValue} />
+                        ) : (
+                            <div className="portal-empty-state">
+                                Nie masz jeszcze zadnej notatki. Zacznij od przedmiotu, tytulu i kilku najwazniejszych punktow z zajec.
+                            </div>
+                        )}
+                    </div>
+
+                    <aside className="portal-section-panel portal-notes__editor">
+                        <div className="portal-section-card__topline">
+                            <span className="portal-section-card__eyebrow">
+                                {activeNote ? activeNote.subject : "Nowa notatka"}
+                            </span>
+                            <span className="portal-section-card__chip">
+                                {activeNote ? activeNote.updatedLabel : "robocza wersja"}
+                            </span>
+                        </div>
+                        <h3>{activeNote ? "Edytuj notatke" : "Dodaj nowa notatke"}</h3>
+                        <p className="portal-section-panel__copy">
+                            Zapis aktualizuje notatke w bazie i od razu pokazuje ja na liscie po lewej stronie.
+                        </p>
+
+                        <form className="portal-notes__form" onSubmit={onSave}>
+                            <label className="portal-notes__field">
+                                <span>Przedmiot</span>
+                                <input
+                                    type="text"
+                                    value={noteForm.subject}
+                                    onChange={onFieldChange("subject")}
+                                    placeholder="Np. Matematyka"
+                                    maxLength={100}
+                                    required
+                                />
+                            </label>
+
+                            <label className="portal-notes__field">
+                                <span>Tytul notatki</span>
+                                <input
+                                    type="text"
+                                    value={noteForm.title}
+                                    onChange={onFieldChange("title")}
+                                    placeholder="Np. Funkcja kwadratowa przed kolokwium"
+                                    maxLength={200}
+                                    required
+                                />
+                            </label>
+
+                            <label className="portal-notes__field">
+                                <span>Tagi</span>
+                                <input
+                                    type="text"
+                                    value={noteForm.tagsText}
+                                    onChange={onFieldChange("tagsText")}
+                                    placeholder="Np. algebra, matura, powtorka"
+                                />
+                            </label>
+
+                            <label className="portal-notes__field">
+                                <span>Tresc notatki</span>
+                                <textarea
+                                    value={noteForm.content}
+                                    onChange={onFieldChange("content")}
+                                    placeholder="Zapisz tutaj pelna notatke z zajec, wzory, kroki i przypomnienia do kolejnej powtorki."
+                                    required
+                                />
+                            </label>
+
+                            <div className="portal-notes__actions">
+                                <button type="submit" className="button button--primary" disabled={isSaving}>
+                                    {isSaving ? "Zapisywanie..." : "Zapisz notatke"}
+                                </button>
+                                {activeNote ? (
+                                    <button type="button" className="button button--secondary" onClick={onNewNote}>
+                                        Nowa notatka
+                                    </button>
+                                ) : null}
+                            </div>
+
+                            {saveError ? <p className="portal-notes__status portal-notes__status--error">{saveError}</p> : null}
+                            {saveSuccess ? (
+                                <p className="portal-notes__status portal-notes__status--success">{saveSuccess}</p>
+                            ) : null}
+                        </form>
+                    </aside>
                 </div>
-            ) : (
-                <PortalSearchEmptyState label="notatek" searchValue={searchValue} />
-            )}
+            ) : null}
         </>
     );
 }
@@ -1174,15 +1348,18 @@ function PortalPostsView({
                         <article key={post.id} className="portal-post">
                             <header className="portal-post__header">
                                 <div className="portal-post__identity">
-                                    <div
+                                    <a
+                                        href={post.profileUrl}
+                                        aria-label={`Przejdz do profilu ${post.author}`}
                                         className={joinClasses(
+                                            "portal-post__avatar-link",
                                             "portal-post__avatar",
                                             "tutor-card__avatar",
                                             `tutor-card__avatar--${post.avatarTone || "slate"}`,
                                         )}
                                     >
                                         <span>{post.initials}</span>
-                                    </div>
+                                    </a>
 
                                     <div className="portal-post__identity-copy">
                                         <div>
@@ -1223,7 +1400,7 @@ function PortalPostsView({
                             <PortalPostComments
                                 commentDraft={commentDrafts[post.id] || ""}
                                 commentError={commentErrors[post.id] || ""}
-                                isAuthenticated={isAuthenticated && Boolean(post.canComment)}
+                                isAuthenticated={isAuthenticated}
                                 isSubmitting={commentSubmittingPostId === post.id}
                                 loginUrl={loginUrl}
                                 onCommentChange={onCommentChange(post.id)}
@@ -1417,11 +1594,21 @@ export default function PortalSection({
     const [commentDrafts, setCommentDrafts] = useState({});
     const [commentErrors, setCommentErrors] = useState({});
     const [commentSubmittingPostId, setCommentSubmittingPostId] = useState(null);
+    const [portalNotes, setPortalNotes] = useState([]);
+    const [isNotesLoading, setIsNotesLoading] = useState(false);
+    const [notesError, setNotesError] = useState("");
+    const [selectedNoteId, setSelectedNoteId] = useState(null);
+    const [isCreatingNote, setIsCreatingNote] = useState(false);
+    const [noteForm, setNoteForm] = useState(EMPTY_NOTE_FORM);
+    const [isSavingNote, setIsSavingNote] = useState(false);
+    const [noteSaveError, setNoteSaveError] = useState("");
+    const [noteSaveSuccess, setNoteSaveSuccess] = useState("");
     const [observations, setObservations] = useState([]);
     const [hasLoadedObservations, setHasLoadedObservations] = useState(false);
     const [observationsError, setObservationsError] = useState("");
 
     const normalizedSearch = searchValue.trim().toLowerCase();
+    const notesUrl = urls.portalNotes ?? "/api/portal-notes";
     const postsUrl = urls.portalPosts ?? "/api/portal-posts";
     const observationsUrl = urls.observations ?? "/api/portal-observations";
     const commentsUrl = urls.portalPostComments ?? "/api/portal-post-comments";
@@ -1467,6 +1654,41 @@ export default function PortalSection({
     useEffect(() => {
         let ignoreResponse = false;
 
+        async function loadPortalNotes() {
+            setIsNotesLoading(true);
+            setNotesError("");
+
+            try {
+                const loadedNotes = await fetchPortalNotes({
+                    notesUrl,
+                    databaseErrorUrl,
+                });
+
+                if (!ignoreResponse) {
+                    setPortalNotes(loadedNotes);
+                }
+            } catch (error) {
+                if (!ignoreResponse) {
+                    setPortalNotes([]);
+                    setNotesError(error?.message || "Nie udalo sie pobrac notatek.");
+                }
+            } finally {
+                if (!ignoreResponse) {
+                    setIsNotesLoading(false);
+                }
+            }
+        }
+
+        loadPortalNotes();
+
+        return () => {
+            ignoreResponse = true;
+        };
+    }, [databaseErrorUrl, notesUrl]);
+
+    useEffect(() => {
+        let ignoreResponse = false;
+
         async function loadObservations() {
             setObservationsError("");
             setHasLoadedObservations(false);
@@ -1499,6 +1721,38 @@ export default function PortalSection({
         };
     }, [databaseErrorUrl, observationsUrl]);
 
+    useEffect(() => {
+        if (isCreatingNote) {
+            return;
+        }
+
+        if (selectedNoteId === null) {
+            if (portalNotes.length) {
+                const nextNote = portalNotes[0];
+                setSelectedNoteId(nextNote.id);
+                setNoteForm(buildNoteFormValues(nextNote));
+            } else {
+                setNoteForm(EMPTY_NOTE_FORM);
+            }
+            return;
+        }
+
+        const selectedNote = portalNotes.find((note) => note.id === selectedNoteId);
+        if (!selectedNote) {
+            if (portalNotes.length) {
+                const nextNote = portalNotes[0];
+                setSelectedNoteId(nextNote.id);
+                setNoteForm(buildNoteFormValues(nextNote));
+            } else {
+                setSelectedNoteId(null);
+                setNoteForm(EMPTY_NOTE_FORM);
+            }
+            return;
+        }
+
+        setNoteForm(buildNoteFormValues(selectedNote));
+    }, [isCreatingNote, portalNotes, selectedNoteId]);
+
     const filteredPosts = portalPosts.filter((post) =>
         matchesSearch(normalizedSearch, buildPostSearchEntries(post)),
     );
@@ -1528,7 +1782,7 @@ export default function PortalSection({
         matchesSearch(normalizedSearch, buildLessonSearchEntries(item)),
     );
 
-    const filteredNotes = STUDENT_NOTES.filter((item) =>
+    const filteredNotes = portalNotes.filter((item) =>
         matchesSearch(normalizedSearch, buildNoteSearchEntries(item)),
     );
 
@@ -1575,7 +1829,7 @@ export default function PortalSection({
             case "calendar":
                 return `${LESSON_CALENDAR_ITEMS.length} terminy`;
             case "notes":
-                return `${STUDENT_NOTES.length} wpisow`;
+                return `${portalNotes.length} wpisow`;
             case "homework":
                 return `${HOMEWORK_ITEMS.length} aktywne`;
             case "progress":
@@ -1598,7 +1852,26 @@ export default function PortalSection({
             case "calendar":
                 return <CalendarView lessons={filteredLessons} searchValue={searchValue} />;
             case "notes":
-                return <NotesView notes={filteredNotes} searchValue={searchValue} />;
+                return (
+                    <NotesView
+                        isAuthenticated={isAuthenticated}
+                        isLoading={isNotesLoading}
+                        isSaving={isSavingNote}
+                        loginUrl={loginUrl}
+                        noteForm={noteForm}
+                        notes={portalNotes}
+                        notesError={notesError}
+                        onFieldChange={handleNoteFieldChange}
+                        onNewNote={handleStartNewNote}
+                        onNoteSelect={handleSelectNote}
+                        onSave={handleSaveNote}
+                        saveError={noteSaveError}
+                        saveSuccess={noteSaveSuccess}
+                        searchValue={searchValue}
+                        selectedNoteId={selectedNoteId}
+                        visibleNotes={filteredNotes}
+                    />
+                );
             case "homework":
                 return <HomeworkView tasks={filteredHomework} searchValue={searchValue} />;
             case "progress":
@@ -1697,6 +1970,78 @@ export default function PortalSection({
             setSubmitError("");
             setSubmitSuccess("");
         };
+    }
+
+    function handleNoteFieldChange(fieldName) {
+        return (event) => {
+            const nextValue = event.target.value;
+            setNoteForm((currentForm) => ({
+                ...currentForm,
+                [fieldName]: nextValue,
+            }));
+            setNoteSaveError("");
+            setNoteSaveSuccess("");
+        };
+    }
+
+    function handleSelectNote(noteId) {
+        const selectedNote = portalNotes.find((note) => note.id === noteId);
+        if (!selectedNote) {
+            return;
+        }
+
+        setIsCreatingNote(false);
+        setSelectedNoteId(noteId);
+        setNoteForm(buildNoteFormValues(selectedNote));
+        setNoteSaveError("");
+        setNoteSaveSuccess("");
+    }
+
+    function handleStartNewNote() {
+        setIsCreatingNote(true);
+        setSelectedNoteId(null);
+        setNoteForm(EMPTY_NOTE_FORM);
+        setNoteSaveError("");
+        setNoteSaveSuccess("");
+    }
+
+    async function handleSaveNote(event) {
+        event.preventDefault();
+        if (isSavingNote) {
+            return;
+        }
+
+        setIsSavingNote(true);
+        setNoteSaveError("");
+        setNoteSaveSuccess("");
+
+        try {
+            const responsePayload = await savePortalNote({
+                payload: {
+                    noteId: selectedNoteId,
+                    subject: noteForm.subject,
+                    title: noteForm.title,
+                    content: noteForm.content,
+                    tags: parseNoteTagsInput(noteForm.tagsText),
+                },
+                notesUrl,
+                csrfToken,
+                databaseErrorUrl,
+            });
+
+            if (responsePayload.note) {
+                setPortalNotes((currentNotes) => upsertNote(currentNotes, responsePayload.note));
+                setIsCreatingNote(false);
+                setSelectedNoteId(responsePayload.note.id);
+                setNoteForm(buildNoteFormValues(responsePayload.note));
+            }
+
+            setNoteSaveSuccess(responsePayload.message || "Notatka zapisana.");
+        } catch (error) {
+            setNoteSaveError(error?.message || "Nie udalo sie zapisac notatki.");
+        } finally {
+            setIsSavingNote(false);
+        }
     }
 
     function handleCommentChange(postId) {

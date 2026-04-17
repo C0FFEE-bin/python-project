@@ -11,7 +11,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Q
 from django.http import Http404, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
@@ -30,6 +30,7 @@ from .forms import (
 from .models import (
     Comment,
     Dostepnosc,
+    LessonNote,
     Obserwacja,
     Opinia,
     Post,
@@ -288,6 +289,7 @@ def _get_home_props(request):
             "observations": reverse("portal_observations"),
             "onboarding": reverse("onboarding_account_type"),
             "portalPostComments": reverse("portal_post_comments"),
+            "portalNotes": reverse("portal_notes"),
             "portalPosts": reverse("portal_posts"),
             "register": reverse("register_user"),
             "databaseError": reverse("database_error_page"),
@@ -723,6 +725,53 @@ def _build_tutor_schedule(tutor, selected_date):
     }
 
 
+def _parse_booking_date(value):
+    normalized_value = (value or "").strip()
+    if not normalized_value:
+        return None
+
+    try:
+        return date.fromisoformat(normalized_value)
+    except ValueError:
+        return None
+
+
+def _parse_booking_time_label(value):
+    normalized_value = (value or "").strip()
+    if not normalized_value or "-" not in normalized_value:
+        return None
+
+    start_label, end_label = [part.strip() for part in normalized_value.split("-", 1)]
+
+    try:
+        start_time = datetime.strptime(start_label, "%H:%M").time()
+        end_time = datetime.strptime(end_label, "%H:%M").time()
+    except ValueError:
+        return None
+
+    return {
+        "end_label": end_label,
+        "end_time": end_time,
+        "normalized_label": f"{start_label}-{end_label}",
+        "start_label": start_label,
+        "start_time": start_time,
+    }
+
+
+def _booking_slot_exists(tutor, selected_date, time_payload):
+    if tutor is None or selected_date is None or time_payload is None:
+        return False
+
+    return Dostepnosc.objects.filter(
+        tutor=tutor,
+        godzina_od=time_payload["start_time"],
+        godzina_do=time_payload["end_time"],
+    ).filter(
+        Q(data=selected_date)
+        | Q(data__isnull=True, dzien_tygodnia=selected_date.weekday())
+    ).exists()
+
+
 def _build_review_payload(tutor, rating):
     latest_review = tutor.opinie_dla.order_by("-data_dodania").first()
 
@@ -1083,6 +1132,49 @@ def _serialize_portal_post(post, custom_user=None):
     }
 
 
+def _build_note_excerpt(content, limit=180):
+    normalized_content = (content or "").strip()
+    if not normalized_content:
+        return ""
+
+    first_line = next((line.strip() for line in normalized_content.splitlines() if line.strip()), normalized_content)
+    if len(first_line) <= limit:
+        return first_line
+
+    return f"{first_line[:limit - 1].rstrip()}..."
+
+
+def _format_relative_date_label(value):
+    localized_value = timezone.localtime(value)
+    day_difference = (timezone.localdate() - localized_value.date()).days
+
+    if day_difference <= 0:
+        return "Dzisiaj"
+    if day_difference == 1:
+        return "Wczoraj"
+    if day_difference <= 6:
+        return f"{day_difference} dni temu"
+
+    return localized_value.strftime("%d.%m.%Y")
+
+
+def _serialize_lesson_note(note):
+    localized_created_at = timezone.localtime(note.created_at)
+    localized_updated_at = timezone.localtime(note.updated_at)
+
+    return {
+        "id": note.pk,
+        "subject": note.subject,
+        "title": note.title,
+        "content": note.content,
+        "excerpt": _build_note_excerpt(note.content),
+        "tags": list(note.tags or []),
+        "createdAt": localized_created_at.isoformat(),
+        "updatedAt": localized_updated_at.isoformat(),
+        "updatedLabel": _format_relative_date_label(note.updated_at),
+    }
+
+
 def _serialize_observation(observation):
     tutor = observation.tutor
     return {
@@ -1180,7 +1272,9 @@ def tutor_profile_settings(request):
         "hourly_rate": tutor.stawka_godzinowa,
         "age": tutor.wiek,
         "experience_label": tutor.experience_label or "",
+        "avatar_image_url": tutor.avatar_image_url or "",
         "avatar_tone": tutor.avatar_tone or "slate",
+        "cover_image_url": tutor.cover_image_url or "",
         "status_badges": ", ".join(tutor.status_badges or []),
         "subjects": taxonomy["subjects"],
         "levels": taxonomy["levels"],
@@ -1193,8 +1287,14 @@ def tutor_profile_settings(request):
     )
 
     if request.method == "POST":
+        form_data = request.POST.copy()
+        form_data["avatar_tone"] = initial_data["avatar_tone"]
+        form_data["status_badges"] = initial_data["status_badges"]
+        form_data.setlist("subjects", initial_data["subjects"])
+        form_data.setlist("levels", initial_data["levels"])
+
         form = TutorProfileSettingsForm(
-            request.POST,
+            form_data,
             subject_choices=subject_choices,
             level_choices=level_choices,
             initial=initial_data,
@@ -1202,13 +1302,10 @@ def tutor_profile_settings(request):
 
         if form.is_valid():
             cleaned_data = form.cleaned_data
-            normalized_subjects = _normalize_string_list(cleaned_data["subjects"])
-            normalized_levels = _normalize_string_list(cleaned_data["levels"])
             first_name, last_name = _split_full_name(
                 cleaned_data["full_name"],
                 request.user.get_username(),
             )
-            status_badges = cleaned_data["status_badges"] or ["sprawny kontakt"]
 
             with transaction.atomic():
                 auth_user = request.user
@@ -1229,64 +1326,54 @@ def tutor_profile_settings(request):
                     else None
                 )
                 tutor.wiek = cleaned_data["age"]
+                tutor.avatar_image_url = cleaned_data["avatar_image_url"] or None
+                tutor.cover_image_url = cleaned_data["cover_image_url"] or None
                 tutor.experience_label = (cleaned_data["experience_label"] or "").strip() or None
-                tutor.avatar_tone = cleaned_data["avatar_tone"] or "slate"
-                tutor.status_badges = status_badges
                 tutor.save(
                     update_fields=[
                         "opis",
                         "stawka_godzinowa",
                         "wiek",
+                        "avatar_image_url",
+                        "cover_image_url",
                         "experience_label",
-                        "avatar_tone",
-                        "status_badges",
                     ]
                 )
-
-                tutor_subjects = []
-                for subject_name in normalized_subjects:
-                    for school_level in normalized_levels:
-                        subject_obj, _ = Przedmiot.objects.get_or_create(
-                            nazwa=subject_name,
-                            temat="Powtorka",
-                            poziom=school_level,
-                        )
-                        tutor_subjects.append(subject_obj)
-
-                tutor.przedmioty.set(tutor_subjects)
 
             messages.success(request, "Profil tutora zostal zaktualizowany.")
             return redirect("tutor_profile_settings")
 
     preview_name = (form["full_name"].value() or initial_data["full_name"] or "").strip()
-    preview_tone = (form["avatar_tone"].value() or initial_data["avatar_tone"] or "slate").strip()
-    preview_subjects = form["subjects"].value() or taxonomy["subjects"]
-    preview_levels = form["levels"].value() or taxonomy["levels"]
+    preview_tone = initial_data["avatar_tone"] or "slate"
+    preview_subjects = taxonomy["subjects"]
+    preview_levels = taxonomy["levels"]
     preview_about = (form["about"].value() or initial_data["about"] or "").strip()
+    preview_avatar_image_url = (form["avatar_image_url"].value() or initial_data["avatar_image_url"] or "").strip()
+    preview_cover_image_url = (form["cover_image_url"].value() or initial_data["cover_image_url"] or "").strip()
     preview_experience = (
         form["experience_label"].value()
         or initial_data["experience_label"]
         or _build_experience_label(tutor)
     )
-    preview_badges = _normalize_string_list(
-        str(form["status_badges"].value() or initial_data["status_badges"] or "").split(",")
-    )
+    preview_badges = list(tutor.status_badges or _build_status_badges(tutor))
     followers_count = _refresh_tutor_followers_count(tutor)
 
     context = {
         "form": form,
         "page_title": "Profil tutora",
-        "page_description": "Edytuj informacje, ktore widza uczniowie: dane podstawowe, opis, specjalizacje oraz styl profilu.",
+        "page_description": "Edytuj to, co faktycznie zmienia wyglad i podstawowe informacje profilu. Przedmioty, poziomy nauczania i wyroznienia sa tutaj tylko podgladem.",
         "panel_tabs": _build_tutor_panel_tabs("profile"),
         "tutor": tutor,
         "profile_name": preview_name or _build_display_name(tutor),
         "profile_initials": _get_user_initials(preview_name or _build_display_name(tutor)),
+        "profile_avatar_image_url": preview_avatar_image_url,
         "profile_subjects": preview_subjects,
         "profile_levels": preview_levels,
         "profile_about": preview_about,
         "profile_experience": preview_experience,
         "profile_badges": preview_badges,
         "profile_avatar_tone": preview_tone,
+        "profile_cover_image_url": preview_cover_image_url,
         "followers_count": followers_count,
         "opinions_count": getattr(tutor, "opinions_count", tutor.opinie_dla.count()),
         "posts_count": tutor.posty.count(),
@@ -1686,7 +1773,11 @@ def tutor_dashboard_data(request):
 
 def portal_posts(request):
     if request.method == "GET":
-        custom_user = _get_custom_user_for_auth_user(request.user)
+        custom_user = (
+            _get_or_create_custom_user_for_auth_user(request.user)
+            if request.user.is_authenticated
+            else None
+        )
         posts = (
             Post.objects.select_related("tutor__uzytkownik")
             .prefetch_related("tutor__przedmioty", "komentarze__uzytkownik")
@@ -1743,6 +1834,90 @@ def portal_posts(request):
             "post": _serialize_portal_post(post, custom_user=tutor.uzytkownik),
         },
         status=201,
+    )
+
+
+def portal_notes(request):
+    if request.method == "GET":
+        if not request.user.is_authenticated:
+            return JsonResponse({"notes": []})
+
+        custom_user = _get_or_create_custom_user_for_auth_user(request.user)
+        if custom_user is None:
+            return JsonResponse({"notes": []})
+
+        notes = LessonNote.objects.filter(user=custom_user).order_by("-updated_at", "-id")[:60]
+        return JsonResponse({"notes": [_serialize_lesson_note(note) for note in notes]})
+
+    if request.method != "POST":
+        return JsonResponse({"detail": "Zla metoda."}, status=405)
+
+    if not request.user.is_authenticated:
+        return JsonResponse({"detail": "Zaloguj sie, aby zapisac notatke."}, status=401)
+
+    custom_user = _get_or_create_custom_user_for_auth_user(request.user)
+    if custom_user is None:
+        return JsonResponse({"detail": "Nie udalo sie pobrac danych Twojego konta."}, status=400)
+
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"detail": "Niepoprawne dane JSON."}, status=400)
+
+    note_id = payload.get("noteId")
+    if note_id not in (None, ""):
+        try:
+            note_id = int(note_id)
+        except (TypeError, ValueError):
+            return JsonResponse({"detail": "Brakuje poprawnego identyfikatora notatki."}, status=400)
+    else:
+        note_id = None
+
+    subject = (payload.get("subject") or "").strip()
+    title = (payload.get("title") or "").strip()
+    content = (payload.get("content") or "").strip()
+    tags = _normalize_string_list(payload.get("tags"))[:6]
+
+    if len(subject) < 2:
+        return JsonResponse({"detail": "Przedmiot notatki musi miec co najmniej 2 znaki."}, status=400)
+    if len(title) < 4:
+        return JsonResponse({"detail": "Tytul notatki musi miec co najmniej 4 znaki."}, status=400)
+    if len(content) < 12:
+        return JsonResponse({"detail": "Tresc notatki musi miec co najmniej 12 znakow."}, status=400)
+    if any(len(tag) > 30 for tag in tags):
+        return JsonResponse({"detail": "Kazdy tag notatki moze miec maksymalnie 30 znakow."}, status=400)
+
+    if note_id is None:
+        note = LessonNote.objects.create(
+            user=custom_user,
+            subject=subject,
+            title=title,
+            content=content,
+            tags=tags,
+        )
+        return JsonResponse(
+            {
+                "message": "Notatka zapisana.",
+                "note": _serialize_lesson_note(note),
+            },
+            status=201,
+        )
+
+    note = LessonNote.objects.filter(pk=note_id, user=custom_user).first()
+    if note is None:
+        return JsonResponse({"detail": "Nie znaleziono notatki."}, status=404)
+
+    note.subject = subject
+    note.title = title
+    note.content = content
+    note.tags = tags
+    note.save(update_fields=["subject", "title", "content", "tags", "updated_at"])
+
+    return JsonResponse(
+        {
+            "message": "Notatka zapisana.",
+            "note": _serialize_lesson_note(note),
+        }
     )
 
 
@@ -1933,6 +2108,17 @@ def tutor_booking_request(request):
     if not subject:
         return JsonResponse({"detail": "Wybierz przedmiot przed wyslaniem zapytania."}, status=400)
 
+    if not selected_date or not time_label:
+        return JsonResponse({"detail": "Wybierz dostepny termin przed wyslaniem zapytania."}, status=400)
+
+    selected_date_value = _parse_booking_date(selected_date)
+    time_payload = _parse_booking_time_label(time_label)
+    if selected_date_value is None or time_payload is None:
+        return JsonResponse({"detail": "Wybrany termin ma niepoprawny format."}, status=400)
+
+    if len(note) > 1200:
+        return JsonResponse({"detail": "Dodatkowa wiadomosc moze miec maksymalnie 1200 znakow."}, status=400)
+
     custom_user = _get_or_create_custom_user_for_auth_user(request.user)
     if custom_user is None:
         return JsonResponse({"detail": "Konto nie ma poprawnego adresu e-mail."}, status=400)
@@ -1948,29 +2134,38 @@ def tutor_booking_request(request):
     if tutor.uzytkownik_id == custom_user.pk:
         return JsonResponse({"detail": "Nie mozesz wyslac zapytania do wlasnego profilu."}, status=400)
 
-    conversation, _ = TutorConversation.objects.get_or_create(
-        tutor=tutor,
-        student=custom_user,
-    )
+    if not _booking_slot_exists(tutor, selected_date_value, time_payload):
+        return JsonResponse(
+            {"detail": "Wybrany termin nie jest juz dostepny. Odswiez profil i wybierz inny slot."},
+            status=400,
+        )
 
     message_lines = [
         "Nowe zapytanie o zajecia.",
         f"Przedmiot: {subject}",
+        f"Data: {selected_date_value.isoformat()}",
+        f"Godzina: {time_payload['normalized_label']}",
     ]
-    if selected_date:
-        message_lines.append(f"Data: {selected_date}")
-    if time_label:
-        message_lines.append(f"Godzina: {time_label}")
     if note:
         message_lines.extend(["", note])
 
-    TutorMessage.objects.create(
-        conversation=conversation,
-        sender=custom_user,
-        body="\n".join(message_lines),
-    )
-    conversation.updated_at = timezone.now()
-    conversation.save(update_fields=["updated_at"])
+    try:
+        with transaction.atomic():
+            conversation, _ = TutorConversation.objects.get_or_create(
+                tutor=tutor,
+                student=custom_user,
+            )
+
+            TutorMessage.objects.create(
+                conversation=conversation,
+                sender=custom_user,
+                body="\n".join(message_lines),
+            )
+            conversation.updated_at = timezone.now()
+            conversation.save(update_fields=["updated_at"])
+    except IntegrityError as exc:
+        logger.exception("Database integrity error during tutor booking request save: %s", exc)
+        raise
 
     return JsonResponse(
         {

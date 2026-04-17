@@ -1963,6 +1963,15 @@ button {
     font-size: 1rem;
 }
 
+.portal-post__avatar-link {
+    text-decoration: none;
+}
+
+.portal-post__avatar-link:focus-visible {
+    outline: 2px solid rgba(185, 94, 213, 0.7);
+    outline-offset: 4px;
+}
+
 .portal-post__identity-copy {
     display: grid;
     gap: 6px;
@@ -2712,6 +2721,100 @@ button {
     gap: 8px;
 }
 
+.portal-notes__list,
+.portal-notes__cards,
+.portal-notes__form {
+    display: grid;
+    gap: 16px;
+}
+
+.portal-notes__list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.portal-notes__list-head h3 {
+    margin: 0;
+    color: #564d58;
+    font-family: var(--font-display);
+    font-size: 1.38rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.portal-note-card {
+    appearance: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+
+.portal-note-card.is-active {
+    border-color: rgba(185, 94, 213, 0.4);
+    box-shadow: 0 16px 28px rgba(185, 94, 213, 0.14);
+}
+
+.portal-notes__editor {
+    align-content: start;
+}
+
+.portal-notes__field {
+    display: grid;
+    gap: 8px;
+}
+
+.portal-notes__field span {
+    color: #3a333e;
+    font-size: 0.92rem;
+    font-weight: 800;
+}
+
+.portal-notes__field input,
+.portal-notes__field textarea {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid rgba(130, 121, 137, 0.18);
+    border-radius: 18px;
+    background: rgba(250, 248, 251, 0.98);
+    color: #413b44;
+    font-size: 0.98rem;
+    line-height: 1.5;
+}
+
+.portal-notes__field textarea {
+    min-height: 240px;
+    resize: vertical;
+}
+
+.portal-notes__field input:focus,
+.portal-notes__field textarea:focus {
+    outline: 2px solid rgba(181, 112, 209, 0.2);
+    border-color: rgba(181, 112, 209, 0.45);
+}
+
+.portal-notes__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.portal-notes__status {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 800;
+}
+
+.portal-notes__status--error {
+    color: #ad4d66;
+}
+
+.portal-notes__status--success {
+    color: #468068;
+}
+
 .portal-progress__bar {
     width: 100%;
     height: 10px;
@@ -3153,6 +3256,12 @@ button {
 
     .portal-post-editor__header,
     .portal-post-editor__actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .portal-notes__list-head,
+    .portal-notes__actions {
         flex-direction: column;
         align-items: stretch;
     }

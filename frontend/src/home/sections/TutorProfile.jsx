@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { createTutorReview, toggleTutorObservation } from "../api.js";
+import { createTutorBookingRequest, createTutorReview, toggleTutorObservation } from "../api.js";
 
 const PROFILE_TABS = [
     { id: "info", label: "Informacje" },
@@ -239,9 +239,28 @@ function buildSubjectOptions(tutor, requestFilters) {
     return options.slice(0, 4);
 }
 
+function buildLoginHref(baseUrl) {
+    if (!baseUrl) {
+        return "/login";
+    }
+
+    if (typeof window === "undefined") {
+        return baseUrl;
+    }
+
+    const nextTarget = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (!nextTarget) {
+        return baseUrl;
+    }
+
+    const separator = baseUrl.includes("?") ? "&" : "?";
+    return `${baseUrl}${separator}${new URLSearchParams({ next: nextTarget }).toString()}`;
+}
+
 export default function TutorProfile({
     csrfToken = "",
     heroImageSrc = "",
+    isAuthenticated = false,
     onBack,
     requestDate = "",
     requestFilters = {},
@@ -265,12 +284,16 @@ export default function TutorProfile({
     const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
     const [areAllReviewsVisible, setAreAllReviewsVisible] = useState(false);
     const [hoveredReviewScore, setHoveredReviewScore] = useState(0);
+    const [bookingError, setBookingError] = useState("");
+    const [bookingSuccess, setBookingSuccess] = useState("");
+    const [isBookingSubmitting, setIsBookingSubmitting] = useState(false);
 
     const subjectOptions = useMemo(() => buildSubjectOptions(tutor, requestFilters), [requestFilters, tutor]);
     const levelOptions = useMemo(() => safeArray(tutor?.levels).slice(0, 3), [tutor?.levels]);
     const topicOptions = useMemo(() => safeArray(tutor?.topics).slice(0, 3), [tutor?.topics]);
     const bookableSlots = useMemo(() => buildBookableSlots(tutor?.schedule), [tutor?.schedule]);
     const scheduleGrid = useMemo(() => buildScheduleGrid(tutor?.schedule), [tutor?.schedule]);
+    const bookingLoginUrl = useMemo(() => buildLoginHref(urls.login ?? "/login"), [urls.login]);
     const [selectedSubject, setSelectedSubject] = useState(() => subjectOptions[0] || String(requestFilters?.subject || "").trim());
     const [selectedSlotId, setSelectedSlotId] = useState("");
 
@@ -292,6 +315,9 @@ export default function TutorProfile({
         setReviewSuccess("");
         setAreAllReviewsVisible(false);
         setHoveredReviewScore(0);
+        setBookingError("");
+        setBookingSuccess("");
+        setIsBookingSubmitting(false);
         setActiveTab("info");
     }, [tutor?.followersCount, tutor?.id, tutor?.isFollowed, tutor?.opinions, tutor?.rating, tutor?.review, tutor?.reviews]);
 
@@ -313,6 +339,13 @@ export default function TutorProfile({
         setReviewContent(ownReview?.content || "");
         setHoveredReviewScore(0);
     }, [ownReview, tutor?.id]);
+
+    useEffect(() => {
+        if (selectedSlotId) {
+            setBookingError("");
+            setBookingSuccess("");
+        }
+    }, [selectedSlotId]);
 
     if (!tutor) {
         return null;
@@ -395,6 +428,50 @@ export default function TutorProfile({
         }
     }
 
+    async function handleBookingRequest() {
+        if (!tutor?.id || !selectedSlot) {
+            setBookingError("Wybierz dostepny termin przed wyslaniem zapytania.");
+            return;
+        }
+
+        if (!selectedSubject) {
+            setBookingError("Wybierz przedmiot przed wyslaniem zapytania.");
+            return;
+        }
+
+        if (!isAuthenticated) {
+            window.location.assign(bookingLoginUrl);
+            return;
+        }
+
+        setIsBookingSubmitting(true);
+        setBookingError("");
+        setBookingSuccess("");
+
+        try {
+            const responsePayload = await createTutorBookingRequest({
+                payload: {
+                    tutorId: tutor.id,
+                    subject: selectedSubject,
+                    date: selectedSlot.dateIso,
+                    timeLabel: selectedSlot.timeRangeLabel,
+                    message: message.trim(),
+                },
+                bookingUrl: urls.tutorBookingRequest ?? "/api/tutor-booking-request",
+                csrfToken,
+                databaseErrorUrl: urls.databaseError ?? "/database-error",
+            });
+
+            setBookingSuccess(responsePayload?.message || "Zapytanie zostalo wyslane do korepetytora.");
+            setSelectedSlotId("");
+            setMessage(DEFAULT_BOOKING_NOTE);
+        } catch (error) {
+            setBookingError(error?.message || "Nie udalo sie wyslac zapytania do korepetytora.");
+        } finally {
+            setIsBookingSubmitting(false);
+        }
+    }
+
     return (
         <div className="tutor-profile">
             <style>{`
@@ -425,6 +502,9 @@ export default function TutorProfile({
                 .tutor-profile__follow.is-active{background:#6666761f;color:#5f5b68;box-shadow:none}
                 .tutor-profile__follow-note{background:#ece8f0;color:#736977}
                 .tutor-profile__followers,.tutor-profile__sidebar-copy,.tutor-profile__slot-empty,.tutor-profile__summary-note,.tutor-profile__about p,.tutor-profile__review-text,.tutor-profile__booking-copy{margin:0;color:#7b7078;font-size:.92rem;line-height:1.6}
+                .tutor-profile__status{margin:0;font-size:.92rem;font-weight:700;line-height:1.6}
+                .tutor-profile__status--error{color:#974966}
+                .tutor-profile__status--success{color:#3c7d61}
                 .tutor-profile__fact,.tutor-profile__meta{min-height:36px;padding:0 14px;background:#eeebf3;color:#6f6571;font-size:.84rem}
                 .tutor-profile__subject{min-height:36px;padding:0 14px;background:#eadcef;color:#7a6286;font-size:.84rem}
                 .tutor-profile__tabs{margin-top:-2px}
@@ -572,7 +652,7 @@ export default function TutorProfile({
                         <p className="tutor-profile__sidebar-copy">
                             {bookableSlots.length
                                 ? hasBookingSelection
-                                    ? "Masz juz wybrany termin. Nizej mozesz dopisac notatke i przejsc do platnosci."
+                                    ? "Masz juz wybrany termin. Nizej mozesz dopisac notatke i wyslac zapytanie do tutora."
                                     : "Najpierw wybierz przedmiot i kliknij wolny termin w harmonogramie."
                                 : "Tutor nie ma jeszcze wolnego slotu w tym widoku, ale ekran zapisu jest juz gotowy."}
                         </p>
@@ -961,18 +1041,32 @@ export default function TutorProfile({
                                                         <button className="tutor-profile__cancel" type="button" onClick={onBack}>
                                                             Anuluj
                                                         </button>
-                                                        <button className="tutor-profile__cta" type="button">
-                                                            Przejdz do platnosci
-                                                        </button>
+                                                        {isAuthenticated ? (
+                                                            <button
+                                                                className="tutor-profile__cta"
+                                                                type="button"
+                                                                onClick={handleBookingRequest}
+                                                                disabled={isBookingSubmitting}
+                                                            >
+                                                                {isBookingSubmitting ? "Wysylanie..." : "Wyslij zapytanie"}
+                                                            </button>
+                                                        ) : (
+                                                            <a className="tutor-profile__cta" href={bookingLoginUrl}>
+                                                                Zaloguj sie i wyslij zapytanie
+                                                            </a>
+                                                        )}
                                                     </div>
                                                 </aside>
                                             </div>
                                         ) : (
                                             <p className="tutor-profile__booking-copy">
                                                 Na poczatku widac tylko wybor przedmiotu i harmonogram. Po kliknieciu terminu
-                                                pojawia sie notatka, podsumowanie i przycisk platnosci.
+                                                pojawia sie notatka, podsumowanie i przycisk wysylki zapytania.
                                             </p>
                                         )}
+
+                                        {bookingError ? <p className="tutor-profile__status tutor-profile__status--error">{bookingError}</p> : null}
+                                        {bookingSuccess ? <p className="tutor-profile__status tutor-profile__status--success">{bookingSuccess}</p> : null}
                                     </div>
                                 </section>
                             </div>
