@@ -29,8 +29,8 @@ export default function MentorSection({ mentorImageSrc, registerUrl }) {
                         <i className="fa-regular fa-envelope"></i>
                     </span>
                     <div>
-                        <strong>Szybki kontakt</strong>
-                        <p>Napisz do nas i ustal, jak ma wygladac profil, oferta oraz obsluga zgloszen.</p>
+                        <strong>Chcesz zadać pytanie biznesowe?</strong>
+                        <p>Napisz do nas prywatną wiadomość e-mail na adres: kontakt@rentanerd.pl</p>
                     </div>
                 </div>
             </Reveal>
