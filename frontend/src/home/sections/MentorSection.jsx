@@ -14,9 +14,9 @@ export default function MentorSection({ mentorImageSrc, registerUrl }) {
             <Reveal as="div" className="mentor-section__content">
                 <p className="eyebrow">Dla tutorow</p>
                 <h2>A moze chcesz pomoc innym?</h2>
-                <p>
+                <p style={{ marginTop: '3px' }}>
                     Zarejestruj sie u nas, utworz wlasny profil, dopasuj swoje godziny i buduj baze uczniow.
-                    Ten blok domyka landing page i daje Ci miejsce na pozniejsze podpiecie prawdziwego formularza.
+                    Szybko, sprawnie i wygodnie realizuj swoje sposoby i pomagaj innym!
                 </p>
 
                 <div className="mentor-section__actions">
