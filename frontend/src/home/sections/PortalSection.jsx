@@ -1113,14 +1113,18 @@ function PortalPostComposer({
 function PortalPostGuide({ canCreatePosts, isAuthenticated, loginUrl, onboardingUrl }) {
     return (
         <aside className="portal-post-guide">
-            <p className="portal-post-guide__eyebrow">Jak dodac wpis</p>
-            <h3>Prosty schemat publikacji dla tutora</h3>
+            {isAuthenticated ? (
+                <>
+                    <p className="portal-post-guide__eyebrow">Jak dodac wpis</p>
+                    <h3>Prosty schemat publikacji dla tutora</h3>
 
-            <ol className="portal-post-guide__steps">
-                {POST_PUBLISH_STEPS.map((step) => (
-                    <li key={step}>{step}</li>
-                ))}
-            </ol>
+                    <ol className="portal-post-guide__steps">
+                        {POST_PUBLISH_STEPS.map((step) => (
+                            <li key={step}>{step}</li>
+                        ))}
+                    </ol>
+                </>
+            ) : null}
 
             {canCreatePosts ? (
                 <p className="portal-post-guide__note">
